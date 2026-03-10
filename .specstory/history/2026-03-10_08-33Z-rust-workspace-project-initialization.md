@@ -2183,6 +2183,247 @@ No design.md - single document, no architectural change. The spec delta defines 
 
 <details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-test-case-documentation/proposal.md</summary>
 
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-test-case-documentation/tasks.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-test-case-documentation/specs/test-documentation/spec.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+OpenSpec scenario format: the AGENTS.md says use "#### Scenario: Name" and "**WHEN** ... **THEN** ...". It also shows "**GIVEN**" in some examples. Let me check - the example was:
+"- **WHEN** user performs action
+- **THEN** expected result"
+So WHEN/THEN are the standard. I used GIVEN/WHEN/THEN which is fine for BDD style. Let me run validate --strict to see if the parser accepts it.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate add-test-case-documentation --strict</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate add-test-case-documentation --strict
+```
+
+```
+Change 'add-test-case-documentation' is valid
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Validation passed. I'll add a brief design.md only if the AGENTS criteria apply - "Cross-cutting change, new pattern, new dependency, security/perf/migration, ambiguity". This change is a single doc and a new capability; no design.md is required. I'll leave it out per the instructions.
+
+Let me also double-check: the user asked for "测试用例文档" (test case document). The proposal adds the spec requirement and tasks to create docs/test-cases.md. I could optionally create the actual docs/test-cases.md as part of the proposal so the change is self-contained - but the OpenSpec workflow says "Do not start implementation until proposal is approved". So the proposal only scaffolds what to do (tasks.md); the actual file can be created when implementing. If the user wants the document to exist as part of the proposal, I could add a task "Create docs/test-cases.md with placeholder structure" and optionally add a minimal skeleton in the change folder for reference. Looking at the tasks again - 1.1 says "Add docs/test-cases.md" - that's implementation. So we're good.
+
+I'll mark the todo complete and give a summary to the user.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Scaffold proposal, tasks, and spec delta for test-case doc
+- [x] Run openspec validate --strict and fix issues
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+All done. I did not add design.md because the change is a single document and doesn't introduce cross-cutting architecture. Summary for the user.
+</details></think>
+
+---
+
+
+已按 OpenSpec 流程搭好「增加测试用例文档」的 change，并通过 `openspec validate add-test-case-documentation --strict`。
+
+## 变更概要
+
+- **change-id**: `add-test-case-documentation`
+- **位置**: `openspec/changes/add-test-case-documentation/`
+
+### 1. `proposal.md`
+- **Why**: 有需求/设计/验收，但缺少专门的测试用例文档；需要可追溯的测试用例说明。
+- **What**: 新增测试用例文档（如 `docs/test-cases.md`），并约定项目需维护该文档。
+- **Impact**: 新增能力 `test-documentation`，新增/引用 `docs/test-cases.md`。
+
+### 2. `tasks.md`
+- **1. Documentation**: 新建 `docs/test-cases.md`、定义结构；为 Todo（US-T1–T4）和 Xtask（US-X1–X3）填写用例；写维护说明。
+- **2. References**: 在 `docs/acceptance.md` 或 README 中增加对测试用例文档的引用。
+- **3. Validation**: 确认每条验收标准在测试用例文档中有对应用例；再次跑 `openspec validate add-test-case-documentation --strict`。
+
+### 3. Spec delta：`specs/test-documentation/spec.md`
+- **ADDED** 一条需求：**Test case document**
+  - 项目必须维护测试用例文档；每条用例需有：需求/验收引用、验证方式、预期结果；需求或验收变更时需同步更新文档。
+- **Scenarios**:
+  - 文档存在且覆盖验收：查阅文档时，每条验收标准至少有一条用例（含需求引用、验证方式、预期结果）。
+  - 新增需求时：变更合入时，测试用例文档需补充对应用例，或显式说明暂不覆盖（如推迟/N/A）。
+
+未加 `design.md`（单文档、无架构/多系统变更）。  
+实现时按 `tasks.md` 执行即可；**在通过审批前不要开始实现**（见 AGENTS.md）。
+
+---
+
+_**User**_
+
+/openspec-apply add-test-case-documentation 
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants me to implement the OpenSpec change `add-test-case-documentation`. I need to:
+
+1. Read proposal.md, design.md (if present), and tasks.md for that change
+2. Work through tasks sequentially
+3. Confirm completion, then mark all tasks as [x] in tasks.md
+4. Keep changes minimal and focused
+
+Let me read the change files first.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-test-case-documentation/proposal.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-test-case-documentation/tasks.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/acceptance.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to:
+1. Create docs/test-cases.md with structure and purpose (task 1.1)
+2. Populate test cases for Todo US-T1–US-T4 (1.2)
+3. Populate test cases for Xtask US-X1–US-X3 (1.3)
+4. Add Maintenance section (1.4)
+5. Add pointer to test-cases.md from docs/acceptance.md (2.1)
+6. Verify every acceptance criterion has a test case (3.1)
+7. Run openspec validate (3.2)
+8. Mark all tasks [x] in tasks.md
+
+I'll create the full test-cases.md in one go, then update acceptance.md, then validate and update tasks.md.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [-] Add docs/test-cases.md with structure and Todo/Xtask cases
+- [ ] Add pointer in acceptance.md and mark tasks complete
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/acceptance.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I have the full acceptance doc. I'll create docs/test-cases.md with:
+- Purpose and structure (id, requirement ref, description, steps, verification, expected result)
+- Todo: US-T1 (T1-1, T1-2), US-T2 (T2-1, T2-2), US-T3 (T3-1, T3-2), US-T4 (T4-1, T4-2)
+- Xtask: US-X1 (X1-1, X1-2), US-X2 (X2-1, X2-2), US-X3 (X3-1, X3-2)
+- Optional: NF-1, NF-2
+- Maintenance section
+
+Then add one line in acceptance.md (e.g. in section 1 or 6) pointing to test-cases.md.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/test-cases.md</summary>
+
 Status: **loading**
 
 </details>
