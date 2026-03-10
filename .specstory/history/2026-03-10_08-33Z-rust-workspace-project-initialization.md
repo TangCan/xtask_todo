@@ -1451,6 +1451,114 @@ I'll write this in a clear format in docs/tasks.md. Should tasks go in docs/ or 
 
 <details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/tasks.md</summary>
 
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. I've created docs/tasks.md with:
+1. A Mermaid dependency diagram showing all tasks and their relationships
+2. Task tables for Domain (T1-T4), Storage (T5-T6), Public API (T7-T11), Tests (T12-T15), Xtask (X1-X2)
+3. Suggested execution order in batches
+4. Mapping from requirements (US-T*, US-X*) to tasks
+
+The file is in docs/ to stay with requirements.md and design.md.
+</details></think>
+
+---
+
+
+已在 `docs/tasks.md` 中写好任务分解，结构如下。
+
+## 内容概要
+
+### 1. 依赖关系图（Mermaid）
+- 领域层：T1（TodoId）→ T2（Todo）；T3（TodoError）、T4（标题校验）独立。
+- 存储层：T5（Store trait）依赖 T1、T2；T6（InMemoryStore）依赖 T5。
+- Public API：T7（TodoList）依赖 T5、T6；T8～T11（create/list/complete/delete）依赖 T7 及领域类型。
+- 验收测试：T12～T15 分别依赖对应的 API 任务。
+- Xtask：X1（run 对接）可依赖 T7；X2（帮助与退出码）依赖 X1。
+
+### 2. 任务表（含依赖与验收）
+- **T1–T4**：领域类型与错误、标题校验。
+- **T5–T6**：Store trait 与 InMemoryStore。
+- **T7–T11**：TodoList 及 create/list/complete/delete。
+- **T12–T15**：US-T1～US-T4 的验收测试。
+- **X1–X2**：xtask run 对接、帮助与退出码验证。
+
+### 3. 建议执行顺序
+按依赖分成 8 批，每批内可并行；从 T1/T3/T4 开始，最后做 X1、X2。
+
+### 4. 需求映射
+表格标明每个用户故事（US-T1～US-T4、US-X1～US-X2）由哪些任务实现。
+
+文件路径：`/home/ars/richard/2026/pvm_2/xtask_todo/docs/tasks.md`。可按该文档从 T1 开始实现并勾选完成情况。
+
+---
+
+_**User**_
+
+很好。请创建一个验收文档。
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants me to create an acceptance/verification document. This should tie the requirements (user stories and acceptance criteria) to concrete verification steps - how to verify each criterion (manual steps, test commands, expected results). I'll base it on docs/requirements.md and make it a practical checklist for acceptance testing.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/requirements.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/tasks.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I'll create an acceptance document (验收文档) that:
+1. Links to requirements and defines the purpose of the doc (sign-off checklist)
+2. For each user story / acceptance criterion: gives a concrete verification method (automated test name or manual steps), expected result, and a checkbox for sign-off
+3. Non-functional checks (Rust, workspace, cargo xtask alias)
+4. Summary table or status
+
+I'll put it in docs/ as acceptance.md or verification.md. "验收文档" is often "acceptance" in English - I'll use acceptance.md.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/acceptance.md</summary>
+
 Status: **loading**
 
 </details>
