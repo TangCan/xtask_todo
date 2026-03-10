@@ -14,9 +14,14 @@ pub use store::{InMemoryStore, Store};
 pub struct TodoId(std::num::NonZeroU64);
 
 impl TodoId {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(n: u64) -> Option<Self> {
+    /// Creates a TodoId from a raw u64 (e.g. when loading from storage). Returns None if n is 0.
+    pub fn from_raw(n: u64) -> Option<Self> {
         std::num::NonZeroU64::new(n).map(TodoId)
+    }
+
+    /// Returns the raw numeric id (e.g. for serialization).
+    pub fn as_u64(self) -> u64 {
+        self.0.get()
     }
 }
 

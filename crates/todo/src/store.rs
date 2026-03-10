@@ -31,6 +31,18 @@ impl InMemoryStore {
     pub fn new() -> Self {
         Self::default()
     }
+
+    /// Builds a store from existing todos (e.g. after loading from file). Next id will be max(existing ids) + 1.
+    pub fn from_todos(todos: Vec<Todo>) -> Self {
+        let next_id = todos
+            .iter()
+            .map(|t| t.id.as_u64())
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1);
+        let items = todos.into_iter().map(|t| (t.id, t)).collect();
+        Self { next_id, items }
+    }
 }
 
 impl Store for InMemoryStore {

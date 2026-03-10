@@ -3,6 +3,9 @@
 //! Run with: cargo xtask <command>
 
 use argh::FromArgs;
+use std::path::PathBuf;
+use std::time::{Duration, UNIX_EPOCH};
+use todo::{Todo, TodoId, TodoList, InMemoryStore};
 
 fn main() {
     let cmd: XtaskCmd = argh::from_env();
@@ -45,28 +48,141 @@ fn cmd_run(_args: RunArgs) -> Result<(), Box<dyn std::error::Error>> {
 
 #[derive(FromArgs)]
 #[argh(subcommand, name = "todo")]
-/// Demo todo list: create a few items, list, complete one, delete one
-struct TodoArgs {}
+/// Todo list: add, list, complete, delete (data in .todo.json)
+struct TodoArgs {
+    #[argh(subcommand)]
+    sub: TodoSub,
+}
 
-fn cmd_todo(_args: TodoArgs) -> Result<(), Box<dyn std::error::Error>> {
-    use todo::TodoList;
+#[derive(FromArgs)]
+#[argh(subcommand)]
+enum TodoSub {
+    Add(TodoAddArgs),
+    List(TodoListArgs),
+    Complete(TodoCompleteArgs),
+    Delete(TodoDeleteArgs),
+}
 
-    let mut list = TodoList::new();
-    let id1 = list.create("First task")?;
-    let _id2 = list.create("Second task")?;
-    let id3 = list.create("Third task")?;
+#[derive(FromArgs)]
+#[argh(subcommand, name = "add")]
+/// Add a task
+struct TodoAddArgs {
+    #[argh(positional)]
+    title: String,
+}
 
-    println!("Created 3 todos:");
-    for t in list.list() {
-        println!("  [{}] {} {}", t.id, if t.completed { "x" } else { " " }, t.title);
+#[derive(FromArgs)]
+#[argh(subcommand, name = "list")]
+/// List all tasks
+struct TodoListArgs {}
+
+#[derive(FromArgs)]
+#[argh(subcommand, name = "complete")]
+/// Mark a task as completed by id
+struct TodoCompleteArgs {
+    #[argh(positional)]
+    id: u64,
+}
+
+#[derive(FromArgs)]
+#[argh(subcommand, name = "delete")]
+/// Delete a task by id
+struct TodoDeleteArgs {
+    #[argh(positional)]
+    id: u64,
+}
+
+fn todo_file() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let cwd = std::env::current_dir()?;
+    Ok(cwd.join(".todo.json"))
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct TodoDto {
+    id: u64,
+    title: String,
+    completed: bool,
+    created_at_secs: u64,
+}
+
+fn load_todos() -> Result<Vec<Todo>, Box<dyn std::error::Error>> {
+    let path = todo_file()?;
+    if !path.exists() {
+        return Ok(Vec::new());
     }
+    let s = std::fs::read_to_string(&path)?;
+    let dtos: Vec<TodoDto> = serde_json::from_str(&s).unwrap_or_default();
+    let todos = dtos
+        .into_iter()
+        .filter_map(|d| {
+            let id = TodoId::from_raw(d.id)?;
+            let created_at = UNIX_EPOCH + Duration::from_secs(d.created_at_secs);
+            Some(Todo {
+                id,
+                title: d.title,
+                completed: d.completed,
+                created_at,
+            })
+        })
+        .collect();
+    Ok(todos)
+}
 
-    list.complete(id1)?;
-    list.delete(id3)?;
+fn save_todos(list: &TodoList<InMemoryStore>) -> Result<(), Box<dyn std::error::Error>> {
+    let path = todo_file()?;
+    let dtos: Vec<TodoDto> = list
+        .list()
+        .into_iter()
+        .map(|t| TodoDto {
+            id: t.id.as_u64(),
+            title: t.title.clone(),
+            completed: t.completed,
+            created_at_secs: t
+                .created_at
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or(Duration::ZERO)
+                .as_secs(),
+        })
+        .collect();
+    let s = serde_json::to_string_pretty(&dtos)?;
+    std::fs::write(path, s)?;
+    Ok(())
+}
 
-    println!("\nAfter complete(id1) and delete(id3):");
-    for t in list.list() {
-        println!("  [{}] {} {}", t.id, if t.completed { "x" } else { " " }, t.title);
+fn cmd_todo(args: TodoArgs) -> Result<(), Box<dyn std::error::Error>> {
+    let todos = load_todos()?;
+    let store = InMemoryStore::from_todos(todos);
+    let mut list = TodoList::with_store(store);
+
+    match args.sub {
+        TodoSub::Add(a) => {
+            let id = list.create(&a.title)?;
+            save_todos(&list)?;
+            println!("Added [{}] {}", id, a.title.trim());
+        }
+        TodoSub::List(_) => {
+            let items = list.list();
+            if items.is_empty() {
+                println!("No tasks.");
+            } else {
+                for t in items {
+                    let mark = if t.completed { "✓" } else { " " };
+                    println!("  [{}] {} {}", t.id, mark, t.title);
+                }
+            }
+        }
+        TodoSub::Complete(a) => {
+            let id = TodoId::from_raw(a.id).ok_or("invalid id 0")?;
+            list.complete(id)?;
+            save_todos(&list)?;
+            println!("Completed [{}]", id);
+        }
+        TodoSub::Delete(a) => {
+            let id = TodoId::from_raw(a.id).ok_or("invalid id 0")?;
+            list.delete(id)?;
+            save_todos(&list)?;
+            println!("Deleted [{}]", id);
+        }
     }
     Ok(())
 }
