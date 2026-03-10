@@ -1238,14 +1238,223 @@ I'll create the docs directory by writing the files there, then delete the origi
 
 ---
 
-<tool-use data-tool-type="unknown" data-tool-name="read_file_v2">
-<details>
-<summary>Tool use: **read_file_v2**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/design.md</summary>
 
-Status: **loading**
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I'll write both files to docs/ and then delete the originals. The design.md references [requirements.md](./requirements.md) - when both are in docs/, ./requirements.md still works (same directory). Good.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/requirements.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/design.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Now delete the original files from the root.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="delete_file">
+<details><summary>Tool use: **delete_file**</summary>
+
+Explanation: undefined
 
 
 </details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="delete_file">
+<details><summary>Tool use: **delete_file**</summary>
+
+Explanation: undefined
+
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. Both documents are now in docs/ and the originals are removed. design.md still uses ./requirements.md which is correct since both are in docs/.
+</details></think>
+
+---
+
+
+已把两个文档移到 `docs` 目录下，并删除了根目录的旧文件。
+
+当前结构：
+
+```
+xtask_todo/
+├── docs/
+│   ├── requirements.md   # 需求说明（用户故事与验收标准）
+│   └── design.md         # 设计说明（技术架构、数据流、接口）
+├── crates/
+│   └── todo/
+├── xtask/
+└── ...
+```
+
+`design.md` 里对需求文档的引用仍是 `[requirements.md](./requirements.md)`，在 `docs/` 下同目录引用仍然有效。
+
+---
+
+_**User**_
+
+创建tasks.md，将工作分解为有依赖关系的具体任务
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants me to create a tasks.md file that breaks down the work into concrete tasks with dependencies. I should base this on the requirements (docs/requirements.md) and design (docs/design.md) - the todo domain (create, list, complete, delete) and xtask workflow. Tasks should be granular, ordered by dependency (e.g. domain types first, then store, then API, then xtask integration).
+
+Let me read the docs again to make sure I capture all the work items and their logical order.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/requirements.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/design.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I have a good picture. I'll create tasks.md with:
+1. Tasks broken down by layer: domain (types, error) → storage (trait, in-memory) → public API (TodoList, create/list/complete/delete) → tests → xtask (run wiring, optional demo)
+2. Each task with an id, description, and dependencies (e.g. T2 depends on T1)
+3. Reference to requirements/design where applicable
+
+Task breakdown:
+
+**Domain (crates/todo)**
+- T1: 定义 TodoId 类型（如 NonZeroU64 或 uuid）
+- T2: 定义 Todo 类型（id, title, completed, 可选 created_at）
+- T3: 定义 TodoError 枚举（InvalidInput, NotFound）
+- T4: 实现标题校验规则（非空、可选长度/trim）
+
+**Storage**
+- T5: 定义 Store trait（insert, get, list, update, remove）
+- T6: 实现 InMemoryStore
+
+**Public API**
+- T7: 实现 TodoList 门面，持有 Store
+- T8: 实现 create(title) -> Result<TodoId, TodoError>
+- T9: 实现 list() -> Vec<Todo>（按创建时间排序）
+- T10: 实现 complete(id) -> Result<(), TodoError>
+- T11: 实现 delete(id) -> Result<(), TodoError>
+
+**Tests**
+- T12: US-T1 验收测试（创建成功、空标题失败）
+- T13: US-T2 验收测试（空列表、列表排序）
+- T14: US-T3 验收测试（完成成功、不存在 id 失败）
+- T15: US-T4 验收测试（删除成功、不存在 id）
+
+**Xtask**
+- T16: xtask run 对接主程序（若无可运行二进制则先占位或跳过）
+- T17: 文档/CI 中验证 cargo xtask --help 与子命令
+
+Dependencies:
+- T2 depends on T1 (Todo has TodoId)
+
+
+- T3 independent
+- T4 independent (validation)
+- T5 depends on T1, T2 (Store uses Todo, TodoId)
+- T6 depends on T5
+- T7 depends on T5, T6
+- T8 depends on T7, T2, T3, T4, T5
+- T9 depends on T7
+- T10 depends on T7, T3
+- T11 depends on T7, T3
+- T12 depends on T8
+- T13 depends on T9, T8
+- T14 depends on T10, T8
+- T15 depends on T11, T8
+- T16 depends on having something to run (optional)
+- T17 no deps
+
+I'll write this in a clear format in docs/tasks.md. Should tasks go in docs/ or root? The user said "创建tasks.md" - I'll put it in docs/ next to requirements and design for consistency.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/tasks.md</summary>
+
+Status: **loading**
+
+</details>
+
 </tool-use>
 
 ---
