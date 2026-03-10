@@ -1,0 +1,5 @@
+[package]
+name = "xtask_todo"
+version = "0.1.0"
+edition = "2021"
+description = "Rust workspace with cargo xtask support"
