@@ -2959,60 +2959,91 @@ Let me read the key docs to map requirements to spec requirements and tasks.
 
 Now I have a clear picture. I need to create an OpenSpec change proposal that:
 1. Adds a new capability "todo" (the todo domain - create, list, complete, delete with types, store, TodoList)
-2. Optionally references xtask - but xtask is already in place (run subcommand exists). The proposal could include ensuring xtask run invokes the right thing (e.g. run main binary if any, or keep placeholder). Design says xtask run can run "主程序" - currently there's no main binary in crates/todo (it's a lib). So X1 might just be "xtask run runs and exits 0" with current placeholder, or we add a minimal binary. I'll keep the proposal focused: implement todo domain + tests; xtask run already works (placeholder), we can wire it to `cargo</details></think>
+2. Optionally references xtask - but xtask is already in place (run subcommand exists). The proposal could include ensuring xtask run invokes the right thing (e.g. run main binary if any, or keep placeholder). Design says xtask run can run "主程序" - currently there's no main binary in crates/todo (it's a lib). So X1 might just be "xtask run runs and exits 0" with current placeholder, or we add a minimal binary. I'll keep the proposal focused: implement todo domain + tests; xtask run already works (placeholder), we can wire it to `cargo run -p todo` if we add a bin or keep as-is.
+
+Actually re-reading the user request: "请根据需求文档，设计文档，任务文档，测试用例文档和验收文档，开始实现所有功能" - they want a proposal that, when implemented, implements ALL functionality. So:
+- Todo: full implementation (domain, store, TodoList, create/list/complete/delete) + tests
+- Xtask: already has run; ensure it works (help, exit codes). Optionally wire run to run something from todo (e.g. a tiny demo binary or just keep placeholder).
+
+I'll create:
+- change-id: `implement-todo-domain` or `implement-todo-and-xtask` - I'll use `implement-todo-domain` to be precise (the main work is todo; xtask is already scaffolded).
+- Spec delta for new capability "todo" with requirements: Create todo, List todos, Complete todo, Delete todo (each with scenarios). That's 4 requirements or we could do one "Todo CRUD" - the design has 4 operations so 4 requirements is clearer.
+- tasks.md: ordered implementation tasks (T1–T15, X1–X2 from docs/tasks.md)
+- design.md: optional - the design is already in docs/design.md. For OpenSpec we might add a short design.md if there are architectural decisions in the change. The architecture is already decided (Store trait, InMemoryStore, layers). I'll skip design.md unless the change introduces new patterns - it doesn't, it implements the existing design.
+- proposal.md: Why (implement requirements), What (todo crate full implementation + tests, xtask run verified), Impact (crates/todo, xtask)
+
+Let me draft the spec deltas. The capability will be "todo". Requirements:
+1. Create todo - valid title returns id; empty/invalid returns error and no new todo
+2. List todos - empty list when none; returns all in creation order
+3. Complete todo - by id, marks completed; invalid id returns NotFound
+4. Delete todo - by id, removes; invalid id returns error or idempotent ok
+
+Each needs at least one Scenario in #### format.
+</details></think>
 
 ---
 
 
+Checking the current state of `crates/todo` and `xtask`:
+
 
 ---
 
-<tool-use data-tool-type="unknown" data-tool-name="read_file_v2">
-<details>
-<summary>Tool use: **read_file_v2**</summary>
-
-Status: **loading**
-
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
 
 </details>
 </tool-use>
 
 ---
 
-<tool-use data-tool-type="unknown" data-tool-name="read_file_v2">
-<details>
-<summary>Tool use: **read_file_v2**</summary>
-
-Status: **loading**
-
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
 
 </details>
 </tool-use>
 
 ---
 
-<tool-use data-tool-type="unknown" data-tool-name="read_file_v2">
-<details>
-<summary>Tool use: **read_file_v2**</summary>
-
-Status: **loading**
-
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/test-cases.md</summary>
 
 </details>
 </tool-use>
 
 ---
 
+<think><details><summary>Thought Process</summary>
 
+Now I'll create the OpenSpec change:
+- change-id: `implement-todo-domain` (verb-led, clear)
+- proposal.md
+- tasks.md (ordered implementation matching docs/tasks.md)
+- specs/todo/spec.md with ADDED Requirements: Create todo, List todos, Complete todo, Delete todo (each with scenarios)
+- No design.md (architecture already in docs/design.md; this change implements it)
+
+Spec requirements for capability "todo":
+1. Create todo - SHALL create with valid title and return id; SHALL reject empty/invalid and return error
+2. List todos - SHALL return empty when none; SHALL return all ordered by creation
+3. Complete todo - SHALL mark by id completed; SHALL return NotFound for invalid id
+4. Delete todo - SHALL remove by id; SHALL return error or idempotent ok for invalid id
+
+Each with #### Scenario: ...
+</details></think>
 
 ---
 
+
+Creating the OpenSpec change proposal: adding the `todo` spec and implementation tasks.
 
 
 ---
 
 <tool-use data-tool-type="task" data-tool-name="todo_write">
-<details><summary>Tool use: **todo_write** • Error parsing todo list data</summary>
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [-] Scaffold proposal, tasks, and todo spec delta
+- [ ] Run openspec validate --strict and fix issues
 
 </details>
 </tool-use>
@@ -3023,11 +3054,329 @@ Status: **loading**
 
 <details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/implement-todo-domain/proposal.md</summary>
 
-Status: **loading**
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/implement-todo-domain/specs/todo/spec.md</summary>
 
 </details>
 
 </tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Now tasks.md - ordered list matching docs/tasks.md (T1–T15, X1–X2). Keep items small and verifiable.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/implement-todo-domain/tasks.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+No design.md - the architecture is already in docs/design.md and project.md; this change implements it. Now validate.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate implement-todo-domain --strict</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate implement-todo-domain --strict
+```
+
+```
+Change 'implement-todo-domain' is valid
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Validation passed. Mark todos complete and give user a summary.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Scaffold proposal, tasks, and todo spec delta
+- [x] Run openspec validate --strict and fix issues
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. Provide a clear summary and next step (openspec-apply when approved).
+</details></think>
+
+---
+
+
+已根据需求、设计、任务、测试用例与验收文档搭好 OpenSpec 变更 **implement-todo-domain**，并通过 `openspec validate implement-todo-domain --strict`。
+
+---
+
+## 变更概要
+
+- **change-id**: `implement-todo-domain`
+- **位置**: `openspec/changes/implement-todo-domain/`
+
+### 1. `proposal.md`
+- **Why**: 需求/设计/任务/测试/验收已齐全，但 `crates/todo` 仍是占位，需实现完整 Todo 能力并通过验收。
+- **What**: 在 `crates/todo` 实现领域类型、Store、TodoList API 及 US-T1–US-T4 的自动化测试；确认 `cargo xtask run` / `cargo xtask --help` 符合 US-X1/US-X2。
+- **Impact**: 新增能力 `todo`；改动集中在 `crates/todo`，必要时微调 xtask。
+
+### 2. `specs/todo/spec.md`（ADDED）
+- **Create todo**: 有效标题 → 返回 `TodoId` 且列表中可见；空/非法标题 → `Err(InvalidInput)` 且列表不变（各 1 个 Scenario）。
+- **List todos**: 无数据时返回空列表；有数据时返回全部且按创建顺序（各 1 个 Scenario）。
+- **Complete todo**: 存在 id → 标记完成；不存在 id → `Err(NotFound)` 且其他项不变（各 1 个 Scenario）。
+- **Delete todo**: 存在 id → 删除且后续 list/get 不可见；不存在 id → 按设计返回错误或幂等 Ok，且列表一致（各 1 个 Scenario）。
+
+### 3. `tasks.md`（实现顺序）
+- **1. Domain**: TodoId, Todo, TodoError, 标题校验（1.1–1.4）
+- **2. Storage**: Store trait, InMemoryStore（2.1–2.2）
+- **3. Public API**: TodoList + create / list / complete / delete（3.1–3.5）
+- **4. Tests**: US-T1–US-T4 对应测试（4.1–4.4）
+- **5. Xtask & 校验**: `cargo xtask --help` / `cargo xtask run`、`cargo test -p todo`、`openspec validate`（5.1–5.2）
+
+未加 `design.md`：架构沿用 `docs/design.md` 与 `openspec/project.md`，本变更只做实现。
+
+---
+
+## 下一步
+
+- 审批通过后，执行 **`/openspec-apply implement-todo-domain`**，按 `tasks.md` 在 `crates/todo` 中实现并补齐测试与 xtask 校验。
+- 在未获批准前不要开始实现（参见 `openspec/AGENTS.md`）。
+
+---
+
+_**User**_
+
+/openspec-apply implement-todo-domain 
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants me to implement the OpenSpec change `implement-todo-domain`. I need to:
+
+1. Read proposal.md, design.md (if present), and tasks.md
+2. Work through tasks sequentially
+3. Mark all tasks [x] when done
+4. Keep implementation minimal and focused
+
+Let me start by reading the change files and then implement each section: domain layer, storage layer, public API, tests, xtask/validation.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/implement-todo-domain/proposal.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/implement-todo-domain/tasks.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/Cargo.toml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+No design.md in the change. I'll implement in order:
+
+1. Domain: TodoId, Todo, TodoError, validation. I'll use a simple approach - TodoId as NonZeroU64 with a counter in the store, or we could use a newtype around u64 with 0 meaning "unset" and generate next id. Actually the spec says "unique identifier" - the simplest is to use an atomic or a counter in the store. Let me use a newtype around u64 and have InMemoryStore hold the next id. So: TodoId(u64) or NonZeroU64. Using NonZeroU64 is good for "opaque" id. We need to generate them - so the store can have next_id: AtomicU64 or the like. I'll use a simple counter in InMemoryStore (next_id: u64) and TodoId as a newtype over NonZeroU64 so 0 is never valid. So TodoId(NonZeroU64). When we insert we do next_id += 1 and use NonZeroU64::new(next_id).unwrap() (we start from 1).
+
+Actually even simpler: TodoId = NonZeroU64. In InMemoryStore we have next_id: u64, and when inserting we do self.next_id += 1; TodoId::new(self.next_id).unwrap() - but NonZeroU64::new(0) returns None. So we need to start next_id at 1. Good.
+
+2. Todo: id, title, completed, created_at (optional). I'll use SystemTime or a u64 timestamp for simplicity. Actually docs say "optional created_at" - we need it for ordering. I'll use std::time::SystemTime::now() or Instant - SystemTime is better for "creation time". So created_at: SystemTime.
+
+3. TodoError: InvalidInput, NotFound(TodoId). Error + Display.
+
+4. Title validation: trim and reject empty.
+
+5. Store trait: insert(Todo), get(TodoId) -> Option<Todo>, list() -> Vec<Todo>, update(Todo), remove(TodoId). So we need to be able to create a Todo - but Todo has id, and the store might generate id. So either (a) Store::insert takes title + ... and returns TodoId, or (b) TodoList creates Todo with a generated id and Store::insert(Todo). The design says "store.insert" and "construct Todo" in TodoList - so TodoList creates the Todo (needs an id). So the Store must either generate the id or TodoList must get "next id" from somewhere. Simplest: Store has insert(&mut self, todo: Todo) and get_next_id(&mut self) -> TodoId, or the Store returns the id when inserting. So insert(&mut self, todo: Todo) and the Todo already has an id. Then who assigns the id? TodoList needs to get a new id. So Store could have fn next_id(&mut self) -> TodoId and insert(&mut self, todo: Todo). So trait: next_id, insert, get, list, update, remove. Or we could have insert return TodoId - but then we're passing a Todo that has an id. So TodoList creates Todo { id: store.next_id(), title, completed: false, created_at: now() }, then store.insert(todo.clone()), return todo.id. So Store needs next_id(&mut self) -> TodoId. Let me define Store with insert, get, list, update, remove and next_id. So:
+- next_id(&mut self) -> TodoId
+- insert(&mut self, todo: Todo)
+- get(&self, id: TodoId) -> Option<Todo>
+- list(&self) -> Vec<Todo>
+- update(&mut self, todo: Todo)
+- remove(&mut self, id: TodoId)
+
+Actually re-reading the design: "store.insert" and "返回 id". So the list creates Todo and inserts. The id must come from somewhere - either Store generates it (next_id) or we use something like uuid. Simplest is Store gives next_id. So I'll add next_id to the trait.
+
+Let me implement. I'll put types in lib.rs or split into modules. For minimal I'll do:
+- lib.rs: re-exports and TodoList
+- domain mod: TodoId, Todo, TodoError, validate_title
+- store mod: Store trait, InMemoryStore
+
+Or all in lib.rs to keep it small. The tasks say "private or internal module" for Store - so I'll use a `store` module (private) and maybe `domain` or just put types in lib. Let me do:
+- lib.rs: TodoId, Todo, TodoError, TodoList (public), and a mod store + mod domain or just inline.
+- store.rs (private mod): Store, InMemoryStore
+- domain types in lib.rs
+
+Actually to keep single file simpler for "minimal", I'll do one file lib.rs with everything, and Store as a trait in a private module so we can do `mod store { ... }` and `use store::*` or just `store::Store` etc. Let me try two files: lib.rs (public API + domain types) and store.rs (Store trait + InMemoryStore). So:
+- lib.rs: TodoId, Todo, TodoError, validate_title (or method), TodoList, mod store; use store::{Store, InMemoryStore};
+- store.rs: Store trait, InMemoryStore
+
+TodoList needs to hold Store. If we use generics TodoList<S: Store> we need to have a way to construct. Default could be TodoList<InMemoryStore>. So TodoList { store: InMemoryStore::default() }. And create() does let id = self.store.next_id(); let todo = Todo { id, title: title.into(), ... }; self.store.insert(todo); Ok(id). Good.
+
+Let me code. I'll need created_at for ordering - use std::time::SystemTime::now(). For list() we need to sort by created_at - so Todo must have created_at. So Todo { id, title, completed, created_at: SystemTime::now() }.
+</details></think>
+
+---
+
+
+Implementing the change sequentially: adding the domain and store layers first, then the public API and tests.
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [-] Domain layer: TodoId, Todo, TodoError, title validation
+- [ ] Storage: Store trait, InMemoryStore
+- [ ] Public API: TodoList + create/list/complete/delete
+- [ ] Tests US-T1 to US-T4
+- [ ] Xtask check and mark tasks done
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Implementing. I'll create:
+1. store.rs - Store trait and InMemoryStore (need next_id, insert, get, list, update, remove). For list() ordered by creation we need to sort - so we need created_at on Todo. So Todo has: id, title, completed, created_at (SystemTime).
+2. lib.rs - TodoId (NonZeroU64 newtype), Todo, TodoError, validate_title, TodoList.
+
+TodoId: use std::num::NonZeroU64; pub struct TodoId(NonZeroU64); then Clone, Copy, Eq, Hash, PartialEq. We need to generate them - so InMemoryStore has next_id: u64, and next_id() does self.next_id += 1; TodoId(NonZeroU64::new(self.next_id).unwrap()) - but we need to start at 1. So default next_id = 1.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/store.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need TodoId to have from_raw(u64) -> Option<TodoId> or similar, and Todo needs created_at that is Ord. So TodoId could be a newtype over NonZeroU64. So from_raw(n: u64) -> Option<TodoId> is NonZeroU64::new(n).map(TodoId). And Todo needs created_at: we need to sort - SystemTime is Ord? Let me check - SystemTime supports Ord. Good. So Todo { id, title, completed, created_at: SystemTime::now() }.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+SystemTime doesn't implement Ord in stable Rust - it only has partial ordering (duration_since). So we can't sort by created_at with sort_by and cmp. Let me check - we need to order by creation. We could use Instant::now() but that's not persistable. For in-memory we could use a counter for "creation order" - e.g. a field order: u64 that we set from next_id at creation time. So when we create, we use next_id for both the id and the order. Then we sort by order (or by id, since they're both monotonic). So actually we can sort by id - ids are assigned in order, so sorting by id is the same as creation order. So in InMemoryStore::list we can do out.sort_by_key(|t| t.id) but TodoId doesn't implement Ord. So we need to add Ord to TodoId (by delegating to the inner NonZeroU64), or we sort by something else. NonZeroU64 is Ord. So we could derive PartialOrd, Ord for TodoId. Let me add Ord to TodoId and then sort by id in list(). So in store.rs: out.sort_by_key(|t| t.id);
+</details></think>
+
+---
+
+
+Checking: `SystemTime` doesn't implement `Ord` in stable Rust. Sorting by `id` (monotonic) for creation order. Adding `Ord` to `TodoId` and sorting by it:
+
 
 ---
 
