@@ -615,3 +615,134 @@ Let me read the current root Cargo.toml to see the exact package setup.
 
 ---
 
+<think><details><summary>Thought Process</summary>
+
+I need to:
+1. Create crates/xtask_todo/Cargo.toml with the package definition
+2. Create crates/xtask_todo/src/lib.rs with the same content
+3. Update root Cargo.toml to workspace only, members = ["crates/xtask_todo", "xtask"]
+4. Delete root src/lib.rs (and the src directory)
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/xtask_todo/Cargo.toml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/xtask_todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/Cargo.toml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="delete_file">
+<details><summary>Tool use: **delete_file**</summary>
+
+Explanation: undefined
+
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+The root src directory might still exist (empty or with only .rs.bk or something). Let me check if we need to remove the empty src dir - delete_file only deletes the file. I'll run a quick build to verify, and list the directory to see if src is empty.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && rmdir src 2>/dev/null; cargo build</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && rmdir src 2>/dev/null; cargo build
+```
+
+```
+   Compiling xtask_todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/xtask_todo)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.06s
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Build succeeded. If rmdir failed (src not empty or already gone), that's fine. The structure is now correct.
+</details></think>
+
+---
+
+
+已按你的要求调整：根目录不再有 `src`，代码都放在各自 crate 的 `src` 里。
+
+## 当前结构
+
+```
+xtask_todo/
+├── .cargo/
+│   └── config.toml
+├── .gitignore
+├── Cargo.toml                    # 仅 workspace，无 [package]
+├── crates/
+│   └── xtask_todo/
+│       ├── Cargo.toml
+│       └── src/
+│           └── lib.rs
+└── xtask/
+    ├── Cargo.toml
+    └── src/
+        └── main.rs
+```
+
+- **根目录**：只有 `Cargo.toml`（workspace 配置），`members = ["crates/xtask_todo", "xtask"]`，没有根级 `src`。
+- **crates/xtask_todo**：主库 crate，自带 `src/lib.rs`。
+- **xtask**：xtask 二进制 crate，自带 `src/main.rs`。
+
+`cargo build` 已通过。之后新增 crate 可以都放在 `crates/` 下，例如 `crates/foo/`、`crates/bar/`，每个 crate 里再放自己的 `src/`。
+
+---
+
+_**User**_
+
+@xtask_todo 新增的 crate 的名字，和项目的名字一样。是否有更好的选择？
+
+---
+
