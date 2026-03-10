@@ -1559,10 +1559,288 @@ I'll put it in docs/ as acceptance.md or verification.md. "验收文档" is ofte
 
 <details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/acceptance.md</summary>
 
-Status: **loading**
-
 </details>
 
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. I've created a comprehensive acceptance document that:
+1. Explains purpose and how to use (checkboxes, sign-off)
+2. For each acceptance criterion in requirements: verification method (test or manual), expected result, and result column
+3. Non-functional checks (workspace structure, cargo xtask alias)
+4. Summary table and sign-off line
+5. Doc maintenance note
+</details></think>
+
+---
+
+
+已在 `docs/acceptance.md` 中写好验收文档，结构如下。
+
+## 文档结构
+
+### 1. 验收说明
+- 适用范围、验证方式（自动化/手工）、结果标记（✅/❌/⏸）、签字约定。
+
+### 2. Todo 领域验收（对应 requirements 的 US-T1～US-T4）
+- **US-T1 创建待办**：2 条验收（有效标题返回 id；空/非法输入返回错误且不产生待办），含建议验证方式与预期结果。
+- **US-T2 列出待办**：2 条（空列表；有数据时列表内容与顺序）。
+- **US-T3 完成待办**：2 条（存在 id 完成成功；不存在 id 返回错误且不改动其他）。
+- **US-T4 删除待办**：2 条（存在 id 删除后不可见；不存在 id 的约定行为及数据一致）。
+
+每条都给出**验证方式**（如单元/集成测试步骤或手工操作）和**预期结果**，并留**结果**列供勾选。
+
+### 3. Xtask 工作流验收（US-X1～US-X3）
+- **US-X1**：`cargo xtask --help` 输出、子命令执行与退出码。
+- **US-X2**：`cargo xtask run` 成功执行、依赖未满足时的错误与退出码。
+- **US-X3**：新增子命令可执行且出现在 `--help` 中。
+
+### 4. 非功能与约束
+- Workspace 结构（`crates/todo`、`xtask`）、`.cargo/config.toml` 的 xtask alias，无需全局安装即可使用。
+
+### 5. 验收汇总与签字
+- 按用户故事汇总验收项数、通过/未通过/跳过，结论选项（全部通过可发布 / 部分通过 / 不通过），以及签字与日期栏。
+
+### 6. 文档维护
+- 需求变更时如何同步更新本验收文档与 requirements。
+
+文件路径：`/home/ars/richard/2026/pvm_2/xtask_todo/docs/acceptance.md`。实现完成后可按该文档逐项验证并在汇总表与签字栏填写。
+
+---
+
+_**User**_
+
+@\home\ars\.cursor\projects\home-ars-richard-2026-pvm-2-xtask-todo\terminals\1.txt:380-381 
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants me to read openspec/project.md and fill it out with details about their project, tech stack, and conventions. Let me read that file first, and also gather information from the project (docs, Cargo.toml, structure) to fill it in.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/project.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/Cargo.toml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Let me get more context from the project - docs (requirements, design, tasks), crate structure, and .cargo/config.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="glob_file_search">
+<details>
+<summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **154** results in **1** directory</summary>
+
+Directory: **/home/ars/richard/2026/pvm_2/xtask_todo** (154 files)
+
+| File |
+|------|
+| `.cursor/commands/openspec-archive.md` |
+| `openspec/AGENTS.md` |
+| `openspec/project.md` |
+| `AGENTS.md` |
+| `.cursor/commands/openspec-apply.md` |
+| `.cursor/commands/openspec-proposal.md` |
+| `.git/COMMIT_EDITMSG` |
+| `.git/logs/HEAD` |
+| `.git/logs/refs/heads/master` |
+| `.git/objects/20/f9857a4f2ecbe876f3a09cf84ab2efa04218bf` |
+| `.git/refs/heads/master` |
+| `.git/gk/config` |
+| `.specstory/history/2026-03-10_08-33Z-rust-workspace-project-initialization.md` |
+| `docs/acceptance.md` |
+| `docs/tasks.md` |
+| `docs/design.md` |
+| `docs/requirements.md` |
+| `.git/objects/37/5af4b2dbfdcc885cd9284b8d1119ed53af3ddc` |
+| `.git/objects/67/4067ab5048f6c7923817e20cbf3cd168404126` |
+| `target/debug/libtodo.d` |
+| `target/debug/.fingerprint/todo-78f4218f30d1e1ae/lib-todo` |
+| `target/debug/.fingerprint/todo-78f4218f30d1e1ae/lib-todo.json` |
+| `target/debug/deps/todo-78f4218f30d1e1ae.d` |
+| `target/debug/.fingerprint/todo-78f4218f30d1e1ae/invoked.timestamp` |
+| `Cargo.lock` |
+| `Cargo.toml` |
+| `crates/todo/src/lib.rs` |
+| `crates/todo/Cargo.toml` |
+| `target/debug/.fingerprint/xtask_todo-2c33b7f7a067bab4/lib-xtask_todo` |
+| `target/debug/.fingerprint/xtask_todo-2c33b7f7a067bab4/lib-xtask_todo.json` |
+| `target/debug/libxtask_todo.d` |
+| `target/debug/deps/xtask_todo-2c33b7f7a067bab4.d` |
+| `target/debug/.fingerprint/xtask_todo-2c33b7f7a067bab4/invoked.timestamp` |
+| `.git/objects/ca/279e1b3374efc7af25a59518766652499a5d23` |
+| `.git/objects/30/97ddc1739f63c0c1d19e5e93f2bef9f3a5ce5f` |
+| `.git/objects/25/b0a56c392f246a5357250858fe926f707296dd` |
+| `.git/objects/02/f39999c3afb5b040a65657ac574f00d3ecfd3c` |
+| `.git/objects/0e/6e3534d1fa209d2f681ba25f8a750b3e597651` |
+| `.git/HEAD` |
+| `.git/info/exclude` |
+| `.git/config` |
+| `.git/description` |
+| `.git/hooks/applypatch-msg.sample` |
+| `.git/hooks/fsmonitor-watchman.sample` |
+| `.git/hooks/post-update.sample` |
+| `.git/hooks/pre-commit.sample` |
+| `.git/hooks/push-to-checkout.sample` |
+| `.git/hooks/commit-msg.sample` |
+| `.git/hooks/pre-rebase.sample` |
+| `.git/hooks/update.sample` |
+| `.git/hooks/pre-push.sample` |
+| `.git/hooks/prepare-commit-msg.sample` |
+| `.git/hooks/pre-applypatch.sample` |
+| `.git/hooks/pre-receive.sample` |
+| `.git/hooks/pre-merge-commit.sample` |
+| `target/debug/.fingerprint/xtask-5a8ea3be56e450bd/bin-xtask.json` |
+| `target/debug/.fingerprint/xtask-5a8ea3be56e450bd/bin-xtask` |
+| `target/debug/xtask.d` |
+| `target/debug/deps/xtask-5a8ea3be56e450bd.d` |
+| `target/debug/.fingerprint/xtask-5a8ea3be56e450bd/invoked.timestamp` |
+| `.cargo/config.toml` |
+| `xtask/src/main.rs` |
+| `target/debug/.fingerprint/argh-a484156246b2c418/lib-argh.json` |
+| `target/debug/.fingerprint/argh-a484156246b2c418/lib-argh` |
+| `target/debug/.fingerprint/argh_shared-579738df10eb3eae/lib-argh_shared.json` |
+| `target/debug/.fingerprint/argh_shared-579738df10eb3eae/lib-argh_shared` |
+| `target/debug/deps/argh-a484156246b2c418.d` |
+| `target/debug/.fingerprint/argh-a484156246b2c418/invoked.timestamp` |
+| `target/debug/.fingerprint/serde-a34c61e8198ff8ec/lib-serde` |
+| `target/debug/.fingerprint/serde-a34c61e8198ff8ec/lib-serde.json` |
+| `target/debug/deps/argh_shared-579738df10eb3eae.d` |
+| `target/debug/.fingerprint/argh_shared-579738df10eb3eae/invoked.timestamp` |
+| `target/debug/deps/serde-a34c61e8198ff8ec.d` |
+| `target/debug/.fingerprint/serde-a34c61e8198ff8ec/invoked.timestamp` |
+| `target/debug/.fingerprint/serde_derive-2bcf2603c2a249b8/lib-serde_derive.json` |
+| `target/debug/.fingerprint/serde_derive-2bcf2603c2a249b8/lib-serde_derive` |
+| `target/debug/.fingerprint/argh_derive-b95bbac4304c856b/lib-argh_derive` |
+| `target/debug/.fingerprint/argh_derive-b95bbac4304c856b/lib-argh_derive.json` |
+| `target/debug/deps/serde_derive-2bcf2603c2a249b8.d` |
+| `target/debug/deps/argh_derive-b95bbac4304c856b.d` |
+| `target/debug/.fingerprint/argh_derive-b95bbac4304c856b/invoked.timestamp` |
+| `target/debug/.fingerprint/serde_derive-2bcf2603c2a249b8/invoked.timestamp` |
+| `target/debug/.fingerprint/syn-3060505863d41f4d/lib-syn` |
+| `target/debug/.fingerprint/syn-3060505863d41f4d/lib-syn.json` |
+| `target/debug/.fingerprint/serde_core-0239ce017d00b9f5/lib-serde_core` |
+| `target/debug/.fingerprint/serde_core-0239ce017d00b9f5/lib-serde_core.json` |
+| `target/debug/deps/syn-3060505863d41f4d.d` |
+| `target/debug/.fingerprint/quote-679ab2ecde270353/lib-quote.json` |
+| `target/debug/.fingerprint/quote-679ab2ecde270353/lib-quote` |
+| `target/debug/.fingerprint/syn-3060505863d41f4d/invoked.timestamp` |
+| `target/debug/.fingerprint/proc-macro2-1f96d84585032bd9/lib-proc_macro2` |
+| `target/debug/.fingerprint/proc-macro2-1f96d84585032bd9/lib-proc_macro2.json` |
+| `target/debug/deps/quote-679ab2ecde270353.d` |
+| `target/debug/.fingerprint/quote-679ab2ecde270353/invoked.timestamp` |
+| `target/debug/deps/serde_core-0239ce017d00b9f5.d` |
+| `target/debug/deps/proc_macro2-1f96d84585032bd9.d` |
+| `target/debug/.fingerprint/proc-macro2-bafb03cb445a7ceb/run-build-script-build-script-build.json` |
+| `target/debug/.fingerprint/proc-macro2-bafb03cb445a7ceb/run-build-script-build-script-build` |
+| `target/debug/.fingerprint/proc-macro2-1f96d84585032bd9/invoked.timestamp` |
+| `target/debug/build/proc-macro2-bafb03cb445a7ceb/root-output` |
+| `target/debug/.fingerprint/serde_core-0239ce017d00b9f5/invoked.timestamp` |
+| `target/debug/build/serde_core-b09189df0b0454e9/root-output` |
+| `target/debug/.fingerprint/serde_core-b09189df0b0454e9/run-build-script-build-script-build.json` |
+| `target/debug/.fingerprint/serde_core-b09189df0b0454e9/run-build-script-build-script-build` |
+| `target/debug/.fingerprint/serde-77bdd74bab5807b0/run-build-script-build-script-build` |
+| `target/debug/.fingerprint/serde-77bdd74bab5807b0/run-build-script-build-script-build.json` |
+| `target/debug/build/serde-77bdd74bab5807b0/root-output` |
+| `target/debug/.fingerprint/quote-5f987b37571947a7/run-build-script-build-script-build.json` |
+| `target/debug/.fingerprint/quote-5f987b37571947a7/run-build-script-build-script-build` |
+| `target/debug/build/quote-5f987b37571947a7/root-output` |
+| `target/debug/build/serde_core-b09189df0b0454e9/out/private.rs` |
+| `target/debug/.fingerprint/proc-macro2-cdf796aa2c14344f/build-script-build-script-build.json` |
+| `target/debug/build/proc-macro2-bafb03cb445a7ceb/output` |
+| `target/debug/build/proc-macro2-bafb03cb445a7ceb/invoked.timestamp` |
+| `target/debug/.fingerprint/serde_core-c44f039cd676198c/build-script-build-script-build.json` |
+| `target/debug/.fingerprint/serde_core-c44f039cd676198c/build-script-build-script-build` |
+| `target/debug/build/serde_core-b09189df0b0454e9/output` |
+| `target/debug/.fingerprint/proc-macro2-cdf796aa2c14344f/build-script-build-script-build` |
+| `target/debug/build/serde_core-b09189df0b0454e9/invoked.timestamp` |
+| `target/debug/.fingerprint/quote-1e9ca957d3355363/build-script-build-script-build.json` |
+| `target/debug/.fingerprint/quote-1e9ca957d3355363/build-script-build-script-build` |
+| `target/debug/build/quote-5f987b37571947a7/invoked.timestamp` |
+| `target/debug/build/quote-5f987b37571947a7/output` |
+| `target/debug/build/serde-77bdd74bab5807b0/out/private.rs` |
+| `target/debug/.fingerprint/serde-4c6639c325e28d82/build-script-build-script-build.json` |
+| `target/debug/.fingerprint/serde-4c6639c325e28d82/build-script-build-script-build` |
+| `target/debug/build/serde-77bdd74bab5807b0/invoked.timestamp` |
+| `target/debug/build/serde-77bdd74bab5807b0/output` |
+| `target/debug/.fingerprint/argh_shared-4adbb18307f525ed/lib-argh_shared.json` |
+| `target/debug/.fingerprint/argh_shared-4adbb18307f525ed/lib-argh_shared` |
+| `target/debug/.fingerprint/unicode-ident-c763a785dc3ccbf7/lib-unicode_ident.json` |
+| `target/debug/.fingerprint/unicode-ident-c763a785dc3ccbf7/lib-unicode_ident` |
+| `target/debug/deps/argh_shared-4adbb18307f525ed.d` |
+| `target/debug/build/serde_core-c44f039cd676198c/build_script_build-c44f039cd676198c.d` |
+| `target/debug/build/serde-4c6639c325e28d82/build_script_build-4c6639c325e28d82.d` |
+| `target/debug/build/proc-macro2-cdf796aa2c14344f/build_script_build-cdf796aa2c14344f.d` |
+| `target/debug/build/quote-1e9ca957d3355363/build_script_build-1e9ca957d3355363.d` |
+| `target/debug/deps/unicode_ident-c763a785dc3ccbf7.d` |
+| `target/debug/.fingerprint/unicode-ident-c763a785dc3ccbf7/invoked.timestamp` |
+| `target/debug/.fingerprint/argh_shared-4adbb18307f525ed/invoked.timestamp` |
+| `target/debug/.fingerprint/serde_core-c44f039cd676198c/invoked.timestamp` |
+| `target/debug/.fingerprint/serde-4c6639c325e28d82/invoked.timestamp` |
+| `target/debug/.fingerprint/proc-macro2-cdf796aa2c14344f/invoked.timestamp` |
+| `target/debug/.fingerprint/quote-1e9ca957d3355363/invoked.timestamp` |
+| `target/.rustc_info.json` |
+| `target/debug/.fingerprint/xtask_todo-80ce6716aee9e85f/lib-xtask_todo` |
+| `target/debug/.fingerprint/xtask_todo-80ce6716aee9e85f/lib-xtask_todo.json` |
+| `target/debug/deps/xtask_todo-80ce6716aee9e85f.d` |
+| `target/CACHEDIR.TAG` |
+| `target/debug/.fingerprint/xtask_todo-80ce6716aee9e85f/invoked.timestamp` |
+| `.gitignore` |
+| `xtask/Cargo.toml` |
+| `.specstory/.what-is-this.md` |
+| `.specstory/.project.json` |
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/requirements.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/design.md</summary>
+
+</details>
 </tool-use>
 
 ---
