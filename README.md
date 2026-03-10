@@ -19,6 +19,14 @@ cargo xtask todo delete <id>
 cargo test
 ```
 
+## Git hooks
+
+A pre-commit hook runs `cargo fmt -- --check`, `cargo clippy --all-targets -- -D warnings`, and `cargo test`. Enable it once:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Documentation
 
 See the [docs](docs/) folder for requirements, design, acceptance criteria, and test cases.

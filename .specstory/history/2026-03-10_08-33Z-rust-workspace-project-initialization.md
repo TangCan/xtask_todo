@@ -7509,3 +7509,902 @@ I have the proposal and tasks. No design.md was mentioned. Let me read the Cargo
 
 ---
 
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/Cargo.toml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/Cargo.toml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/store.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="glob_file_search">
+<details>
+<summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **3** results in **1** directory</summary>
+
+Directory: **/home/ars/richard/2026/pvm_2/xtask_todo** (3 files)
+
+| File |
+|------|
+| `xtask/src/main.rs` |
+| `crates/todo/src/lib.rs` |
+| `crates/todo/src/store.rs` |
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I have a good picture. Let me:
+1. Add rustfmt.toml
+2. Run cargo fmt
+3. Run cargo clippy to see what needs fixing
+4. Apply doc/must_use fixes
+5. Add README
+6. Add CI workflow
+7. Check dependencies (argh/serde already pinned)
+8. Update tasks.md
+
+Dependencies: xtask already has argh = "0.1", serde = "1", serde_json = "1". crates/todo has no deps. So 6.1 might be a no-op or we ensure workspace consistency.
+
+Let me run clippy first to see current warnings, then do all edits.
+</details></think>
+
+---
+
+
+Checking for a design.md and running Clippy to list warnings:
+
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="glob_file_search">
+<details>
+<summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **3** results in **1** directory</summary>
+
+Directory: **/home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-code-quality-and-ci** (3 files)
+
+| File |
+|------|
+| `tasks.md` |
+| `specs/development-conventions/spec.md` |
+| `proposal.md` |
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo clippy --all-targets -- -D warnings 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo clippy --all-targets -- -D warnings 2>&1
+```
+
+```
+    Checking todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+    Checking xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.33s
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo fmt -- --check 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo fmt -- --check 2>&1
+```
+
+```
+Diff in /ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs:6:
+ use std::io::IsTerminal;
+ use std::path::PathBuf;
+ use std::time::{Duration, SystemTime, UNIX_EPOCH};
+-use todo::{Todo, TodoId, TodoList, InMemoryStore};
++use todo::{InMemoryStore, Todo, TodoId, TodoList};
+ 
+ fn main() {
+     let cmd: XtaskCmd = argh::from_env();
+Diff in /ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs:188:
+                 .duration_since(UNIX_EPOCH)
+                 .unwrap_or(Duration::ZERO)
+                 .as_secs(),
+-            completed_at_secs: t.completed_at.and_then(|ct| {
+-                ct.duration_since(UNIX_EPOCH).ok().map(|d| d.as_secs())
+-            }),
++            completed_at_secs: t
++                .completed_at
++                .and_then(|ct| ct.duration_since(UNIX_EPOCH).ok().map(|d| d.as_secs())),
+         })
+         .collect();
+     let s = serde_json::to_string_pretty(&amp;dtos)?;
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+No design.md. Clippy passes already. Fmt has two small diffs in xtask. I'll:
+1. Add rustfmt.toml and run cargo fmt
+2. Add # Errors and backticks + #[must_use] in crates/todo
+3. Add #[must_use] in store and fix the Display impl to use inline format (write!(f, "todo not found: {id}"))
+4. Add README
+5. Add CI workflow
+6. Dependencies - xtask already has argh = "0.1", serde = "1", serde_json = "1". crates/todo has no external deps. So 6.1 is mostly done.
+7. Update tasks.md checkboxes
+
+Let me do the implementation. First rustfmt.toml and cargo fmt.
+</details></think>
+
+---
+
+
+Implementing changes: adding `rustfmt.toml`, running `cargo fmt`, then applying doc/Clippy fixes.
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Read proposal, design, tasks for add-code-quality-and-ci
+- [-] Formatting: rustfmt.toml + cargo fmt
+- [ ] Clippy: fix or allow warnings
+- [ ] API docs + #[must_use] in crates/todo and xtask
+- [ ] Root README
+- [ ] CI workflow
+- [ ] Dependencies + validation; update tasks.md
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/rustfmt.toml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Now run cargo fmt to apply the import reorder and the completed_at_secs formatting.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo fmt</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo fmt
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Good. Now verify fmt check passes, then apply doc + must_use + inline format in lib.rs (write!(f, "todo not found: {id}")).
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo fmt -- --check</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo fmt -- --check
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Read proposal, design, tasks for add-code-quality-and-ci
+- [x] Formatting: rustfmt.toml + cargo fmt
+- [-] Clippy: fix or allow warnings
+- [ ] API docs + #[must_use] in crates/todo and xtask
+- [ ] Root README
+- [ ] CI workflow
+- [ ] Dependencies + validation; update tasks.md
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Clippy already passed. I'll add the inline format fix in lib.rs (TodoError Display) and then do API docs + #[must_use]. Let me make the code changes:
+
+1. crates/todo/src/lib.rs:
+   - write!(f, "todo not found: {}", id) -> write!(f, "todo not found: {id}")
+   - Add # Errors to create, complete, delete; backticks for TodoId etc.
+   - Add #[must_use] to TodoId::from_raw, as_u64, TodoList::new(), with_store
+2. crates/todo/src/store.rs:
+   - #[must_use] on InMemoryStore::new(), from_todos()
+3. xtask: no public API that returns values that need must_use for the binary
+
+Let me do the edits.
+</details></think>
+
+---
+
+
+Applying Clippy-style fix (inline format) and adding API docs plus `#[must_use]` in `crates/todo`:
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Now store.rs - add #[must_use] to new() and from_todos().
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/store.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+xtask doesn't expose a library - it's a binary. So #[must_use] in xtask would only apply to internal functions; Clippy didn't complain. I'll skip xtask for must_use unless we have a function that returns a value that's typically used. The tasks say "where Clippy suggests" - and Clippy passed. So we're good.
+
+Now: README, CI, dependencies check, then update tasks.md.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Read proposal, design, tasks for add-code-quality-and-ci
+- [x] Formatting: rustfmt.toml + cargo fmt
+- [x] Clippy: fix or allow warnings
+- [x] API docs + #[must_use] in crates/todo and xtask
+- [-] Root README
+- [ ] CI workflow
+- [ ] Dependencies + validation; update tasks.md
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/README.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Now add the CI workflow. I need to create .github/workflows/ci.yml.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Read proposal, design, tasks for add-code-quality-and-ci
+- [x] Formatting: rustfmt.toml + cargo fmt
+- [x] Clippy: fix or allow warnings
+- [x] API docs + #[must_use] in crates/todo and xtask
+- [x] Root README
+- [-] CI workflow
+- [ ] Dependencies + validation; update tasks.md
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: mkdir -p /home/ars/richard/2026/pvm_2/xtask_todo/.github/workflows</summary>
+
+```bash
+mkdir -p /home/ars/richard/2026/pvm_2/xtask_todo/.github/workflows
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Now write the CI workflow.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/.github/workflows/ci.yml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Dependencies: crates/todo has no external deps. xtask has argh = "0.1", serde = "1", serde_json = "1" - already pinned. So 6.1 is done. Run validation: cargo fmt -- --check, clippy, test, openspec validate.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo fmt -- --check && cargo clippy --all-targets -- -D warnings && cargo test</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo fmt -- --check && cargo clippy --all-targets -- -D warnings && cargo test
+```
+
+```
+
+running 8 tests
+test tests::us_t1_empty_title_returns_err_and_list_unchanged ... ok
+test tests::us_t1_valid_title_creates_and_appears_in_list ... ok
+test tests::us_t2_empty_list ... ok
+test tests::us_t2_list_order_by_creation ... ok
+test tests::us_t3_complete_existing ... ok
+test tests::us_t3_complete_nonexistent_returns_not_found ... ok
+test tests::us_t4_delete_existing ... ok
+test tests::us_t4_delete_nonexistent_returns_not_found ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Checking todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+    Checking xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.23s
+    Blocking waiting for file lock on artifact directory
+   Compiling todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+   Compiling xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;test&#96; profile [unoptimized + debuginfo] target(s) in 0.82s
+     Running unittests src/lib.rs (target/debug/deps/todo-a266546c2cadf74e)
+     Running unittests src/main.rs (target/debug/deps/xtask-0d97672f62e8c7c3)
+   Doc-tests todo
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo doc --no-deps 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo doc --no-deps 2>&1
+```
+
+```
+    Checking todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+ Documenting todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+ Documenting xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+warning: unclosed HTML tag &#96;command&#96;
+ --&gt; xtask/src/main.rs:3:27
+  |
+3 | //! Run with: cargo xtask &lt;command&gt;
+  |                           ^^^^^^^^^
+  |
+  = note: &#96;#[warn(rustdoc::invalid_html_tags)]&#96; on by default
+
+warning: &#96;xtask&#96; (bin "xtask" doc) generated 1 warning
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.49s
+   Generated /ssd_211032807004/richard/2026/pvm_2/xtask_todo/target/doc/todo/index.html and 1 other file
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+There's a rustdoc warning in xtask: the `<command>` in the doc comment is interpreted as an HTML tag. I'll fix that by escaping or rephrasing: "Run with: \`cargo xtask <command>\`" or "Run with: cargo xtask COMMAND".
+</details></think>
+
+---
+
+
+Fixing the rustdoc warning in the xtask crate doc comment:
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+In rustdoc, angle brackets in backticks might still be parsed as HTML. Let me check - actually the warning said "unclosed HTML tag `command`". So <command> was parsed as a tag. Putting it in backticks should make it literal. Let me verify with cargo doc again.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo doc --no-deps 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo doc --no-deps 2>&1
+```
+
+```
+ Documenting xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.38s
+   Generated /ssd_211032807004/richard/2026/pvm_2/xtask_todo/target/doc/todo/index.html and 1 other file
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Good, no warning now. Update tasks.md to mark all items complete, run openspec validate.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Read proposal, design, tasks for add-code-quality-and-ci
+- [x] Formatting: rustfmt.toml + cargo fmt
+- [x] Clippy: fix or allow warnings
+- [x] API docs + #[must_use] in crates/todo and xtask
+- [x] Root README
+- [x] CI workflow
+- [-] Dependencies + validation; update tasks.md
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-code-quality-and-ci/tasks.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Mark all checkboxes as done. 2.2 was optional so I'll leave it as optional (not done). 6.1 - deps are already pinned (argh = "0.1", serde = "1", serde_json = "1"). I'll mark 6.1 as done. 2.2 I'll mark as done with "N/A" or leave unchecked - the task says "Optionally add lint config" so we can mark it [x] with a note or leave [ ]. I'll leave 2.2 as [ ] since we didn't add lint config. All others [x].
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-code-quality-and-ci/tasks.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate add-code-quality-and-ci --strict</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate add-code-quality-and-ci --strict
+```
+
+```
+Change 'add-code-quality-and-ci' is valid
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+All done. Mark todo 7 complete.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Read proposal, design, tasks for add-code-quality-and-ci
+- [x] Formatting: rustfmt.toml + cargo fmt
+- [x] Clippy: fix or allow warnings
+- [x] API docs + #[must_use] in crates/todo and xtask
+- [x] Root README
+- [x] CI workflow
+- [x] Dependencies + validation; update tasks.md
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Summary for the user.
+</details></think>
+
+---
+
+
+Summary of what was implemented for **add-code-quality-and-ci**:
+
+### Done
+
+1. **Formatting**
+   - Added `rustfmt.toml` with `edition = "2021"` and `max_width = 100`.
+   - Ran `cargo fmt`; `cargo fmt -- --check` passes.
+
+2. **Clippy / style**
+   - Inline format: `write!(f, "todo not found: {id}")` in `TodoError`’s `Display` impl.
+   - xtask doc comment fixed so rustdoc doesn’t treat `<command>` as HTML (wrapped in backticks).
+   - Task 2.2 (optional lint config) left unchecked; no extra config added.
+
+3. **API docs and `#[must_use]` (crates/todo)**
+   - **lib.rs**: `# Errors` for `create`, `complete`, `delete`; backticks for `TodoId`; `#[must_use]` on `TodoId::from_raw`, `as_u64`, `TodoList::new`, `with_store`, `list`.
+   - **store.rs**: `#[must_use]` on `InMemoryStore::new` and `from_todos`.
+
+4. **Root README**
+   - `README.md`: short description, `cargo xtask todo add/list/complete/delete`, link to `docs/`, and `cargo test`.
+
+5. **CI**
+   - `.github/workflows/ci.yml`: on push/PR to `main`/`master`: checkout, Rust (rustfmt + clippy), `cargo fmt -- --check`, `cargo build`, `cargo test`, `cargo clippy --all-targets -- -D warnings`, `cargo doc --no-deps`.
+
+6. **Dependencies**
+   - xtask already uses `argh = "0.1"`, `serde = "1"`, `serde_json = "1"`; no change.
+
+7. **Validation**
+   - `cargo fmt -- --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, and `openspec validate add-code-quality-and-ci --strict` all pass.
+   - `tasks.md` checkboxes updated; only optional 2.2 remains unchecked.
+
+---
+
+_**User**_
+
+请增加 git commit hook ，自动运行：cargo fmt -- --check, cargo clippy --all-targets -- -D warnings, cargo test
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants to add a git commit hook that automatically runs:
+1. cargo fmt -- --check
+2. cargo clippy --all-targets -- -D warnings
+3. cargo test
+
+I'll create a pre-commit hook that runs these three commands. The standard approach is to add a script in `.git/hooks/pre-commit`, but that's in .git which is typically not committed. So the common pattern is to:
+1. Store the hook script in the repo (e.g. `scripts/pre-commit` or `.githooks/pre-commit`)
+2. Either document that users should copy/link it to `.git/hooks/pre-commit`, or use a tool like husky (JS) / pre-commit (Python) / or a simple setup script.
+
+For a Rust project, a minimal approach is:
+- Add a script at e.g. `scripts/pre-commit` or `.githooks/pre-commit` that runs the three commands and exits 1 if any fail
+- Configure git to use that directory for hooks: `git config core.hooksPath .githooks` (users run this once), or document "copy scripts/pre-commit to .git/hooks/pre-commit"
+
+Actually, the most portable approach is:
+1. Create `.githooks/pre-commit` (or `scripts/pre-commit`) - a shell script
+2. In README or a setup doc, tell users to run: `git config core.hooksPath .githooks` so git uses the hooks from the repo
+
+Or we could use the `pre-commit` framework (Python) which is popular, but that adds a Python dependency. Simpler to just have a shell script.
+
+Let me create:
+1. `.githooks/pre-commit` - executable script that runs the three checks
+2. Optionally document in README how to enable it (git config core.hooksPath .githooks)
+
+I'll make the script exit on first failure and print what failed.
+</details></think>
+
+---
+
+
+添加 Git pre-commit hook，在提交前运行 `cargo fmt -- --check`、`cargo clippy --all-targets -- -D warnings` 和 `cargo test`。
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/.githooks/pre-commit</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/README.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to make the hook executable and add a section to the README about enabling the git hook. Let me also add the "how to run tests" was in the next part - I see "See the [docs](docs/)..." - the README already has Tests section. I'll add a "Development" or "Git hooks" section for enabling the pre-commit hook.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: chmod +x /home/ars/richard/2026/pvm_2/xtask_todo/.githooks/pre-commit</summary>
+
+```bash
+chmod +x /home/ars/richard/2026/pvm_2/xtask_todo/.githooks/pre-commit
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/README.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. The hook is in place and README documents how to enable it. I'll give a short summary to the user.
+</details></think>
+
+---
+
+
+已经加好了，具体是这两件事：
+
+1. **`.githooks/pre-commit`**  
+   脚本会在提交前依次执行：
+   - `cargo fmt -- --check`
+   - `cargo clippy --all-targets -- -D warnings`
+   - `cargo test`  
+   任一失败都会中止提交，并已设为可执行。
+
+2. **README**  
+   在「Tests」和「Documentation」之间增加了 **Git hooks** 小节，说明启用方式：
+
+```bash
+git config core.hooksPath .githooks
+```
+
+在本仓库里执行一次上述命令后，之后每次 `git commit` 都会自动跑这三项检查。
+
+---
+
