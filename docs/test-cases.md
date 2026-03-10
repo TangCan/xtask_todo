@@ -36,6 +36,20 @@
 | TC-T4-1 | US-T4 / T4-1 | 存在 id 删除成功 | `create` → 记下 id → `delete(id)` → `list()` | 单元/集成测试 | 列表无该项，按 id 查询为 None 或等价 |
 | TC-T4-2 | US-T4 / T4-2 | 不存在 id 的约定行为 | 对不存在的 id 调用 `delete`；再 `list()` | 单元/集成测试 | 符合 design 约定（Err 或幂等 Ok），列表条数不变 |
 
+### US-T5：时间戳与完成时间
+
+| ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |
+|------|-----------|------|------|----------|----------|
+| TC-T5-1 | US-T5 | 创建时记录 created_at，完成时记录 completed_at | `create` 后检查 `list()[0].created_at`；`complete(id)` 后检查 `list()[0].completed_at.is_some()` | 单元测试 | 创建后有创建时间；完成后有完成时间 |
+| TC-T5-2 | US-T5 | 列表展示创建/完成时间与用时 | `cargo xtask todo list` 查看输出 | 手工/CI | 每行含「创建 X」「完成 Y」「用时 Z」（已完成项） |
+
+### US-T6：长时间未完成提醒
+
+| ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |
+|------|-----------|------|------|----------|----------|
+| TC-T6-1 | US-T6 | TTY 下超 7 天未完成项着色 | 在 TTY 下执行 `cargo xtask todo list`，存在超 7 天未完成项 | 手工 | 该行以不同颜色（如黄色）显示 |
+| TC-T6-2 | US-T6 | 非 TTY 不输出颜色 | `cargo xtask todo list \| cat` 或重定向到文件 | 手工 | 输出无 ANSI 转义码 |
+
 ---
 
 ## 2. Xtask 工作流
@@ -60,6 +74,14 @@
 |------|-----------|------|------|----------|----------|
 | TC-X3-1 | US-X3 / X3-1 | 新子命令可执行 | 在 xtask 中新增子命令（如 `build`）后执行 `cargo xtask <新命令>` | 手工/CI | 新命令被正确解析并执行 |
 | TC-X3-2 | US-X3 / X3-2 | 帮助中展示新命令 | 执行 `cargo xtask --help` | 手工/CI | 帮助文本中包含新子命令及描述 |
+
+### US-X4：cargo xtask todo 任务管理
+
+| ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |
+|------|-----------|------|------|----------|----------|
+| TC-X4-1 | US-X4 | add 新增并持久化 | `cargo xtask todo add "标题"`，再 `cargo xtask todo list` | 手工/CI | 新项出现；重启后 list 仍可见 |
+| TC-X4-2 | US-X4 | list/complete/delete 生效并持久化 | `cargo xtask todo list`、`complete <id>`、`delete <id>`，再次 list | 手工/CI | 列表正确；complete/delete 后数据写回 `.todo.json` |
+| TC-X4-3 | US-X4 | 数据文件位置 | 查看项目根目录 | 手工 | 存在 `.todo.json`（或文档约定的路径） |
 
 ---
 

@@ -128,12 +128,15 @@ sequenceDiagram
 
 - 所有「业务数据」都经由 `todo` 的 API；xtask 只做调用与进程/文件级操作。
 
-### 2.3 状态与存储（当前默认）
+### 2.3 状态与存储
 
-当前默认采用**进程内内存存储**，无持久化：
+- **crates/todo**：默认 `InMemoryStore`，进程内无持久化；可通过 `Store` 抽象扩展。
+- **cargo xtask todo**：通过 xtask 将待办持久化到项目根目录的 **`.todo.json`**（JSON，含 id、title、completed、created_at_secs、completed_at_secs）；xtask 启动时加载、操作后写回，与 `TodoList` + `InMemoryStore::from_todos` 配合使用。
 
-- `TodoList` 持有 `Store` 的实现（如 `InMemoryStore`）。
-- 进程退出后数据丢失；后续若做持久化，只需新增实现 `Store` 的 crate（如 `TodoFileStore`），不改变 Public API。
+### 2.4 列表展示与时间
+
+- **列表展示**（如 `cargo xtask todo list`）：每条展示创建时间（相对如「Xm/Xh/Xd ago」）；已完成项另展示完成时间与**用时**（完成时间 − 创建时间）。
+- **长时间未完成提醒**：当输出为 TTY 时，创建超过约定阈值（默认 7 天）且未完成的任务以不同颜色（如 ANSI 黄色）展示；非 TTY 时不输出颜色码。
 
 ---
 
@@ -148,7 +151,7 @@ sequenceDiagram
 | 类型        | 说明 |
 |-------------|------|
 | `TodoId`    | 待办唯一标识，对外不透明（如 `uuid` 或 `NonZeroU64`）。 |
-| `Todo`      | 单条待办：`id`, `title`, `completed: bool`, 可选 `created_at` 等。 |
+| `Todo`      | 单条待办：`id`, `title`, `completed: bool`, `created_at`, `completed_at: Option<SystemTime>`（完成时间）。 |
 | `TodoList`  | 门面：持有 Store，提供 `create` / `list` / `complete` / `delete`。 |
 
 #### 3.1.2 行为接口（函数语义）
@@ -173,8 +176,11 @@ sequenceDiagram
 | 子命令 | 说明 | 参数（当前/预留） |
 |--------|------|-------------------|
 | `run` | 运行主程序或默认「运行」行为 | 无 |
+| `todo` | 待办管理（数据在 `.todo.json`） | 子命令见下 |
 | （预留）`build` | 构建产物 | 可选 `--release` |
 | （预留）`release` | 发布流程 | 可选版本/目标 |
+
+**todo 子命令**：`cargo xtask todo add "标题"`、`cargo xtask todo list`、`cargo xtask todo complete <id>`、`cargo xtask todo delete <id>`。list 输出含创建/完成时间与用时；在 TTY 下对超过阈值未完成项着色。
 
 - 入口：`cargo xtask [--] <子命令> [子命令参数]`。
 - 帮助：`cargo xtask --help`、`cargo xtask <子命令> --help`。
@@ -191,6 +197,9 @@ sequenceDiagram
 | US-X1 通过 cargo xtask 执行 | .cargo/config.toml alias + xtask 二进制 |
 | US-X2 xtask run | xtask 子命令 `run`，内部执行主程序 |
 | US-X3 扩展子命令 | 在 xtask 中新增 argh 子命令与对应 handler |
+| US-T5 时间戳与完成时间 | Todo 的 created_at / completed_at；list 展示创建/完成/用时 |
+| US-T6 长时间未完成提醒 | list 在 TTY 下对超阈值未完成项着色 |
+| US-X4 cargo xtask todo | xtask 子命令 todo add/list/complete/delete，.todo.json 持久化 |
 
 ---
 
