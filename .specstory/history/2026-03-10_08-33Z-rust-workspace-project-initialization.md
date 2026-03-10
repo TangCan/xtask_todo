@@ -5278,7 +5278,759 @@ I need to:
 3. In create(), set completed_at: None
 4. InMemoryStore::from_todos needs to handle Todo with completed_at - no change needed, we're just adding a field
 5. xtask: TodoDto add completed_at_secs: Option<u64>, default to None when deserializing (serde default). When loading, if None or Some(0) treat as None for completed_at. When saving, map completed_at to Option<u64>.
-6. List display: show created_at and completed_at in compact format. Use SystemTime - we can format with a simple approach. In Rust we don't have strftime in std; we could use chrono or format manually. </details></think>
+6. List display: show created_at and completed_at in compact format. Use SystemTime - we can format with a simple approach. In Rust we don't have strftime in std; we could use chrono or format manually. To avoid new deps, use UNIX_EPOCH + duration and print seconds since epoch... not user friendly. Better: use a small format. Actually the design says "compact format (e.g. 2025-03-10 10:00 or relative like 3d ago)". For no extra deps we could do "created Ns ago" from now - duration. Or add chrono. Let me check - design says "Exact format is implementation detail". I'll use seconds since epoch for now or we add chrono. Actually for "compact" we need at least date. chrono is common. Let me add chrono to xtask only for formatting. Or we can do duration_since(UNIX_EPOCH).as_secs() and then format as e.g. "1709123456" - no that's ugly. Simpler: use a relative "X days ago" / "X hours ago" based on duration from now. So we need SystemTime::now() and duration_since(created_at). That gives us Duration. We can do days = duration.as_secs() / 86400, etc. So no chrono. Format as "3d ago" or "2h ago" or "created 2025-03-10" - for the latter we need to convert secs to date. So let me do relative: "5d ago" for created, "2d ago" for completed. That's compact and no deps.
+7. TTY: use std::io::IsTerminal (Rust 1.70+) - std::io::stdout().is_terminal(). When true, for items that are old open (created_at < now - 7 days && !completed), wrap the line in ANSI yellow. Reset with \x1b[0m.
+8. Unit test: assert that after complete(), the todo has completed_at.is_some().
+
+Let me also check - when we load from file, we need to pass completed_at into Todo. So Todo struct needs completed_at: Option<SystemTime>. In from_todos we're building store from Vec<Todo> - so the Todo we build in load_todos (in xtask) must have completed_at set from dto.completed_at_secs. So we need to add that when we build Todo in load_todos.
+</details></think>
+
+---
+
+
+Implementing step by step:
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [-] Add completed_at to Todo and set in complete()
+- [ ] Persist/load completed_at in xtask, list display + TTY color
+- [ ] Test and mark tasks done
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+InMemoryStore::from_todos takes Vec<Todo> - the Todo now has completed_at. So when we build Todo in xtask load_todos we need to set completed_at from the DTO. No change needed in from_todos. But we need to fix the existing tests - they construct or get Todo from the list; the Todo struct now has one more field. The tests don't construct Todo manually except in load_todos in xtask. So the only place we create Todo is in create() (which we fixed) and in load_todos in xtask where we build Todo { id, title, completed, created_at } - we need to add completed_at there. So next: xtask TodoDto add completed_at_secs: Option<u64>, and in load_todos when building Todo set completed_at from dto.completed_at_secs (if Some(n) and n > 0 then Some(UNIX_EPOCH + Duration::from_secs(n)) else None). Use serde default for backward compat: #[serde(default)] completed_at_secs: Option<u64>. Then when deserializing old JSON without the field, we get None. And when we have Some(0) we treat as None.
+</details></think>
+
+---
+
+
+Updating xtask: add `completed_at_secs` to DTO and handle it in load/save and list display.
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Now list display: show creation and completion time in compact format (relative like "3d ago"), and when TTY and item is old open (created > 7 days ago and !completed), use ANSI color. I need a helper to format duration as "Xd ago" or "Xh ago" etc. And a helper to check if item is old open: now - created_at > 7 days. Use std::time::Instant for "now" - no, we need SystemTime::now() for comparison with created_at. So let now = SystemTime::now(); duration = now.duration_since(created_at).unwrap_or(Duration::ZERO). If created_at is in the past, duration is positive. So "old open" = !completed && duration > 7 days (7 * 24 * 3600 secs). For formatting: if secs < 60 => "just now" or "Ns ago", if < 3600 => "Nm ago", if < 86400 => "Nh ago", else => "Nd ago". And we need std::io::IsTerminal - in Rust 1.70+ it's in std::io. So use std::io::IsTerminal.
+</details></think>
+
+---
+
+
+Adding list formatting (relative timestamps) and TTY-based color for old-open items:
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Tests in todo crate - we need to fix us_t3_complete_existing to assert completed_at.is_some(). And any test that might be comparing Todo or building Todo - the struct now has completed_at. The tests use list.list() which returns Todo from the store - so the Todo will have completed_at set by complete(). So we just need to add an assertion in us_t3_complete_existing that items[0].completed_at.is_some(). Let me also run cargo test -p todo to see if anything breaks - the Todo struct has a new field so PartialEq might need both to match; when we create via create() we set completed_at: None, when we complete we set it. So existing tests should still pass. Let me run the tests.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo test -p todo 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo test -p todo 2>&1
+```
+
+```
+   Compiling todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+    Finished &#96;test&#96; profile [unoptimized + debuginfo] target(s) in 0.25s
+     Running unittests src/lib.rs (target/debug/deps/todo-a266546c2cadf74e)
+
+running 8 tests
+test tests::us_t1_empty_title_returns_err_and_list_unchanged ... ok
+test tests::us_t1_valid_title_creates_and_appears_in_list ... ok
+test tests::us_t2_empty_list ... ok
+test tests::us_t2_list_order_by_creation ... ok
+test tests::us_t3_complete_existing ... ok
+test tests::us_t3_complete_nonexistent_returns_not_found ... ok
+test tests::us_t4_delete_existing ... ok
+test tests::us_t4_delete_nonexistent_returns_not_found ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests todo
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Tests pass but we need to add the unit test that a completed todo has completed_at set (task 3.1). Let me add that assertion to us_t3_complete_existing.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+InMemoryStore::from_todos - we're building the store from Vec<Todo> that we created in xtask load_todos. Those Todo now have completed_at. So when we call from_todos(todos), we're passing Todo structs that have completed_at. The from_todos only uses the id for next_id and inserts the todos as-is. So we're good. But wait - in the todo crate, when we create a Todo in create() we have completed_at: None. When we build Todo in tests we don't - the tests use list.create() and list.complete(), so the Todo in the store will have completed_at set by complete(). So we need to make sure InMemoryStore::from_todos doesn't need to change - it just inserts the Todo as given. So the Todo we insert can have completed_at. Good.
+
+One more thing: when we load in xtask, we build Todo with completed_at from the DTO. So that Todo is put into InMemoryStore::from_todos. So the Store holds Todo with completed_at. All good.
+
+Let me run cargo build -p xtask to see if xtask compiles (we're using SystemTime in format_time_ago and is_old_open).
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo build -p xtask 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo build -p xtask 2>&1
+```
+
+```
+   Compiling todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+   Compiling xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+error[E0308]: mismatched types
+   --&gt; xtask/src/main.rs:214:49
+    |
+214 |                     if use_color &amp;&amp; is_old_open(t, now) {
+    |                                     ----------- ^ expected &#96;&amp;Todo&#96;, found &#96;Todo&#96;
+    |                                     |
+    |                                     arguments to this function are incorrect
+    |
+note: function defined here
+   --&gt; xtask/src/main.rs:156:4
+    |
+156 | fn is_old_open(t: &amp;Todo, now: SystemTime) -&gt; bool {
+    |    ^^^^^^^^^^^ --------
+help: consider borrowing here
+    |
+214 |                     if use_color &amp;&amp; is_old_open(&amp;t, now) {
+    |                                                 +
+
+For more information about this error, try &#96;rustc --explain E0308&#96;.
+error: could not compile &#96;xtask&#96; (bin "xtask") due to 1 previous error
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+We're iterating over items and t is already a reference in the for loop - no, we're doing `for t in items` so t is Todo by value. So we need is_old_open(&t, now).
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Remove unused import IsTerminal if it's not used - we use std::io::stdout().is_terminal(). So we don't need to import IsTerminal at the top if we're calling a method. Actually we're using std::io::stdout().is_terminal() - is_terminal() is from the IsTerminal trait. So we need `use std::io::IsTerminal` for the method to be in scope. So the import is needed. Let me build again.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo build -p xtask 2>&1 && cargo xtask todo list 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo build -p xtask 2>&1 && cargo xtask todo list 2>&1
+```
+
+```
+   Compiling xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.41s
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.01s
+     Running &#96;target/debug/xtask todo list&#96;
+  [2] ✓ Buy milk    created 18m ago
+  [6]   测    created 16m ago
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+The list shows "created 18m ago" but we had completed_at - the second item "测" doesn't show completed. So the first item [2] is completed (✓) but we're not showing "completed X ago" - let me check the format. We have `time_info = match &t.completed_at { Some(cat) => format!("  created {}  completed {}", created, format_time_ago(*cat)), ...`. So we need completed_at to be set. The data in .todo.json might not have completed_at_secs yet (old format). So for [2] Buy milk which is completed, we might have loaded it with completed_at: None because the file was written before we had that field. So the display is correct - we're showing "created 18m ago" for both. When we complete an item from now on, we'll persist completed_at_secs and then list will show "completed X ago". So we're good. Let me run the full test suite and openspec validate, then mark tasks done.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo test -p todo 2>&1 && openspec validate add-todo-timestamps-and-age-highlight --strict 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo test -p todo 2>&1 && openspec validate add-todo-timestamps-and-age-highlight --strict 2>&1
+```
+
+```
+   Compiling todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+    Finished &#96;test&#96; profile [unoptimized + debuginfo] target(s) in 0.19s
+     Running unittests src/lib.rs (target/debug/deps/todo-a266546c2cadf74e)
+
+running 8 tests
+test tests::us_t1_empty_title_returns_err_and_list_unchanged ... ok
+test tests::us_t1_valid_title_creates_and_appears_in_list ... ok
+test tests::us_t2_empty_list ... ok
+test tests::us_t2_list_order_by_creation ... ok
+test tests::us_t3_complete_existing ... ok
+test tests::us_t3_complete_nonexistent_returns_not_found ... ok
+test tests::us_t4_delete_existing ... ok
+test tests::us_t4_delete_nonexistent_returns_not_found ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests todo
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+Change 'add-todo-timestamps-and-age-highlight' is valid
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Add completed_at to Todo and set in complete()
+- [x] Persist/load completed_at in xtask, list display + TTY color
+- [-] Test and mark tasks done
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+We need to fix the store - when we use from_todos, we're building Todo in xtask with completed_at. But when the todo crate's tests run, they use TodoList::new() and create() which creates Todo with completed_at: None. Then complete() sets completed_at. So we're good. But wait - InMemoryStore::from_todos is in the todo crate and it only does:
+  let next_id = todos.iter().map(|t| t.id.as_u64()).max().unwrap_or(0) + 1;
+  let items = todos.into_iter().map(|t| (t.id, t)).collect();
+  Self { next_id, items }
+So it doesn't touch completed_at. The Todo we insert have whatever completed_at they have. So when we load in xtask we build Todo with completed_at from DTO - good. When we run tests in todo crate we never use from_todos with Todo that have completed_at - we use create/complete. So we're good.
+
+One more thing: backward compat - old .todo.json without completed_at_secs. We have #[serde(default)] on completed_at_secs so when the field is missing we get None. And we map None or Some(0) to completed_at: None. So when loading old file, completed_at_secs is None (missing), so completed_at is None. Good.
+
+Let me mark all tasks [x] in tasks.md.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-todo-timestamps-and-age-highlight/tasks.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Add completed_at to Todo and set in complete()
+- [x] Persist/load completed_at in xtask, list display + TTY color
+- [x] Test and mark tasks done
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Store's from_todos - when we create Todo in the todo crate we now have completed_at. So when we do InMemoryStore::from_todos(todos), the Todo we pass might have completed_at. But in the todo crate we don't have a place that constructs Todo with completed_at except in complete() which does get + update. So the only place that creates Todo from scratch is create() - and we set completed_at: None. So when tests run they never build Todo manually with from_todos - the tests use TodoList::new() and create/complete. The from_todos is only used in xtask when loading from file. So we need to make sure the Todo we build in xtask load_todos has all fields - we added completed_at. Good.
+
+Actually one more thing: in the todo crate, do we have any test or code that builds a Todo struct directly? Let me check - the tests use list.create() and list.complete(), so the Todo comes from the store. The store gets Todo from create() (which has completed_at: None) and from update() in complete() (which sets completed_at: Some(now)). So we're good. Done.
+</details></think>
+
+---
+
+
+Summary of what was implemented for **add-todo-timestamps-and-age-highlight**:
+
+## 1. Domain and storage (crates/todo)
+
+- **Todo**: Added `completed_at: Option<SystemTime>`; `create()` sets it to `None`, `complete()` sets it to `Some(SystemTime::now())`.
+- **Persistence**: xtask `TodoDto` has `#[serde(default)] completed_at_secs: Option<u64>`. Load: `None` or `Some(0)` → `completed_at: None`; save: `completed_at` → `completed_at_secs`. Old `.todo.json` without the field still load (default `None`).
+
+## 2. List display (xtask)
+
+- **Timestamps**: Each line shows `created Xm/Xh/Xd ago`; if completed, also `completed Xm/Xd ago` via `format_time_ago()`.
+- **Old-open highlight**: Constant `AGE_THRESHOLD_DAYS = 7`. `is_old_open(t, now)` is true when `!t.completed` and `now - created_at >= 7 days`. When `stdout().is_terminal()` is true, those lines are printed in ANSI yellow (`\x1b[33m...\x1b[0m`); when not a TTY, no color codes.
+
+## 3. Validation
+
+- **Unit test**: `us_t3_complete_existing` now also asserts `items[0].completed_at.is_some()`.
+- **openspec**: `openspec validate add-todo-todo-timestamps-and-age-highlight --strict` passes.
+
+**tasks.md** is updated: all items are marked `- [x]`.
+
+---
+
+_**User**_
+
+/openspec-archive  add-todo-timestamps-and-age-highlight 
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants to archive the OpenSpec change add-todo-timestamps-and-age-highlight. I need to:
+1. Confirm the change exists (openspec list)
+2. Run openspec archive add-todo-timestamps-and-age-highlight --yes
+3. Validate and optionally update the spec Purpose if it was TBD
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list
+```
+
+```
+Changes:
+  add-todo-timestamps-and-age-highlight     ✓ Complete
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Change exists and is complete. Run archive with --yes.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec archive add-todo-timestamps-and-age-highlight --yes</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec archive add-todo-timestamps-and-age-highlight --yes
+```
+
+```
+Task status: ✓ Complete
+
+Specs to update:
+  todo: update
+Applying changes to openspec/specs/todo/spec.md:
+  + 2 added
+  ~ 1 modified
+Totals: + 2, ~ 1, - 0, → 0
+Specs updated successfully.
+Change 'add-todo-timestamps-and-age-highlight' archived as '2026-03-10-add-todo-timestamps-and-age-highlight'.
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Archive succeeded. Spec todo was updated (2 added, 1 modified). Let me validate the todo spec and check if Purpose needs updating.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate todo --strict && openspec list --specs</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate todo --strict && openspec list --specs
+```
+
+```
+Specification 'todo' is valid
+Specs:
+  test-documentation     requirements 1
+  todo                   requirements 6
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs/todo/spec.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Spec is valid and has 6 requirements now (was 4, +2 added, 1 modified). Purpose was not TBD so no update needed. Done.
+</details></think>
+
+---
+
+
+归档已完成。
+
+## 执行结果
+
+- **`openspec archive add-todo-timestamps-and-age-highlight --yes`** 已执行：
+  - 变更已移动到 **`openspec/changes/archive/2026-03-10-add-todo-timestamps-and-age-highlight/`**
+  - **`openspec/specs/todo/spec.md`** 已按 delta 更新：1 条修改（Complete todo 记录完成时间），2 条新增（Todo timestamps、Age-based visual highlight）
+- **`openspec validate todo --strict`** 已通过
+- **todo** 规范现共 **6 条** 需求（原 4 条 + 2 条新增，Complete todo 为修改）
+
+---
+
+_**User**_
+
+@\home\ars\.cursor\projects\home-ars-richard-2026-pvm-2-xtask-todo\terminals\1.txt:1051-1055 第 2 项，已经完成了，除了创建时间，是否可以增加，完成时间？以及 任务完成所用的时间？
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants for item 2 (which is completed - has ✓):
+1. Besides creation time, add completion time (we already have completed_at and the code shows "completed X ago" when completed_at is Some - but in the terminal output they only see "created 21m ago", so maybe the completed_at wasn't persisted for that item because it was completed before we added the feature, or the display logic has a bug)
+2. Show "任务完成所用的时间" - time taken to complete the task (i.e. duration from created_at to completed_at)
+
+Let me check the current list display code - we have:
+```
+let time_info = match &t.completed_at {
+    Some(cat) => format!("  created {}  completed {}", created, format_time_ago(*cat)),
+    None => format!("  created {}", created),
+};
+```
+So we do show "completed X ago" when completed_at is set. The user's output shows only "created 21m ago" for [2] - so either (1) that item's completed_at is None in the loaded data (old .todo.json from before we added the field), or (2) there's a bug. So the user might be seeing old data. Regardless, they're asking to:
+1. Add completion time - we already have it in the code, so we just need to ensure it displays (and for old data we might not have it)
+2. Add "任务完成所用的时间" - the duration from creation to completion (e.g. "took 2h" or "2h to complete")
+
+So I need to:
+1. Keep showing completion time when completed_at is Some (already there)
+2. When both created_at and completed_at are present, compute duration (completed_at - created_at) and display it (e.g. "took 2h" or "用时 2h")
+</details></think>
+
+---
+
+
+正在为已完成项添加完成时间显示，并显示从创建到完成的用时。
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+We already show "created X  completed Y" when completed_at is Some. The user's output might be from data that was completed before we added completed_at (so completed_at is None in the file). So the display shows only "created 21m ago".
+
+User asks:
+1. 增加完成时间 - we already have it in the code; for items that have completed_at we show "completed X ago". So we're good, but we could make the label clearer (e.g. "完成 21m ago" in Chinese if they want, or keep "completed")
+2. 任务完成所用的时间 - duration from created_at to completed_at. So add a helper format_duration(d: Duration) -> String (e.g. "2h" or "1d 2h") and when we have completed_at, compute completed_at - created_at and show "用时 2h" or "took 2h"
+
+I'll add:
+- format_duration(d: Duration) for "Xm", "Xh", "Xd" style
+- When completed_at is Some: show "created X  completed Y  用时 Z" (用时 = time taken)
+</details></think>
+
+---
+
+
+添加完成时间显示（已有）及从创建到完成的用时（用时）。
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. Now run cargo build to make sure it compiles. The user's item [2] might still not show "完成" and "用时" if the .todo.json was saved before we had completed_at - in that case after they run "cargo xtask todo complete 2" again (or complete any item from now on), the new format will be saved and they'll see 创建/完成/用时. For already-completed items that were completed before the feature, completed_at will be None so we only show 创建. So the code is correct.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo build -p xtask 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo build -p xtask 2>&1
+```
+
+```
+   Compiling xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.28s
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Build succeeded. Summarize for the user.
+</details></think>
+
+---
+
+
+已按你的需求改好了，变更如下：
+
+## 1. 完成时间（已有，文案统一）
+
+- 已完成且存了 `completed_at` 的项会显示 **「完成 Xm/Xh/Xd ago」**。
+- 文案统一为：**创建** / **完成**（原来用的 created/completed）。
+
+## 2. 任务完成所用时间（新增）
+
+- 当存在 `completed_at` 时，会算 **完成时间 − 创建时间**，并显示 **「用时 Xm/Xh/Xd」**（不足 1 分钟显示 Xs）。
+- 新增 `format_duration()`，用于把时长格式化成 `Xs` / `Xm` / `Xh` / `Xd`。
+
+## 示例
+
+**未完成：**
+```text
+  [6]    测  创建 19m ago
+```
+
+**已完成（且存了完成时间）：**
+```text
+  [2] ✓ Buy milk  创建 21m ago  完成 15m ago  用时 6m
+```
+
+说明：你当前看到的第 2 项若只显示「创建 21m ago」，多半是之前完成时还没存 `completed_at`（旧数据）。之后新完成的任务会写入完成时间，再执行 `cargo xtask todo list` 就会看到「完成」和「用时」。若希望第 2 项也显示，可以再执行一次 `cargo xtask todo complete 2`，会更新并保存 `completed_at`。
 
 ---
 

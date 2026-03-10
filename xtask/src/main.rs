@@ -153,6 +153,19 @@ fn format_time_ago(when: SystemTime) -> String {
     }
 }
 
+fn format_duration(d: Duration) -> String {
+    let s = d.as_secs();
+    if s < 60 {
+        format!("{}s", s)
+    } else if s < 3600 {
+        format!("{}m", s / 60)
+    } else if s < 86400 {
+        format!("{}h", s / 3600)
+    } else {
+        format!("{}d", s / 86400)
+    }
+}
+
 fn is_old_open(t: &Todo, now: SystemTime) -> bool {
     if t.completed {
         return false;
@@ -207,8 +220,17 @@ fn cmd_todo(args: TodoArgs) -> Result<(), Box<dyn std::error::Error>> {
                     let mark = if t.completed { "✓" } else { " " };
                     let created = format_time_ago(t.created_at);
                     let time_info = match &t.completed_at {
-                        Some(cat) => format!("  created {}  completed {}", created, format_time_ago(*cat)),
-                        None => format!("  created {}", created),
+                        Some(cat) => {
+                            let completed = format_time_ago(*cat);
+                            let took = cat
+                                .duration_since(t.created_at)
+                                .ok()
+                                .map(format_duration)
+                                .map(|s| format!("  用时 {}", s))
+                                .unwrap_or_default();
+                            format!("  创建 {}  完成 {}{}", created, completed, took)
+                        }
+                        None => format!("  创建 {}", created),
                     };
                     let line = format!("  [{}] {} {}  {}", t.id, mark, t.title, time_info);
                     if use_color && is_old_open(&t, now) {
