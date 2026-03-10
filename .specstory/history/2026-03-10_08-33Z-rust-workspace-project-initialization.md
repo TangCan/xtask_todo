@@ -2424,6 +2424,605 @@ Then add one line in acceptance.md (e.g. in section 1 or 6) pointing to test-cas
 
 <details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/test-cases.md</summary>
 
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Task 1.1–1.4 done (structure, Todo cases, Xtask cases, Maintenance). Now add pointer in acceptance.md. I'll add a line in section 1 (验收说明) or in section 6 (文档维护). Adding in section 1 after the bullet list makes sense: "测试用例详见 [test-cases.md](./test-cases.md)。"
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/acceptance.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/acceptance.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Now verify: every acceptance criterion has a test case. From acceptance.md:
+- T1-1, T1-2 -> TC-T1-1, TC-T1-2 ✓
+- T2-1, T2-2 -> TC-T2-1, TC-T2-2 ✓
+- T3-1, T3-2 -> TC-T3-1, TC-T3-2 ✓
+- T4-1, T4-2 -> TC-T4-1, TC-T4-2 ✓
+- X1-1, X1-2 -> TC-X1-1, TC-X1-2 ✓
+- X2-1, X2-2 -> TC-X2-1, TC-X2-2 ✓
+- X3-1, X3-2 -> TC-X3-1, TC-X3-2 ✓
+- NF-1, NF-2 -> TC-NF-1, TC-NF-2 ✓
+
+Run openspec validate and then mark all tasks [x].
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate add-test-case-documentation --strict</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate add-test-case-documentation --strict
+```
+
+```
+Change 'add-test-case-documentation' is valid
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+All good. Now update tasks.md to mark every task as [x].
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-test-case-documentation/tasks.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Add docs/test-cases.md with structure and Todo/Xtask cases
+- [x] Add pointer in acceptance.md and mark tasks complete
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. I've implemented the change and marked all tasks complete. Summary for the user.
+</details></think>
+
+---
+
+
+OpenSpec 变更 `add-test-case-documentation` 已按任务清单实现，并已全部勾选完成。
+
+## 完成内容
+
+### 1. Documentation（1.1–1.4）
+- **`docs/test-cases.md`** 已新增，包含：
+  - 文档目的与结构说明（用例 ID、需求/验收引用、描述、步骤、验证方式、预期结果）
+  - **Todo 领域**：US-T1～US-T4 各 2 条验收对应 8 条用例（TC-T1-1/2, TC-T2-1/2, TC-T3-1/2, TC-T4-1/2）
+  - **Xtask 工作流**：US-X1～US-X3 各 2 条验收对应 6 条用例（TC-X1-1/2, TC-X2-1/2, TC-X3-1/2）
+  - **非功能**：NF-1、NF-2 对应 TC-NF-1、TC-NF-2
+  - **Maintenance**：约定需求或验收变更时须同步更新本文档或注明暂不覆盖
+
+### 2. References（2.1）
+- 在 **`docs/acceptance.md`** 中增加两处引用：
+  - 验收说明中：测试用例详见 [test-cases.md](./test-cases.md)
+  - 文档维护中：具体用例列表见 [test-cases.md](./test-cases.md)
+
+### 3. Validation（3.1–3.2）
+- 已核对：`docs/acceptance.md` 中每条验收项在 `docs/test-cases.md` 中均有对应用例
+- 已执行：`openspec validate add-test-case-documentation --strict`，通过
+
+### 4. 任务清单
+- `openspec/changes/add-test-case-documentation/tasks.md` 中所有任务已标记为 `- [x]`
+
+---
+
+_**User**_
+
+/openspec-archive add-test-case-documentation  
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants to archive the OpenSpec change `add-test-case-documentation`. According to AGENTS.md, after deployment we should:
+- Move `changes/[name]/` → `changes/archive/YYYY-MM-DD-[name]/`
+- Update `specs/` if capabilities changed (we added a new capability `test-documentation`)
+- Or use `openspec archive <change-id> --skip-specs --yes` for tooling-only changes
+
+Since this change added a new capability `test-documentation` with a spec delta, we need to:
+1. Run `openspec archive add-test-case-documentation` (with --yes for non-interactive)
+2. That should move the change to archive and update specs/ with the new capability from the delta
+
+Let me check - the change had specs/test-documentation/spec.md with ADDED Requirements. So when we archive, we need to apply that delta to the main specs. So we should run `openspec archive add-test-case-documentation --yes` (without --skip-specs) so that the new test-documentation capability gets written to openspec/specs/test-documentation/spec.md.
+
+I'll run the archive command and see what happens. If the CLI doesn't exist or behaves differently, I might need to manually move the change to archive and copy the spec content to specs/test-documentation/spec.md.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/AGENTS.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="glob_file_search">
+<details>
+<summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **5** results in **1** directory</summary>
+
+Directory: **/home/ars/richard/2026/pvm_2/xtask_todo/openspec** (5 files)
+
+| File |
+|------|
+| `changes/add-test-case-documentation/tasks.md` |
+| `changes/add-test-case-documentation/specs/test-documentation/spec.md` |
+| `changes/add-test-case-documentation/proposal.md` |
+| `project.md` |
+| `AGENTS.md` |
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+The change added a new capability `test-documentation`. Archiving should:
+1. Move changes/add-test-case-documentation/ to changes/archive/YYYY-MM-DD-add-test-case-documentation/
+2. Update specs/ - create specs/test-documentation/spec.md with the content from the delta (the ADDED requirements become the canonical spec)
+
+I'll run `openspec archive add-test-case-documentation --yes` first. If the tool updates specs automatically, good. If not, I may need to manually create specs/test-documentation/spec.md and move the change folder to archive.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec archive add-test-case-documentation --yes</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec archive add-test-case-documentation --yes
+```
+
+```
+Task status: ✓ Complete
+
+Specs to update:
+  test-documentation: create
+Applying changes to openspec/specs/test-documentation/spec.md:
+  + 1 added
+Totals: + 1, ~ 0, - 0, → 0
+Specs updated successfully.
+Change 'add-test-case-documentation' archived as '2026-03-10-add-test-case-documentation'.
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+The archive command succeeded. It:
+1. Created openspec/specs/test-documentation/spec.md with the ADDED requirement
+2. Archived the change as 2026-03-10-add-test-case-documentation
+
+I should run openspec validate --strict to confirm as per AGENTS.md.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate --strict</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate --strict
+```
+
+```
+Nothing to validate. Try one of:
+  openspec validate --all
+  openspec validate --changes
+  openspec validate --specs
+  openspec validate &lt;item-name&gt;
+Or run in an interactive terminal.
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs/test-documentation/spec.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Validate without an item name didn't work as expected - it said "Nothing to validate". Let me run `openspec validate --specs` and `openspec validate --changes` to confirm. The archived change is now in changes/archive/ so --changes might validate that. Let me try validate --specs and validate test-documentation.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate --specs && openspec validate test-documentation --strict</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate --specs && openspec validate test-documentation --strict
+```
+
+```
+✓ spec/test-documentation
+Totals: 1 passed, 0 failed (1 items)
+Specification 'test-documentation' is valid
+- Validating...
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="glob_file_search">
+<details>
+<summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **6** results in **1** directory</summary>
+
+Directory: **/home/ars/richard/2026/pvm_2/xtask_todo/openspec** (6 files)
+
+| File |
+|------|
+| `specs/test-documentation/spec.md` |
+| `changes/archive/2026-03-10-add-test-case-documentation/tasks.md` |
+| `changes/archive/2026-03-10-add-test-case-documentation/specs/test-documentation/spec.md` |
+| `changes/archive/2026-03-10-add-test-case-documentation/proposal.md` |
+| `project.md` |
+| `AGENTS.md` |
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Spec is valid. The change has been moved to changes/archive/2026-03-10-add-test-case-documentation/. I'll add a brief Purpose to the spec so it's not TBD - the AGENTS said "Update Purpose after archive". I'll set a one-line purpose.
+</details></think>
+
+---
+
+
+Filling in the spec Purpose (was TBD after archive):
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs/test-documentation/spec.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. I'll give the user a short summary.
+</details></think>
+
+---
+
+
+归档已完成。
+
+## 执行结果
+
+- **`openspec archive add-test-case-documentation --yes`** 已执行：
+  - 变更已移动到 **`openspec/changes/archive/2026-03-10-add-test-case-documentation/`**
+  - 已根据 delta 在 **`openspec/specs/test-documentation/spec.md`** 中创建规范，包含 “Test case document” 需求及两个 Scenario
+- **`openspec validate test-documentation --strict`** 已通过
+- 已将规范中的 **Purpose** 从 TBD 改为：要求项目维护测试用例文档（`docs/test-cases.md`），用于需求/验收与测试用例的追溯
+
+当前 OpenSpec 布局：
+- **specs/test-documentation/spec.md** — 当前生效的 “test-documentation” 规范
+- **changes/archive/2026-03-10-add-test-case-documentation/** — 已归档的变更（proposal、tasks、delta spec）
+
+---
+
+_**User**_
+
+/openspec-proposal 请根据需求文档，设计文档，任务文档，测试用例文档和验收文档，开始实现所有功能。
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants me to create an OpenSpec proposal to implement all the functionality described in the project's requirements, design, tasks, test cases, and acceptance documents. This is a large scope - implementing the full Todo domain (create, list, complete, delete) and ensuring xtask run works, with tests.
+
+Let me:
+1. Review openspec/project.md, run openspec list and list --specs
+2. Read docs/requirements.md, docs/design.md, docs/tasks.md, docs/test-cases.md, docs/acceptance.md to understand the full scope
+3. Choose a change-id (e.g. implement-todo-and-xtask or implement-todo-domain)
+4. Create proposal, tasks, and spec deltas - this will likely touch a NEW capability (todo domain) since we only have test-documentation in specs so far. The existing docs describe Todo (crates/todo) and xtask - so I need to add specs for the todo capability and possibly xtask, then implement.
+
+Actually re-reading the user message: "请根据需求文档，设计文档，任务文档，测试用例文档和验收文档，开始实现所有功能" - they want me to create an OpenSpec *proposal* that, when implemented, will deliver all the functionality. So I'm doing the openspec-proposal flow: scaffold a change that specifies what to build (the todo domain + xtask run), with spec deltas and tasks. I am NOT implementing the code in this step - I'm creating the proposal. The actual implementation would happen in a separate openspec-apply step.
+
+Let me gather context first.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/project.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list && openspec list --specs</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list && openspec list --specs
+```
+
+```
+No active changes found.
+Specs:
+  test-documentation     requirements 1
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="unknown" data-tool-name="ripgrep_raw_search">
+<details>
+<summary>Tool use: **ripgrep_raw_search**</summary>
+
+
+Parameters:
+
+```json
+{
+  "pattern": "Requirement:|Scenario:",
+  "path": "/home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs",
+  "caseInsensitive": false
+}
+```
+Additional data:
+
+```json
+{
+  "isPruned": true,
+  "pattern": "Requirement:|Scenario:",
+  "path": "/home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs",
+  "outputMode": "content",
+  "totalFiles": 1,
+  "totalMatches": 3,
+  "topFiles": [
+    {
+      "uri": "openspec/specs/test-documentation/spec.md",
+      "matchCount": 3
+    }
+  ]
+}
+```
+Status: **completed**
+
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+The user wants an OpenSpec proposal to implement all functionality based on requirements, design, tasks, test cases, and acceptance docs. So I need to:
+
+1. Read docs/requirements.md, docs/design.md, docs/tasks.md, docs/test-cases.md, docs/acceptance.md to extract the full scope
+2. Create a new change proposal that adds the "todo" capability (and possibly xtask-related requirements) as spec deltas, plus tasks that implement crates/todo (domain types, Store, TodoList API) and ensure xtask run works
+3. The current specs only have test-documentation. The actual "todo" domain and "xtask" behavior are not yet in openspec/specs. So this proposal will ADD a new capability "todo" (and maybe keep xtask as convention in project.md only, or add a small xtask spec).
+
+Let me read the key docs to map requirements to spec requirements and tasks.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/requirements.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/design.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/tasks.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Now I have a clear picture. I need to create an OpenSpec change proposal that:
+1. Adds a new capability "todo" (the todo domain - create, list, complete, delete with types, store, TodoList)
+2. Optionally references xtask - but xtask is already in place (run subcommand exists). The proposal could include ensuring xtask run invokes the right thing (e.g. run main binary if any, or keep placeholder). Design says xtask run can run "主程序" - currently there's no main binary in crates/todo (it's a lib). So X1 might just be "xtask run runs and exits 0" with current placeholder, or we add a minimal binary. I'll keep the proposal focused: implement todo domain + tests; xtask run already works (placeholder), we can wire it to `cargo</details></think>
+
+---
+
+
+
+---
+
+<tool-use data-tool-type="unknown" data-tool-name="read_file_v2">
+<details>
+<summary>Tool use: **read_file_v2**</summary>
+
+Status: **loading**
+
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="unknown" data-tool-name="read_file_v2">
+<details>
+<summary>Tool use: **read_file_v2**</summary>
+
+Status: **loading**
+
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="unknown" data-tool-name="read_file_v2">
+<details>
+<summary>Tool use: **read_file_v2**</summary>
+
+Status: **loading**
+
+
+</details>
+</tool-use>
+
+---
+
+
+
+---
+
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Error parsing todo list data</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/implement-todo-domain/proposal.md</summary>
+
 Status: **loading**
 
 </details>
