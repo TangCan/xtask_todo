@@ -4868,7 +4868,417 @@ I need to:
 1. Review openspec/project.md, run openspec list and openspec list --specs
 2. Check current todo spec and implementation (Todo type, store, xtask todo list output)
 3. Create a change proposal with change-id (e.g. add-todo-timestamps-and-age-highlight)
-4. Spec deltas: likely MODIFIED to the todo capability - add created_at (we may already have it), completed_at (new), and a requirement for "age highlighting" (e.g. display i</details></think>
+4. Spec deltas: likely MODIFIED to the todo capability - add created_at (we may already have it), completed_at (new), and a requirement for "age highlighting" (e.g. display in different color when older than one week)
+5. tasks.md for implementation
+6. design.md if needed - we have data model change (completed_at) and display/UX (color). Could be a short design for "how we define long-running" and "where color is applied" (CLI only? terminal escape codes?)
+7. Validate with openspec validate --strict
+
+Let me check current state: Todo already has created_at. We need completed_at (Option<SystemTime> or similar). And "different color" in CLI typically means ANSI escape codes - so the spec might say "SHALL display in a visually distinct way (e.g. color)" for items older than 7 days, and the implementation uses terminal color when stdout is a TTY.
+
+I'll create:
+- change-id: add-todo-timestamps-and-age-highlight
+- proposal.md
+- tasks.md
+- design.md (brief: timestamp fields, definition of "over a week", where to show color - list output)
+- specs/todo/spec.md with MODIFIED requirements (add completed_at to Create/List/Complete semantics; add new requirement for age-based visual highlight)
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/project.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list && openspec list --specs</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list && openspec list --specs
+```
+
+```
+No active changes found.
+Specs:
+  test-documentation     requirements 1
+  todo                   requirements 4
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="unknown" data-tool-name="ripgrep_raw_search">
+<details>
+<summary>Tool use: **ripgrep_raw_search**</summary>
+
+
+Parameters:
+
+```json
+{
+  "pattern": "Requirement:|Scenario:",
+  "path": "/home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs",
+  "caseInsensitive": false
+}
+```
+Additional data:
+
+```json
+{
+  "isPruned": true,
+  "pattern": "Requirement:|Scenario:",
+  "path": "/home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs",
+  "outputMode": "content",
+  "totalFiles": 2,
+  "totalMatches": 15,
+  "topFiles": [
+    {
+      "uri": "openspec/specs/todo/spec.md",
+      "matchCount": 12
+    },
+    {
+      "uri": "openspec/specs/test-documentation/spec.md",
+      "matchCount": 3
+    }
+  ]
+}
+```
+Status: **completed**
+
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs/todo/spec.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Current todo spec has Create, List, Complete, Delete. Todo type in code already has created_at. I need to:
+1. Add completed_at (when the task was completed) - so we need to track creation and completion timestamps
+2. "Time too long" - e.g. over one week - show in different color. So we need a definition: e.g. "created more than 7 days ago and still not completed" or "completed more than 7 days ago" - the user said "任务的增加和完成的时间" and "时间过长的，比如超过一周的，需要用不同的颜色提醒". So we're tracking: created time, completed time. "时间过长" could mean: (a) task created over a week ago (still open) - remind; (b) task completed over a week ago - maybe dim? More likely they mean: tasks that have been sitting for a long time (e.g. created > 1 week ago and not completed) should be highlighted in a different color to remind the user. So the highlight is for "old open tasks" (age since creation > 7 days, not completed).
+3. Display: in list output we show timestamps and use color for old items. CLI can use ANSI escape codes when stdout is TTY.
+
+Change-id: add-todo-timestamps-and-age-highlight
+
+Spec deltas (MODIFIED + ADDED):
+- MODIFIED: Create todo - already implies created_at is set (it is in implementation). We could add a line that the system SHALL record creation time.
+- MODIFIED: Complete todo - the system SHALL record completion time when marking completed.
+- ADDED: Requirement "Todo timestamps" or "Creation and completion timestamps" - system SHALL record and expose creation time; when a todo is completed, SHALL record completion time.
+- ADDED: Requirement "Age-based visual highlight" - when listing todos (in a context that supports it, e.g. CLI with TTY), items that exceed an age threshold (e.g. created more than 7 days ago and not completed) SHALL be displayed in a visually distinct way (e.g. different color) to draw attention.
+
+Design.md: brief - timestamp fields (created_at already exists, add completed_at: Option<SystemTime>); threshold config (e.g. 7 days); where color applies (list output, TTY only); no new crates if possible (ANSI in std or one small dep).
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I have the picture. Todo already has created_at. We need:
+- completed_at: Option<SystemTime> on Todo; set when complete() is called
+- In list output: show creation (and optionally completion) time; for items created > 7 days ago and not completed, use a different color (ANSI)
+- Persist completed_at in .todo.json (completed_at_secs: Option<u64>)
+- design.md: threshold (7 days), TTY-only color, optional completed_at in DTO for backward compat (missing = None)
+</details></think>
+
+---
+
+
+Creating the OpenSpec change: adding `design.md` and the spec delta.
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [-] Scaffold proposal, design, tasks, todo spec delta
+- [ ] Run openspec validate --strict
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-todo-timestamps-and-age-highlight/proposal.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-todo-timestamps-and-age-highlight/design.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Now tasks.md and specs/todo/spec.md with MODIFIED and ADDED requirements. For MODIFIED I need to paste the full requirement and add the new behavior. I'll add:
+1. MODIFIED "Complete todo" - add that the system SHALL record completion time when marking completed.
+2. ADDED "Todo timestamps" - creation time SHALL be recorded and exposed; completion time SHALL be recorded when a todo is completed.
+3. ADDED "Age-based visual highlight" - when listing in a context that supports it (e.g. CLI with TTY), items that exceed an age threshold (e.g. created > 7 days and not completed) SHALL be displayed in a visually distinct way (e.g. color).
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-todo-timestamps-and-age-highlight/tasks.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-todo-timestamps-and-age-highlight/specs/todo/spec.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+</details></think>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs/todo/spec.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate add-todo-timestamps-and-age-highlight --strict</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate add-todo-timestamps-and-age-highlight --strict
+```
+
+```
+Change 'add-todo-timestamps-and-age-highlight' is valid
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Validation passed. The MODIFIED requirement "Complete todo" in the delta replaces the existing one (with the added sentence about recording completion time and the updated scenario). The ADDED requirements add the two new ones. Let me mark todos complete and give the user a summary.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Scaffold proposal, design, tasks, todo spec delta
+- [x] Run openspec validate --strict
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. Provide summary to user.
+</details></think>
+
+---
+
+
+已按 OpenSpec 流程写好变更 **add-todo-timestamps-and-age-highlight**，并通过 `openspec validate add-todo-timestamps-and-age-highlight --strict`。
+
+---
+
+## 变更概要
+
+- **change-id**: `add-todo-timestamps-and-age-highlight`
+- **目录**: `openspec/changes/add-todo-timestamps-and-age-highlight/`
+
+### 1. proposal.md
+- **Why**: 需要记录任务的创建与完成时间，并对「存在过久」的未完成任务做视觉提醒。
+- **What**: 为 todo 增加完成时间并持久化；在 list 中展示创建/完成时间；在 TTY 下对「超过 7 天未完成」的任务用不同颜色高亮；非 TTY 不输出颜色。
+- **Impact**: 能力 `todo` 的规范与实现；`crates/todo`（Todo 类型、complete、持久化）、xtask（DTO、list 展示、ANSI 颜色）。
+
+### 2. design.md
+- **completed_at**: 在 `Todo` 上增加 `Option<SystemTime>`，在 `complete(id)` 时设为 `Some(now)`；持久化用 `completed_at_secs: Option<u64>`，缺省或 0 表示未完成。
+- **阈值**: 默认 7 天；「需高亮」= 创建时间超过 7 天且未完成。
+- **高亮范围**: 仅在 `cargo xtask todo list` 且 stdout 为 TTY 时用 ANSI 颜色；非 TTY 不输出颜色。
+- **兼容**: 旧 `.todo.json` 无 `completed_at_secs` 时按未完成处理。
+
+### 3. specs/todo/spec.md（delta）
+- **MODIFIED — Complete todo**: 补充「完成时须记录完成时间」；场景中增加「该条有记录完成时间（如 `completed_at` 已设置）」。
+- **ADDED — Todo timestamps**: 系统须记录并暴露创建时间；完成时须记录完成时间；持久化须存两者以便展示与按时间判断。
+- **ADDED — Age-based visual highlight**: 在支持区分显示的环境（如 CLI + TTY）下列表时，对超过年龄阈值且未完成的任务用不同样式（如颜色）显示；非 TTY 不输出颜色/高亮码。
+
+### 4. tasks.md
+- **1** 领域与存储：Todo 增加 `completed_at`，在 `complete()` 中赋值；持久化与加载支持可选 `completed_at_secs`，兼容旧数据。
+- **2** 列表展示：list 中显示创建（及若已完成则完成）时间；TTY 下对超过 7 天未完成项上色；保证旧 JSON 仍可加载。
+- **3** 验收：单元测试覆盖完成时间；跑 `openspec validate add-todo-timestamps-and-age-highlight --strict`。
+
+---
+
+## 下一步
+
+审批通过后，执行 **`/openspec-apply add-todo-timestamps-and-age-highlight`** 按 tasks 实现；未批准前不要改代码（见 `openspec/AGENTS.md`）。
+
+---
+
+_**User**_
+
+/openspec-apply  add-todo-timestamps-and-age-highlight  
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants me to implement the OpenSpec change add-todo-timestamps-and-age-highlight. I need to:
+
+1. Read proposal.md, design.md, tasks.md
+2. Implement in order:
+   - 1.1 Add completed_at to Todo, set in complete()
+   - 1.2 Persist/load completed_at in xtask (TodoDto), backward compat
+   - 2.1 List display: show creation and completion time
+   - 2.2 TTY: highlight old-open items (created > 7 days, not completed) with color
+   - 2.3 Backward compat for .todo.json without completed_at_secs
+   - 3.1 Unit test for completed_at
+   - 3.2 openspec validate
+3. Mark all tasks [x]
+
+Let me read the change files and current code.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-todo-timestamps-and-age-highlight/proposal.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-todo-timestamps-and-age-highlight/design.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-todo-timestamps-and-age-highlight/tasks.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to:
+1. Add completed_at: Option<SystemTime> to Todo in crates/todo
+2. In complete(), set todo.completed_at = Some(SystemTime::now())
+3. In create(), set completed_at: None
+4. InMemoryStore::from_todos needs to handle Todo with completed_at - no change needed, we're just adding a field
+5. xtask: TodoDto add completed_at_secs: Option<u64>, default to None when deserializing (serde default). When loading, if None or Some(0) treat as None for completed_at. When saving, map completed_at to Option<u64>.
+6. List display: show created_at and completed_at in compact format. Use SystemTime - we can format with a simple approach. In Rust we don't have strftime in std; we could use chrono or format manually. </details></think>
 
 ---
 

@@ -38,6 +38,8 @@ pub struct Todo {
     pub title: String,
     pub completed: bool,
     pub created_at: SystemTime,
+    /// When the todo was marked completed; None if still open.
+    pub completed_at: Option<SystemTime>,
 }
 
 /// Errors from todo operations.
@@ -104,6 +106,7 @@ impl<S: Store> TodoList<S> {
             title,
             completed: false,
             created_at: SystemTime::now(),
+            completed_at: None,
         };
         self.store.insert(todo);
         Ok(id)
@@ -118,6 +121,7 @@ impl<S: Store> TodoList<S> {
     pub fn complete(&mut self, id: TodoId) -> Result<(), TodoError> {
         let mut todo = self.store.get(id).ok_or(TodoError::NotFound(id))?;
         todo.completed = true;
+        todo.completed_at = Some(SystemTime::now());
         self.store.update(todo);
         Ok(())
     }
@@ -181,6 +185,7 @@ mod tests {
         list.complete(id).unwrap();
         let items = list.list();
         assert!(items[0].completed);
+        assert!(items[0].completed_at.is_some());
     }
 
     #[test]

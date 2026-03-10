@@ -3,8 +3,9 @@
 //! Run with: cargo xtask <command>
 
 use argh::FromArgs;
+use std::io::IsTerminal;
 use std::path::PathBuf;
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use todo::{Todo, TodoId, TodoList, InMemoryStore};
 
 fn main() {
@@ -103,6 +104,8 @@ struct TodoDto {
     title: String,
     completed: bool,
     created_at_secs: u64,
+    #[serde(default)]
+    completed_at_secs: Option<u64>,
 }
 
 fn load_todos() -> Result<Vec<Todo>, Box<dyn std::error::Error>> {
@@ -117,15 +120,45 @@ fn load_todos() -> Result<Vec<Todo>, Box<dyn std::error::Error>> {
         .filter_map(|d| {
             let id = TodoId::from_raw(d.id)?;
             let created_at = UNIX_EPOCH + Duration::from_secs(d.created_at_secs);
+            let completed_at = d
+                .completed_at_secs
+                .filter(|&s| s > 0)
+                .map(|s| UNIX_EPOCH + Duration::from_secs(s));
             Some(Todo {
                 id,
                 title: d.title,
                 completed: d.completed,
                 created_at,
+                completed_at,
             })
         })
         .collect();
     Ok(todos)
+}
+
+const AGE_THRESHOLD_DAYS: u64 = 7;
+
+fn format_time_ago(when: SystemTime) -> String {
+    let now = SystemTime::now();
+    let d = now.duration_since(when).unwrap_or(Duration::ZERO);
+    let s = d.as_secs();
+    if s < 60 {
+        "just now".into()
+    } else if s < 3600 {
+        format!("{}m ago", s / 60)
+    } else if s < 86400 {
+        format!("{}h ago", s / 3600)
+    } else {
+        format!("{}d ago", s / 86400)
+    }
+}
+
+fn is_old_open(t: &Todo, now: SystemTime) -> bool {
+    if t.completed {
+        return false;
+    }
+    let age = now.duration_since(t.created_at).unwrap_or(Duration::ZERO);
+    age.as_secs() >= AGE_THRESHOLD_DAYS * 86400
 }
 
 fn save_todos(list: &TodoList<InMemoryStore>) -> Result<(), Box<dyn std::error::Error>> {
@@ -142,6 +175,9 @@ fn save_todos(list: &TodoList<InMemoryStore>) -> Result<(), Box<dyn std::error::
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or(Duration::ZERO)
                 .as_secs(),
+            completed_at_secs: t.completed_at.and_then(|ct| {
+                ct.duration_since(UNIX_EPOCH).ok().map(|d| d.as_secs())
+            }),
         })
         .collect();
     let s = serde_json::to_string_pretty(&dtos)?;
@@ -162,12 +198,24 @@ fn cmd_todo(args: TodoArgs) -> Result<(), Box<dyn std::error::Error>> {
         }
         TodoSub::List(_) => {
             let items = list.list();
+            let use_color = std::io::stdout().is_terminal();
+            let now = SystemTime::now();
             if items.is_empty() {
                 println!("No tasks.");
             } else {
                 for t in items {
                     let mark = if t.completed { "✓" } else { " " };
-                    println!("  [{}] {} {}", t.id, mark, t.title);
+                    let created = format_time_ago(t.created_at);
+                    let time_info = match &t.completed_at {
+                        Some(cat) => format!("  created {}  completed {}", created, format_time_ago(*cat)),
+                        None => format!("  created {}", created),
+                    };
+                    let line = format!("  [{}] {} {}  {}", t.id, mark, t.title, time_info);
+                    if use_color && is_old_open(&t, now) {
+                        println!("\x1b[33m{}\x1b[0m", line);
+                    } else {
+                        println!("{}", line);
+                    }
                 }
             }
         }
