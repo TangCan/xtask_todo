@@ -1845,3 +1845,349 @@ Directory: **/home/ars/richard/2026/pvm_2/xtask_todo** (154 files)
 
 ---
 
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/Cargo.toml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/Cargo.toml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/.cargo/config.toml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I have enough context. Let me also peek at docs/tasks.md and docs/acceptance.md for testing strategy and any conventions, then fill out openspec/project.md completely.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/tasks.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/acceptance.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I have everything I need. Filling out openspec/project.md with:
+- Purpose: from requirements (todo capability + xtask workflow)
+- Tech stack: Rust 2021, argh, Cargo workspace, resolver "2"
+- Code style: Rust defaults, crate layout (crates/*, xtask at root)
+- Architecture: from design - Domain / Storage / Public API, Store trait, TodoList facade
+- Testing: unit + integration for US-T*, manual/CI for xtask
+- Git: not specified in docs - I'll leave a placeholder or generic
+- Domain: todo items (create, list, complete, delete), TodoId, Todo, TodoError
+- Constraints: from requirements (Rust, workspace, no global install for xtask)
+- External deps: none mentioned except argh
+</details></think>
+
+---
+
+
+Filling out `openspec/project.md` with project details.
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/project.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. I've filled out openspec/project.md with concrete details from the project. I'll give a short summary to the user.
+</details></think>
+
+---
+
+
+已根据当前仓库内容填好 `openspec/project.md`，概要如下：
+
+- **Purpose**：说明 xtask_todo 的目标（Todo 能力 + xtask 工作流），并指向 `docs/requirements.md`。
+- **Tech Stack**：Rust 2021、Cargo workspace（`crates/todo`、`xtask`）、resolver "2"、argh、`.cargo/config.toml` 的 xtask alias。
+- **Code Style**：Rust 常规风格、命名（TodoId/Todo/TodoList/TodoError）、目录约定（根目录无 `src`，各 crate 自带 `src`）。
+- **Architecture**：crates/todo 三层（Public API / Domain / Storage）、Store 抽象、xtask 只做编排；引用 `docs/design.md`。
+- **Testing**：Todo 用单元/集成测试覆盖 US-T*，Xtask 用 `cargo xtask --help` / `cargo xtask run` 等手工或 CI 验证；引用 `docs/acceptance.md`。
+- **Git Workflow**：注明未在文档中正式约定，建议常规提交与主分支。
+- **Domain Context**：Todo 实体与操作、TodoError 变体、默认内存存储与可扩展 Store。
+- **Constraints**：Rust、workspace 结构、xtask 不依赖全局安装；需求与设计文档为权威来源。
+- **External Dependencies**：仅 argh，无外部服务/API。
+
+文件路径：`/home/ars/richard/2026/pvm_2/xtask_todo/openspec/project.md`。AI 或新成员可通过该文件快速了解项目目标、技术栈和约定。
+
+---
+
+_**User**_
+
+/openspec-proposal 请增加测试用例文档
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user is running the openspec-proposal command and asking to add a "测试用例文档" (test case document). I need to:
+
+1. Review openspec/AGENTS.md, run openspec list and openspec list --specs, inspect related code/docs
+2. Choose a unique verb-led change-id and scaffold proposal.md, tasks.md, design.md (if needed) under openspec/changes/<id>/
+3. Map the change to concrete capabilities/requirements
+4. Capture architectural reasoning in design.md when needed
+5. Draft spec deltas in changes/<id>/specs/<capability>/spec.md with ADDED|MODIFIED|REMOVED Requirements and Scenario:
+6. Draft tasks.md as ordered work items with validation
+7. Validate with openspec validate <id> --strict
+
+Let me start by reading the openspec structure and AGENTS.md, and see if there's an openspec CLI to run.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/AGENTS.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="glob_file_search">
+<details>
+<summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **2** results in **1** directory</summary>
+
+Directory: **/home/ars/richard/2026/pvm_2/xtask_todo/openspec** (2 files)
+
+| File |
+|------|
+| `project.md` |
+| `AGENTS.md` |
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="unknown" data-tool-name="ripgrep_raw_search">
+<details>
+<summary>Tool use: **ripgrep_raw_search**</summary>
+
+
+Parameters:
+
+```json
+{
+  "pattern": "Requirement:|Scenario:",
+  "path": "/home/ars/richard/2026/pvm_2/xtask_todo/openspec",
+  "caseInsensitive": false
+}
+```
+Additional data:
+
+```json
+{
+  "isPruned": true,
+  "pattern": "Requirement:|Scenario:",
+  "path": "/home/ars/richard/2026/pvm_2/xtask_todo/openspec",
+  "outputMode": "content",
+  "totalFiles": 1,
+  "totalMatches": 22,
+  "topFiles": [
+    {
+      "uri": "openspec/AGENTS.md",
+      "matchCount": 22
+    }
+  ]
+}
+```
+Status: **completed**
+
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+There is no `openspec/specs/` directory yet - the grep only found AGENTS.md and project.md. So there are no existing specs. I need to:
+1. Run `openspec list` and `openspec list --specs` - but the CLI might not be in PATH. Let me try.
+2. Check if there's an openspec/specs/ or openspec/changes/ directory.
+3. Create a new change: "add-test-case-documentation" - adding a capability for test case documentation. The "测试用例文档" means a document that describes test cases - so this is a new doc/artifact, not modifying existing behavior. I'll treat it as a new capability: we're adding a spec that defines that the project SHALL maintain a test case document, and what it must contain.
+
+Actually re-reading the user request: "请增加测试用例文档" = "Please add test case documentation". So they want to add documentation that describes test cases. That could be:
+A) A new doc (e.g. docs/test-cases.md) that lists test cases - and we're proposing that via OpenSpec (so the "change" is: add this doc and the process to maintain it).
+B) Or add OpenSpec specs that define the test cases as requirements.
+
+Given OpenSpec is spec-driven, the proposal could be:
+- Change id: `add-test-case-doc` or `add-test-case-documentation`
+- New capability: e.g. `test-documentation` or `testing` - the system (project) SHALL have a test case document that lists scenarios/cases and how to run them, with requirements and scenarios in the spec.
+
+I'll go with:
+- change-id: `add-test-case-documentation`
+- New capability: `test-documentation` (or `test-cases`) - the project SHALL maintain a test case document; the document SHALL list test cases with coverage of requirements (e.g. US-T1..US-T4, US-X1..X2), SHALL describe verification method (automated/manual) and expected result. One requirement with scenarios.
+
+Let me check if openspec has specs/ or changes/ dirs.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list 2>/dev/null; openspec list --specs 2>/dev/null; true</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list 2>/dev/null; openspec list --specs 2>/dev/null; true
+```
+
+```
+No active changes found.
+No specs found.
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="glob_file_search">
+<details>
+<summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **2** results in **1** directory</summary>
+
+Directory: **/home/ars/richard/2026/pvm_2/xtask_todo/openspec** (2 files)
+
+| File |
+|------|
+| `project.md` |
+| `AGENTS.md` |
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/project.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+No active changes and no specs. So I'm creating the first change. The project has docs/requirements.md, docs/design.md, docs/tasks.md, docs/acceptance.md - but no dedicated "test case document". The user wants to add a test case document (测试用例文档). So the change is:
+- Add a test case document (e.g. docs/test-cases.md or similar) that describes test cases in a structured way, aligned with requirements and acceptance.
+
+I'll create:
+1. change-id: `add-test-case-documentation`
+2. proposal.md, tasks.md
+3. design.md - probably not needed (single doc, no cross-cutting architecture)
+4. A new capability spec delta: we need a capability that doesn't exist yet. In OpenSpec, when there are no specs, the first change can ADD a new capability. So I'll create `openspec/changes/add-test-case-documentation/specs/test-documentation/spec.md` with ADDED Requirements for "Test Case Document" - the project SHALL maintain a test case document that lists test cases with coverage of requirements, verification method, and expected result.
+
+Let me scaffold and then run validate. The AGENTS.md says "Create spec deltas" under changes/<id>/specs/<capability>/spec.md - and the delta uses ADDED when it's a new capability. So the capability could be `test-documentation` and we ADD a requirement that the project must have a test case document with certain content/structure.
+</details></think>
+
+---
+
+
+Scaffolding the OpenSpec change and creating the proposal, tasks, and spec delta for the new test-case documentation capability.
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [-] Scaffold proposal, tasks, and spec delta for test-case doc
+- [ ] Run openspec validate --strict and fix issues
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/acceptance.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I'll create:
+1. openspec/changes/add-test-case-documentation/proposal.md
+2. openspec/changes/add-test-case-documentation/tasks.md
+3. openspec/changes/add-test-case-documentation/specs/test-documentation/spec.md (ADDED requirement for Test Case Document)
+
+No design.md - single document, no architectural change. The spec delta defines a new capability "test-documentation" with a requirement that the project SHALL maintain a test case document with given structure and traceability.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-test-case-documentation/proposal.md</summary>
+
+Status: **loading**
+
+</details>
+
+</tool-use>
+
+---
+
