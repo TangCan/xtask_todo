@@ -28,11 +28,13 @@ pub struct InMemoryStore {
 }
 
 impl InMemoryStore {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Builds a store from existing todos (e.g. after loading from file). Next id will be max(existing ids) + 1.
+    #[must_use]
     pub fn from_todos(todos: Vec<Todo>) -> Self {
         let next_id = todos
             .iter()

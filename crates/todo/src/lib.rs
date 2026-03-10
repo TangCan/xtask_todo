@@ -14,12 +14,14 @@ pub use store::{InMemoryStore, Store};
 pub struct TodoId(std::num::NonZeroU64);
 
 impl TodoId {
-    /// Creates a TodoId from a raw u64 (e.g. when loading from storage). Returns None if n is 0.
+    /// Creates a `TodoId` from a raw u64 (e.g. when loading from storage). Returns `None` if n is 0.
+    #[must_use]
     pub fn from_raw(n: u64) -> Option<Self> {
         std::num::NonZeroU64::new(n).map(TodoId)
     }
 
     /// Returns the raw numeric id (e.g. for serialization).
+    #[must_use]
     pub fn as_u64(self) -> u64 {
         self.0.get()
     }
@@ -55,7 +57,7 @@ impl fmt::Display for TodoError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             TodoError::InvalidInput => f.write_str("invalid input: title must be non-empty"),
-            TodoError::NotFound(id) => write!(f, "todo not found: {}", id),
+            TodoError::NotFound(id) => write!(f, "todo not found: {id}"),
         }
     }
 }
@@ -78,6 +80,7 @@ pub struct TodoList<S> {
 
 impl TodoList<InMemoryStore> {
     /// Creates a new list with in-memory storage.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             store: InMemoryStore::new(),
@@ -93,11 +96,15 @@ impl Default for TodoList<InMemoryStore> {
 
 impl<S: Store> TodoList<S> {
     /// Builds a list with the given store (e.g. for testing or custom backends).
+    #[must_use]
     pub fn with_store(store: S) -> Self {
         Self { store }
     }
 
-    /// Creates a todo with the given title. Returns its id or an error if title is invalid.
+    /// Creates a todo with the given title. Returns its `TodoId` or an error if title is invalid.
+    ///
+    /// # Errors
+    /// Returns `TodoError::InvalidInput` if the title is empty or only whitespace after trim.
     pub fn create(&mut self, title: impl AsRef<str>) -> Result<TodoId, TodoError> {
         let title = validate_title(title.as_ref())?;
         let id = self.store.next_id();
@@ -113,11 +120,15 @@ impl<S: Store> TodoList<S> {
     }
 
     /// Returns all todos in creation order.
+    #[must_use]
     pub fn list(&self) -> Vec<Todo> {
         self.store.list()
     }
 
-    /// Marks the todo with the given id as completed. Returns `NotFound` if id does not exist.
+    /// Marks the todo with the given `TodoId` as completed.
+    ///
+    /// # Errors
+    /// Returns `TodoError::NotFound(id)` if no todo with that id exists.
     pub fn complete(&mut self, id: TodoId) -> Result<(), TodoError> {
         let mut todo = self.store.get(id).ok_or(TodoError::NotFound(id))?;
         todo.completed = true;
@@ -126,7 +137,10 @@ impl<S: Store> TodoList<S> {
         Ok(())
     }
 
-    /// Removes the todo with the given id. Returns `NotFound` if id does not exist.
+    /// Removes the todo with the given `TodoId`.
+    ///
+    /// # Errors
+    /// Returns `TodoError::NotFound(id)` if no todo with that id exists.
     pub fn delete(&mut self, id: TodoId) -> Result<(), TodoError> {
         if self.store.get(id).is_none() {
             return Err(TodoError::NotFound(id));

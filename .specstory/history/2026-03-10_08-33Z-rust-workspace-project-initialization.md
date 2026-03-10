@@ -2729,25 +2729,6 @@ Validate without an item name didn't work as expected - it said "Nothing to vali
 
 ---
 
-<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
-<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate --specs && openspec validate test-documentation --strict</summary>
-
-```bash
-cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate --specs && openspec validate test-documentation --strict
-```
-
-```
-✓ spec/test-documentation
-Totals: 1 passed, 0 failed (1 items)
-Specification 'test-documentation' is valid
-- Validating...
-
-```
-</details>
-</tool-use>
-
----
-
 <tool-use data-tool-type="generic" data-tool-name="glob_file_search">
 <details>
 <summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **6** results in **1** directory</summary>
@@ -2763,6 +2744,25 @@ Directory: **/home/ars/richard/2026/pvm_2/xtask_todo/openspec** (6 files)
 | `project.md` |
 | `AGENTS.md` |
 
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate --specs && openspec validate test-documentation --strict</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate --specs && openspec validate test-documentation --strict
+```
+
+```
+✓ spec/test-documentation
+Totals: 1 passed, 0 failed (1 items)
+Specification 'test-documentation' is valid
+- Validating...
+
+```
 </details>
 </tool-use>
 
@@ -4899,25 +4899,6 @@ I'll create:
 
 ---
 
-<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
-<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list && openspec list --specs</summary>
-
-```bash
-cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list && openspec list --specs
-```
-
-```
-No active changes found.
-Specs:
-  test-documentation     requirements 1
-  todo                   requirements 4
-
-```
-</details>
-</tool-use>
-
----
-
 <tool-use data-tool-type="unknown" data-tool-name="ripgrep_raw_search">
 <details>
 <summary>Tool use: **ripgrep_raw_search**</summary>
@@ -4957,6 +4938,25 @@ Additional data:
 Status: **completed**
 
 
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list && openspec list --specs</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list && openspec list --specs
+```
+
+```
+No active changes found.
+Specs:
+  test-documentation     requirements 1
+  todo                   requirements 4
+
+```
 </details>
 </tool-use>
 
@@ -5834,6 +5834,14 @@ Archive succeeded. Spec todo was updated (2 added, 1 modified). Let me validate 
 
 ---
 
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs/todo/spec.md</summary>
+
+</details>
+</tool-use>
+
+---
+
 <tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
 <details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate todo --strict && openspec list --specs</summary>
 
@@ -5848,14 +5856,6 @@ Specs:
   todo                   requirements 6
 
 ```
-</details>
-</tool-use>
-
----
-
-<tool-use data-tool-type="read" data-tool-name="read_file_v2">
-<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs/todo/spec.md</summary>
-
 </details>
 </tool-use>
 
@@ -7025,10 +7025,486 @@ I have enough to write a concise analysis and improvement suggestions, plus a se
 
 <details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/improvements-and-rust-style.md</summary>
 
-Status: **loading**
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I've written the improvements and Rust style doc. Let me give the user a short summary and optionally add a minimal rustfmt.toml and a note in project.md about clippy/fmt. I'll just summarize - the user didn't ask to implement the improvements, only to analyze and mention coding standards.
+</details></think>
+
+---
+
+
+已经写好 **`docs/improvements-and-rust-style.md`**，主要包括两部分：
+
+---
+
+## 一、项目改进建议（摘要）
+
+1. **代码质量**
+   - 用 **Clippy**（建议 CI 里 `cargo clippy -- -D warnings`）并处理当前 pedantic 告警：文档反引号、`# Errors`、`#[must_use]`、`format!` 内联等。
+   - 统一用 **`cargo fmt`**，必要时加 `rustfmt.toml`。
+   - 公开 API 的 doc 补全「可能错误」说明和类型名反引号。
+
+2. **工程与协作**
+   - 根目录加 **README**：项目说明、`cargo xtask todo` 用法、文档与测试说明。
+   - 引入 **CI**：`build`、`test`、`fmt --check`、`clippy`（可选 `doc`）。
+   - 依赖版本写清楚，便于复现与审计。
+
+3. **测试与维护**
+   - 在 `crates/todo/tests/` 增加集成测试（如持久化/加载）。
+   - 可选：对 xtask 做简单端到端或 CI 里跑一遍命令。
+
+4. **其它**
+   - `.todo.json` 路径与“项目根”的约定；错误类型可考虑与 `thiserror`/`anyhow` 等统一。
+
+---
+
+## 二、Rust 编码规范（是否有规范？）
+
+**有。** 常用的是：
+
+| 内容 | 说明 |
+|------|------|
+| **Rust 官方 Style Guide** | [doc.rust-lang.org/style-guide](https://doc.rust-lang.org/style-guide/)：行宽 100、4 空格缩进、尾逗号等。 |
+| **rustfmt** | 官方格式化工具，对应上述风格；建议所有项目用 `cargo fmt`，CI 用 `cargo fmt -- --check`。 |
+| **Clippy** | 官方 lint 工具，包含 correctness / style / perf 等；建议 CI 中 `cargo clippy -- -D warnings`。 |
+| **文档** | 公开 API 写 doc comment，返回 `Result` 的要有 `# Errors`；类型/函数名用反引号。 |
+
+项目里 **`openspec/project.md`** 已约定“Rust 标准格式、`cargo fmt`、命名约定”；若要更严格，可在同一处写明：提交前或 CI 必须通过 `cargo fmt` 和 `cargo clippy`，并指向 **`docs/improvements-and-rust-style.md`** 作为详细说明。
+
+完整分条说明、优先级和可选配置（如 `rustfmt.toml`、CI 示例）都写在 **`docs/improvements-and-rust-style.md`** 里，可直接打开查看和按需落地。
+
+---
+
+_**User**_
+
+/openspec-proposal  请按照改进意见 @improvements-and-rust-style.md ，开始改进项目。
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants me to create an OpenSpec proposal based on the improvements suggested in docs/improvements-and-rust-style.md. I need to:
+
+1. Read the improvements doc
+2. Review openspec/project.md, run openspec list and list --specs
+3. Create a change proposal that covers the improvements - but the improvements doc has many items (clippy, fmt, README, CI, doc comments, etc.). I need to scope this into a coherent OpenSpec change.
+
+OpenSpec changes are typically feature/capability focused. The improvements doc has:
+- Code quality: Clippy, fmt, API docs, must_use
+- Engineering: README, CI, dependency versions, pre-commit
+- Testing: integration tests, xtask e2e
+- Security: .todo.json path, etc.
+
+I could either:
+A) One big change "add-project-quality-and-conventions" that adds a new capability like "development-conventions" or "code-quality" in specs, and tasks for fmt, clippy, README, CI, docs.
+B) Split into smaller changes - but the user said "请按照改进意见...开始改进项目", so they want to proceed with the improvements. One proposal that groups the high-priority items is reasonable.
+
+Let me read the improvements doc again and decide scope. The doc says 高 priority: Clippy + fix, fmt, README, CI. 中: API docs, must_use, dependency versions, integration tests. 低: pre-commit, xtask tests, error handling, .todo.json path.
+
+I'll create a single change that:
+- Adds a capability "development-conventions" or we could add to "test-documentation" - actually better to have a new spec "code-quality" or "development-workflow" that specifies: project SHALL pass cargo fmt --check, cargo clippy with no warnings (or documented allow), SHALL have README, SHALL have CI that runs build/test/fmt/clippy. Then tasks implement: rustfmt.toml, clippy lints fix or config, README, CI workflow, optional doc # Errors.
+
+Change-id: add-code-quality-and-ci
+
+Spec delta: new capability "development-conventions" or "project-conventions" with requirements:
+- Build and test: CI or local check runs cargo build, cargo test
+- Formatting: cargo fmt applied, CI checks fmt
+- Linting: cargo clippy with no denied warnings (or allow list documented)
+- README: root README with project summary and how to run
+
+No design.md needed if we're just adding config and CI. Tasks: add rustfmt.toml, fix clippy warnings or add allow, add README, add GitHub Actions or similar CI.
+
+Let me read the improvements file again to get exact wording and then create the proposal.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/improvements-and-rust-style.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/project.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list && openspec list --specs</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list && openspec list --specs
+```
+
+```
+No active changes found.
+Specs:
+  test-documentation     requirements 1
+  todo                   requirements 6
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="unknown" data-tool-name="ripgrep_raw_search">
+<details>
+<summary>Tool use: **ripgrep_raw_search**</summary>
+
+
+Parameters:
+
+```json
+{
+  "pattern": "Requirement:|Scenario:",
+  "path": "/home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs",
+  "outputMode": "content",
+  "caseInsensitive": false
+}
+```
+Additional data:
+
+```json
+{
+  "isPruned": true,
+  "pattern": "Requirement:|Scenario:",
+  "path": "/home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs",
+  "outputMode": "content",
+  "totalFiles": 2,
+  "totalMatches": 21,
+  "topFiles": [
+    {
+      "uri": "openspec/specs/todo/spec.md",
+      "matchCount": 18
+    },
+    {
+      "uri": "openspec/specs/test-documentation/spec.md",
+      "matchCount": 3
+    }
+  ]
+}
+```
+Status: **completed**
+
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to create an OpenSpec proposal that implements the improvements from improvements-and-rust-style.md. The improvements are:
+
+**High priority:**
+- Enable Clippy and fix warnings (or allow)
+- cargo fmt + rustfmt.toml
+- Root README
+- CI (build, test, fmt --check, clippy -D warnings)
+
+**Medium:**
+- API docs (# Errors, backticks)
+- #[must_use]
+- Dependency versions
+- Integration tests (crates/todo/tests/)
+
+**Low:**
+- pre-commit, xtask e2e, error handling, .todo.json path
+
+I'll scope the proposal to the high-priority and selected medium items so the change is implementable in one go:
+- rustfmt.toml
+- Fix clippy warnings (or add config so CI passes with -D warnings)
+- README at root
+- CI workflow (e.g. GitHub Actions)
+- API docs (# Errors, backticks) for todo crate
+- #[must_use] where suggested
+- Pin dependency versions in Cargo.toml
+
+This is a "development workflow / code quality" concern rather than a new product capability. OpenSpec often has specs for "what the system does"; here we're adding conventions and tooling. I could:
+1. Add a new capability "development-conventions" or "code-quality" with requirements like "CI shall run fmt check, clippy, test" and "README shall exist at root".
+2. Or treat this as a tooling-only change with --skip-specs when archiving.
+
+I'll add a small spec "development-conventions" so that the project has a place to record that CI and formatting/linting are required. Then the change has a spec delta and tasks.
+
+Change-id: add-code-quality-and-ci
+
+Proposal:
+- Why: Improve code quality, onboarding (README), and prevent regressions (CI).
+- What: rustfmt.toml, fix clippy warnings or allow list, root README, CI workflow, API doc improvements (# Errors, backticks), #[must_use], dependency versions.
+- Impact: New capability development-conventions; root files (README, rustfmt.toml, .github/workflows), crates/todo and xtask source/docs.
+
+Spec delta for new capability "development-conventions":
+- Requirement: Formatting - project SHALL be format-checked with cargo fmt (CI or pre-commit).
+- Requirement: Linting - project SHALL pass cargo clippy with no warnings (or documented allow).
+- Requirement: README - root SHALL have README with project summary and how to run tests/xtask.
+- Requirement: CI - project SHALL have CI that runs build, test, fmt --check, clippy.
+
+Each with one Scenario.
+</details></think>
+
+---
+
+
+正在创建基于改进建议的 OpenSpec 变更提案，聚焦高优先级与部分中优先级项。
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [-] Scaffold proposal, tasks, spec delta for code quality
+- [ ] Validate and fix openspec
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-code-quality-and-ci/proposal.md</summary>
 
 </details>
 
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-code-quality-and-ci/specs/development-conventions/spec.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Now tasks.md - ordered list of work items: rustfmt.toml, fix clippy (or allow), README, CI, API docs, must_use, dependency versions. Then validate.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-code-quality-and-ci/tasks.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+No design.md needed - this is tooling/conventions, not multi-system architecture. Now validate.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate add-code-quality-and-ci --strict</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate add-code-quality-and-ci --strict
+```
+
+```
+Change 'add-code-quality-and-ci' is valid
+
+```
+</details>
+</tool-use>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Validation passed. I'll mark the todos complete and give the user a short summary.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Scaffold proposal, tasks, spec delta for code quality
+- [x] Validate and fix openspec
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+All done. Summarize for the user.
+</details></think>
+
+---
+
+
+已完成以下内容：
+
+1. **添加 `tasks.md`**（`openspec/changes/add-code-quality-and-ci/tasks.md`）  
+   按顺序列出可执行任务：  
+   - 1 格式化（rustfmt.toml + `cargo fmt -- --check`）  
+   - 2 Clippy（修复或 allow，保证 `-D warnings` 通过）  
+   - 3 文档（`# Errors`、反引号、`#[must_use]`）  
+   - 4 根目录 README  
+   - 5 CI 工作流（build / test / fmt / clippy）  
+   - 6 依赖版本  
+   - 7 本地与 `openspec validate` 验证  
+
+2. **运行校验**  
+   `openspec validate add-code-quality-and-ci --strict` 已通过。
+
+未新增 `design.md`，因为本次变更主要是工具与约定，不涉及跨系统架构或需要单独设计说明。
+
+**下一步**：可按 `tasks.md` 逐项实现，或使用 `/openspec-apply add-code-quality-and-ci`（若项目支持）一次性应用该变更。
+
+---
+
+_**User**_
+
+/openspec-apply   add-code-quality-and-ci
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants me to implement the OpenSpec change `add-code-quality-and-ci`. I need to:
+
+1. Read the proposal, design (if any), and tasks for this change
+2. Work through tasks sequentially
+3. Mark tasks complete in tasks.md when done
+4. Keep edits minimal and focused
+
+Let me start by reading the change files and understanding the codebase structure.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [-] Read proposal, design, tasks for add-code-quality-and-ci
+- [ ] Formatting: rustfmt.toml + cargo fmt
+- [ ] Clippy: fix or allow warnings
+- [ ] API docs + #[must_use] in crates/todo and xtask
+- [ ] Root README
+- [ ] CI workflow
+- [ ] Dependencies + validation; update tasks.md
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-code-quality-and-ci/proposal.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/add-code-quality-and-ci/tasks.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="glob_file_search">
+<details>
+<summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **3** results in **1** directory</summary>
+
+Directory: **/home/ars/richard/2026/pvm_2/xtask_todo** (3 files)
+
+| File |
+|------|
+| `xtask/Cargo.toml` |
+| `Cargo.toml` |
+| `crates/todo/Cargo.toml` |
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I have the proposal and tasks. No design.md was mentioned. Let me read the Cargo.toml files and the source code to implement the changes. I'll also list the directory with a different approach.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/Cargo.toml</summary>
+
+</details>
 </tool-use>
 
 ---

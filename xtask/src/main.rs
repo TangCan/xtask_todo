@@ -1,12 +1,12 @@
 //! xtask - custom cargo tasks
 //!
-//! Run with: cargo xtask <command>
+//! Run with: `cargo xtask <command>`
 
 use argh::FromArgs;
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use todo::{Todo, TodoId, TodoList, InMemoryStore};
+use todo::{InMemoryStore, Todo, TodoId, TodoList};
 
 fn main() {
     let cmd: XtaskCmd = argh::from_env();
@@ -188,9 +188,9 @@ fn save_todos(list: &TodoList<InMemoryStore>) -> Result<(), Box<dyn std::error::
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or(Duration::ZERO)
                 .as_secs(),
-            completed_at_secs: t.completed_at.and_then(|ct| {
-                ct.duration_since(UNIX_EPOCH).ok().map(|d| d.as_secs())
-            }),
+            completed_at_secs: t
+                .completed_at
+                .and_then(|ct| ct.duration_since(UNIX_EPOCH).ok().map(|d| d.as_secs())),
         })
         .collect();
     let s = serde_json::to_string_pretty(&dtos)?;
