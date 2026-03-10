@@ -3380,3 +3380,573 @@ Checking: `SystemTime` doesn't implement `Ord` in stable Rust. Sorting by `id` (
 
 ---
 
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/store.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Tests use TodoId::from_raw(999). For that to work we need the id 999 to not be in the list - and in our InMemoryStore we start next_id at 1 and increment. So after creating one item, next_id is 2. So id 999 is never generated - good. But we're creating a TodoId::from_raw(999) - that's valid. So the test should pass. Let me run cargo build and cargo test.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo build -p todo 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo build -p todo 2>&1
+```
+
+```
+   Compiling todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+error[E0365]: &#96;InMemoryStore&#96; is only public within the crate, and cannot be re-exported outside
+  --&gt; crates/todo/src/lib.rs:10:17
+   |
+10 | pub use store::{InMemoryStore, Store};
+   |                 ^^^^^^^^^^^^^ re-export of crate public &#96;InMemoryStore&#96;
+   |
+   = note: consider declaring type or module &#96;InMemoryStore&#96; with &#96;pub&#96;
+
+error[E0365]: &#96;Store&#96; is only public within the crate, and cannot be re-exported outside
+  --&gt; crates/todo/src/lib.rs:10:32
+   |
+10 | pub use store::{InMemoryStore, Store};
+   |                                ^^^^^ re-export of crate public &#96;Store&#96;
+   |
+   = note: consider declaring type or module &#96;Store&#96; with &#96;pub&#96;
+
+error[E0207]: the type parameter &#96;S&#96; is not constrained by the impl trait, self type, or predicates
+  --&gt; crates/todo/src/lib.rs:81:6
+   |
+81 | impl&lt;S&gt; Default for TodoList&lt;InMemoryStore&gt;
+   |      ^ unconstrained type parameter
+
+error[E0277]: &#96;TodoId&#96; doesn't implement &#96;Debug&#96;
+  --&gt; crates/todo/src/lib.rs:44:14
+   |
+39 | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+...
+44 |     NotFound(TodoId),
+   |              ^^^^^^ the trait &#96;Debug&#96; is not implemented for &#96;TodoId&#96;
+   |
+   = note: add &#96;#[derive(Debug)]&#96; to &#96;TodoId&#96; or manually &#96;impl Debug for TodoId&#96;
+help: consider annotating &#96;TodoId&#96; with &#96;#[derive(Debug)]&#96;
+   |
+14 + #[derive(Debug)]
+15 | pub struct TodoId(std::num::NonZeroU64);
+   |
+
+Some errors have detailed explanations: E0207, E0277, E0365.
+For more information about an error, try &#96;rustc --explain E0207&#96;.
+error: could not compile &#96;todo&#96; (lib) due to 4 previous errors
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to: 1) Remove the pub use of Store and InMemoryStore (they're crate-internal) - actually the design says Store is internal. So don't re-export them. 2) Default: impl Default for TodoList<InMemoryStore> - the type parameter S is only InMemoryStore here, so I should write `impl Default for TodoList<InMemoryStore>` without the generic S. 3) Add Debug to TodoId.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+TodoList<S> - when we impl TodoList<InMemoryStore>::new() we need the store to be constructible. We have InMemoryStore::new(). So that's fine. But we also have impl<S: Store> TodoList<S> - so we need Store to be visible in lib.rs. It's used as a trait bound. Store is in store.rs as pub(crate) trait Store - so it's visible in the crate. We're not re-exporting it. Good. Let me build again.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo build -p todo 2>&1 && cargo test -p todo 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo build -p todo 2>&1 && cargo test -p todo 2>&1
+```
+
+```
+   Compiling todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+warning: trait &#96;Store&#96; is more private than the item &#96;TodoList&lt;S&gt;&#96;
+  --&gt; crates/todo/src/lib.rs:87:1
+   |
+87 | impl&lt;S: Store&gt; TodoList&lt;S&gt; {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation &#96;TodoList&lt;S&gt;&#96; is reachable at visibility &#96;pub&#96;
+   |
+note: but trait &#96;Store&#96; is only usable at visibility &#96;pub(crate)&#96;
+  --&gt; crates/todo/src/store.rs:8:1
+   |
+ 8 | pub(crate) trait Store {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   = note: &#96;#[warn(private_bounds)]&#96; on by default
+
+warning: &#96;todo&#96; (lib) generated 1 warning
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.21s
+warning: trait &#96;Store&#96; is more private than the item &#96;TodoList&lt;S&gt;&#96;
+  --&gt; crates/todo/src/lib.rs:87:1
+   |
+87 | impl&lt;S: Store&gt; TodoList&lt;S&gt; {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation &#96;TodoList&lt;S&gt;&#96; is reachable at visibility &#96;pub&#96;
+   |
+note: but trait &#96;Store&#96; is only usable at visibility &#96;pub(crate)&#96;
+  --&gt; crates/todo/src/store.rs:8:1
+   |
+ 8 | pub(crate) trait Store {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   = note: &#96;#[warn(private_bounds)]&#96; on by default
+
+warning: &#96;todo&#96; (lib) generated 1 warning
+   Compiling todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+warning: trait &#96;store::Store&#96; is more private than the item &#96;TodoList&lt;S&gt;&#96;
+  --&gt; crates/todo/src/lib.rs:87:1
+   |
+87 | impl&lt;S: Store&gt; TodoList&lt;S&gt; {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation &#96;TodoList&lt;S&gt;&#96; is reachable at visibility &#96;pub&#96;
+   |
+note: but trait &#96;store::Store&#96; is only usable at visibility &#96;pub(crate)&#96;
+  --&gt; crates/todo/src/store.rs:8:1
+   |
+ 8 | pub(crate) trait Store {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   = note: &#96;#[warn(private_bounds)]&#96; on by default
+
+warning: &#96;todo&#96; (lib test) generated 1 warning
+    Finished &#96;test&#96; profile [unoptimized + debuginfo] target(s) in 0.32s
+     Running unittests src/lib.rs (target/debug/deps/todo-a266546c2cadf74e)
+
+running 8 tests
+test tests::us_t1_valid_title_creates_and_appears_in_list ... ok
+test tests::us_t1_empty_title_returns_err_and_list_unchanged ... ok
+test tests::us_t2_empty_list ... ok
+test tests::us_t2_list_order_by_creation ... ok
+test tests::us_t3_complete_existing ... ok
+test tests::us_t3_complete_nonexistent_returns_not_found ... ok
+test tests::us_t4_delete_existing ... ok
+test tests::us_t4_delete_nonexistent_returns_not_found ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests todo
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+All 8 tests pass. Fix the warning by making Store pub so that the public impl TodoList<S: Store> is consistent. Actually the design says "internal module" - so we could keep Store pub(crate) and make the impl only for TodoList<InMemoryStore> and not generic. But then we can't accept other Store implementations from outside. The design says "TodoList holding a Store (generic or dyn Store)" - so we want to allow other crates to implement Store and pass it in. So Store should be public. I'll make Store and InMemoryStore pub so that external crates can implement Store and use TodoList<S>. That also removes the warning.
+</details></think>
+
+---
+
+
+Making the `Store` trait public so the public API can accept custom stores and eliminate the warning:
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/store.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/store.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/store.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+We need a constructor for TodoList that accepts a generic store. So callers can do TodoList { store: my_store }. So we need either TodoList::new_with_store(S) or impl<S: Store> TodoList<S> { pub fn new(store: S) -> Self }. Let me add that so that TodoList<InMemoryStore>::new() still works and TodoList<S>::new(store) works for generic. Actually we have TodoList<InMemoryStore>::new() that creates with InMemoryStore::new(). For generic S we could have fn with_store(store: S) -> Self. Let me add with_store so that TodoList<S> can be constructed. So: impl<S: Store> TodoList<S> { pub fn with_store(store: S) -> Self { TodoList { store } } }. And keep impl TodoList<InMemoryStore> { pub fn new() -> Self }. Good. Now run cargo xtask --help and cargo xtask run to verify 5.1, then run openspec validate and mark all tasks [x].
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Run cargo test again to make sure nothing broke, then cargo xtask --help and cargo xtask run, then openspec validate, then update tasks.md.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo test -p todo 2>&1 && cargo xtask --help 2>&1 && cargo xtask run 2>&1; echo "exit=$?"</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo test -p todo 2>&1 && cargo xtask --help 2>&1 && cargo xtask run 2>&1; echo "exit=$?"
+```
+
+```
+   Compiling todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+    Finished &#96;test&#96; profile [unoptimized + debuginfo] target(s) in 0.20s
+     Running unittests src/lib.rs (target/debug/deps/todo-a266546c2cadf74e)
+
+running 8 tests
+test tests::us_t1_empty_title_returns_err_and_list_unchanged ... ok
+test tests::us_t1_valid_title_creates_and_appears_in_list ... ok
+test tests::us_t2_empty_list ... ok
+test tests::us_t2_list_order_by_creation ... ok
+test tests::us_t3_complete_existing ... ok
+test tests::us_t3_complete_nonexistent_returns_not_found ... ok
+test tests::us_t4_delete_existing ... ok
+test tests::us_t4_delete_nonexistent_returns_not_found ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests todo
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running &#96;target/debug/xtask --help&#96;
+Usage: xtask &lt;command&gt; [&lt;args&gt;]
+
+Cargo xtask - custom build/tooling tasks
+
+Options:
+  --help, help      display usage information
+
+Commands:
+  run               Run the main project (example task)
+
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.01s
+     Running &#96;target/debug/xtask run&#96;
+xtask run: placeholder - add your task logic here
+exit=0
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Domain layer: TodoId, Todo, TodoError, title validation
+- [x] Storage: Store trait, InMemoryStore
+- [x] Public API: TodoList + create/list/complete/delete
+- [x] Tests US-T1 to US-T4
+- [-] Xtask check and mark tasks done
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+All pass. Now run openspec validate implement-todo-domain --strict and then update the tasks.md to mark all [x].
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate implement-todo-domain --strict</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate implement-todo-domain --strict
+```
+
+```
+Change 'implement-todo-domain' is valid
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/changes/implement-todo-domain/tasks.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+All done. Mark todo 5 completed.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Domain layer: TodoId, Todo, TodoError, title validation
+- [x] Storage: Store trait, InMemoryStore
+- [x] Public API: TodoList + create/list/complete/delete
+- [x] Tests US-T1 to US-T4
+- [x] Xtask check and mark tasks done
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Implementation complete. Give user a concise summary.
+</details></think>
+
+---
+
+
+Summary of what was implemented for **implement-todo-domain**:
+
+## 1. Domain layer (crates/todo)
+- **TodoId**: Newtype over `NonZeroU64` with `Clone`, `Copy`, `Eq`, `Hash`, `Ord`, `PartialEq`, `PartialOrd`, `Display`, `Debug`; `from_raw(u64)` for tests.
+- **Todo**: `id`, `title`, `completed`, `created_at` (`SystemTime`); `Clone`, `Eq`, `PartialEq`.
+- **TodoError**: `InvalidInput`, `NotFound(TodoId)` with `Error` + `Display`.
+- **Title validation**: `validate_title()` trims and returns `InvalidInput` when empty.
+
+## 2. Storage layer
+- **store.rs**: `Store` trait with `next_id`, `insert`, `get`, `list`, `update`, `remove`. `InMemoryStore` with `HashMap<TodoId, Todo>` and monotonic id; `list()` sorted by `id` (creation order). Both `Store` and `InMemoryStore` are public for custom backends.
+
+## 3. Public API
+- **TodoList&lt;S: Store&gt;**:
+  - `TodoList::new()` and `Default` for `InMemoryStore`.
+  - `TodoList::with_store(store)` for any `S: Store`.
+  - `create(title)` → `Result<TodoId, TodoError>` (validation + insert).
+  - `list()` → `Vec<Todo>` (creation order).
+  - `complete(id)` → `Result<(), TodoError>` (NotFound if missing).
+  - `delete(id)` → `Result<(), TodoError>` (NotFound if missing).
+
+## 4. Tests (US-T1–US-T4)
+- **US-T1**: Valid title (including trim) → `Ok(id)` and item in list; empty/whitespace → `Err`, list unchanged.
+- **US-T2**: New list → empty; several `create` → length and order correct.
+- **US-T3**: `complete` existing id → item completed; non-existent id → `Err(NotFound)`, list unchanged.
+- **US-T4**: `delete` existing id → item removed; non-existent id → `Err(NotFound)`, list unchanged.
+
+## 5. Xtask and validation
+- `cargo xtask --help` shows usage and `run`; `cargo xtask run` exits 0.
+- `cargo test -p todo` (8 tests) and `openspec validate implement-todo-domain --strict` both pass.
+
+**tasks.md** is updated: all items are marked `- [x]`.
+
+---
+
+_**User**_
+
+/openspec-archive implement-todo-domain
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants to archive the OpenSpec change `implement-todo-domain`. I need to:
+1. Confirm the change ID - it's given: implement-todo-domain
+2. Validate it exists via openspec list
+3. Run openspec archive implement-todo-domain --yes (without --skip-specs since we have spec deltas for the todo capability)
+4. Review output and validate
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec list
+```
+
+```
+Changes:
+  implement-todo-domain     ✓ Complete
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Change exists and is marked complete. Run archive with --yes.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec archive implement-todo-domain --yes</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec archive implement-todo-domain --yes
+```
+
+```
+Task status: ✓ Complete
+
+Specs to update:
+  todo: create
+Applying changes to openspec/specs/todo/spec.md:
+  + 4 added
+Totals: + 4, ~ 0, - 0, → 0
+Specs updated successfully.
+Change 'implement-todo-domain' archived as '2026-03-10-implement-todo-domain'.
+
+```
+</details>
+</tool-use>
+
+---
+
