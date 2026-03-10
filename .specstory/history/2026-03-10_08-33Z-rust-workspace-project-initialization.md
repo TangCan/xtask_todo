@@ -3950,3 +3950,235 @@ Change 'implement-todo-domain' archived as '2026-03-10-implement-todo-domain'.
 
 ---
 
+<think><details><summary>Thought Process</summary>
+
+Archive succeeded. Specs updated: todo capability created with 4 requirements. Change moved to archive. Run validate --specs or validate todo to confirm.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate todo --strict && openspec list --specs</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && openspec validate todo --strict && openspec list --specs
+```
+
+```
+Specification 'todo' is valid
+Specs:
+  test-documentation     requirements 1
+  todo                   requirements 4
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs/todo/spec.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Filling in the Purpose for the todo spec (was TBD).
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/openspec/specs/todo/spec.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. Summarize for the user.
+</details></think>
+
+---
+
+
+归档已完成。
+
+## 执行结果
+
+- **`openspec archive implement-todo-domain --yes`** 已执行：
+  - 变更已移动到 **`openspec/changes/archive/2026-03-10-implement-todo-domain/`**
+  - 已根据 delta 在 **`openspec/specs/todo/spec.md`** 中生成规范，包含 4 条需求：Create todo、List todos、Complete todo、Delete todo（每条带 2 个 Scenario）
+- **`openspec validate todo --strict`** 已通过
+- 已将规范中的 **Purpose** 从 TBD 改为：说明 todo 领域在 `crates/todo` 中的职责（create/list/complete/delete、TodoList、类型与存储）
+
+当前 OpenSpec 状态：
+- **specs/todo/spec.md** — 当前生效的 todo 规范（4 条需求）
+- **specs/test-documentation/spec.md** — 测试文档规范（1 条需求）
+- **changes/archive/2026-03-10-implement-todo-domain/** — 已归档的 implement-todo-domain 变更
+
+---
+
+_**User**_
+
+请增加 cargo xtask todo 命令
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants to add a `cargo xtask todo` command. So when they run `cargo xtask todo`, it should do something - likely run a todo-related task, e.g. a simple interactive or demo that uses the todo library (create, list, complete, delete). Let me check the current xtask structure and add a new subcommand "todo".
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/Cargo.toml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to:
+1. Add `todo` as a dependency of xtask (so we can use the todo crate)
+2. Add a new subcommand `Todo(TodoArgs)` to XtaskSub
+3. Implement cmd_todo - could be a simple demo: create a few items, list them, complete one, delete one, list again. Or just list empty / create one and list. Keep it minimal - e.g. run a small demo that creates, lists, completes, deletes to show the library works.
+</details></think>
+
+---
+
+
+正在为 xtask 添加 `todo` 子命令，并让该子命令调用 `todo` 库做简单演示。
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/Cargo.toml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Verify build and run cargo xtask todo.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo build -p xtask 2>&1 && cargo xtask --help 2>&1 && cargo xtask todo 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo build -p xtask 2>&1 && cargo xtask --help 2>&1 && cargo xtask todo 2>&1
+```
+
+```
+   Compiling xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.24s
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.01s
+     Running &#96;target/debug/xtask --help&#96;
+Usage: xtask &lt;command&gt; [&lt;args&gt;]
+
+Cargo xtask - custom build/tooling tasks
+
+Options:
+  --help, help      display usage information
+
+Commands:
+  run               Run the main project (example task)
+  todo              Demo todo list: create a few items, list, complete one,
+                    delete one
+
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.01s
+     Running &#96;target/debug/xtask todo&#96;
+Created 3 todos:
+  [1]   First task
+  [2]   Second task
+  [3]   Third task
+
+After complete(id1) and delete(id3):
+  [1] x First task
+  [2]   Second task
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+All good. Give user a short summary.
+</details></think>
+
+---
+
