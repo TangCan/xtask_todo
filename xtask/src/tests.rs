@@ -88,6 +88,7 @@ fn cmd_clippy_fail_returns_err() {
         r#"[package]
 name = "fail"
 version = "0.1.0"
+edition = "2021"
 [dependencies]
 nonexistent_crate_xyz = "999"
 "#,
@@ -105,7 +106,9 @@ fn cmd_git_commit_with_nothing_to_commit_returns_err() {
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
     let _guard = RestoreCwd::new(&dir, &cwd);
-    let _ = std::process::Command::new("git").args(["init"]).status();
+    let _ = std::process::Command::new("git")
+        .args(["init", "-b", "main"])
+        .status();
     let cmd = GitArgs {
         sub: GitSub::Commit(GitCommitArgs {}),
     };
