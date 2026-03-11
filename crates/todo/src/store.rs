@@ -36,12 +36,7 @@ impl InMemoryStore {
     /// Builds a store from existing todos (e.g. after loading from file). Next id will be max(existing ids) + 1.
     #[must_use]
     pub fn from_todos(todos: Vec<Todo>) -> Self {
-        let next_id = todos
-            .iter()
-            .map(|t| t.id.as_u64())
-            .max()
-            .unwrap_or(0)
-            .saturating_add(1);
+        let next_id = todos.iter().map(|t| t.id.as_u64()).max().unwrap_or(0);
         let items = todos.into_iter().map(|t| (t.id, t)).collect();
         Self { next_id, items }
     }
@@ -75,5 +70,53 @@ impl Store for InMemoryStore {
 
     fn remove(&mut self, id: TodoId) {
         self.items.remove(&id);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::TodoList;
+    use std::time::SystemTime;
+
+    #[test]
+    fn from_todos_empty() {
+        let store = InMemoryStore::from_todos(vec![]);
+        let mut list = TodoList::with_store(store);
+        let id = list.create("first").unwrap();
+        assert_eq!(id.as_u64(), 1);
+        assert_eq!(list.list().len(), 1);
+    }
+
+    #[test]
+    fn from_todos_with_existing() {
+        let created_at = SystemTime::now();
+        let id1 = TodoId::from_raw(1).unwrap();
+        let id2 = TodoId::from_raw(2).unwrap();
+        let todos = vec![
+            Todo {
+                id: id1,
+                title: "a".into(),
+                completed: false,
+                created_at,
+                completed_at: None,
+            },
+            Todo {
+                id: id2,
+                title: "b".into(),
+                completed: true,
+                created_at,
+                completed_at: Some(created_at),
+            },
+        ];
+        let store = InMemoryStore::from_todos(todos);
+        let mut list = TodoList::with_store(store);
+        let id3 = list.create("c").unwrap();
+        assert_eq!(id3.as_u64(), 3);
+        let items = list.list();
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[0].title, "a");
+        assert_eq!(items[1].title, "b");
+        assert_eq!(items[2].title, "c");
     }
 }

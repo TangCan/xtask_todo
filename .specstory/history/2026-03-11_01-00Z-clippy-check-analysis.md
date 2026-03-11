@@ -1395,3 +1395,127 @@ cargo xtask git add --help
 
 ---
 
+_**User**_
+
+请增加一个 cargo xtask git commit 命令。该命令，等价于运行 git commit -m "Sync" 命令。
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants to add a `cargo xtask git commit` command that runs `git commit -m "Sync"`. I need to add a `Commit` variant to the `GitSub` enum and handle it in `cmd_git`.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to:
+1. Add GitSub::Commit(GitCommitArgs) to the enum
+2. Add GitCommitArgs struct (can be empty)
+3. In cmd_git, add the match arm for GitSub::Commit that runs git commit -m "Sync"
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. Let me verify with --help.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo xtask git --help 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo xtask git --help 2>&1
+```
+
+```
+   Compiling xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.39s
+     Running &#96;target/debug/xtask git --help&#96;
+Usage: xtask git &lt;command&gt; [&lt;args&gt;]
+
+Git helpers (e.g. stage common paths)
+
+Options:
+  --help, help      display usage information
+
+Commands:
+  add               Stage .github, .specstory, xtask, docs (equiv: git add
+                    .github .specstory xtask docs)
+  commit            Commit with message "Sync" (equiv: git commit -m "Sync")
+
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Good, the commit subcommand is there. I won't actually run `cargo xtask git commit` since that would create a real git commit - the implementation is straightforward.
+</details></think>
+
+---
+
+
+已加上 `cargo xtask git commit` 子命令。
+
+**修改说明（`xtask/src/main.rs`）：**
+
+- 在 `GitSub` 中增加 `Commit(GitCommitArgs)`。
+- 新增空参数结构体 `GitCommitArgs`，并加上 `#[argh(subcommand, name = "commit")]` 和说明文案。
+- 在 `cmd_git` 中处理 `GitSub::Commit`：执行 `git commit -m "Sync"`，并根据退出码决定是否 `std::process::exit`。
+
+**使用方式：**
+
+```bash
+cargo xtask git commit
+```
+
+效果等同于在仓库根目录执行：`git commit -m "Sync"`。
+
+---
+

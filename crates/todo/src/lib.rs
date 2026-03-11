@@ -236,4 +236,36 @@ mod tests {
         }
         assert_eq!(list.list().len(), 1);
     }
+
+    #[test]
+    fn todo_id_as_u64_and_display() {
+        let id = TodoId::from_raw(42).unwrap();
+        assert_eq!(id.as_u64(), 42);
+        assert_eq!(format!("{id}"), "42");
+    }
+
+    #[test]
+    fn todo_error_display() {
+        assert_eq!(
+            format!("{}", TodoError::InvalidInput),
+            "invalid input: title must be non-empty"
+        );
+        let id = TodoId::from_raw(1).unwrap();
+        assert_eq!(format!("{}", TodoError::NotFound(id)), "todo not found: 1");
+    }
+
+    #[test]
+    fn default_todo_list() {
+        let list = TodoList::default();
+        assert!(list.list().is_empty());
+    }
+
+    #[test]
+    fn with_store() {
+        let store = InMemoryStore::new();
+        let mut list = TodoList::with_store(store);
+        let id = list.create("task").unwrap();
+        assert_eq!(list.list().len(), 1);
+        assert_eq!(list.list()[0].id.as_u64(), id.as_u64());
+    }
 }
