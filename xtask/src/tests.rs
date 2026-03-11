@@ -36,6 +36,7 @@ fn run_subcommand_run() {
 
 #[test]
 fn run_subcommand_clippy() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let cmd = XtaskCmd {
         sub: XtaskSub::Clippy(ClippyArgs {}),
     };
