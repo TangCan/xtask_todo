@@ -40,3 +40,7 @@ git config core.hooksPath .githooks
 ## Documentation
 
 See the [docs](docs/) folder for requirements, design, acceptance criteria, and test cases.
+
+## Publishing
+
+Only the **todo** crate is published to [crates.io](https://crates.io); **xtask** is workspace tooling (`publish = false`). For steps (metadata, `cargo login`, `cargo publish -p todo`) and Git-only releases, see [docs/publishing.md](docs/publishing.md).
