@@ -1,6 +1,7 @@
 //! `clippy` subcommand - run clippy on the workspace.
 
 use argh::FromArgs;
+use std::ffi::OsString;
 use std::process::Command;
 
 #[derive(FromArgs, Clone)]
@@ -26,7 +27,8 @@ pub(crate) fn status_to_result(
 /// # Errors
 /// Returns an error if clippy exits with a non-zero status.
 pub fn cmd_clippy(_args: ClippyArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let status = Command::new("cargo")
+    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
+    let status = Command::new(cargo)
         .args([
             "clippy",
             "--all-targets",

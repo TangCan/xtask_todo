@@ -1,7 +1,11 @@
 //! Unit tests for xtask commands.
 
 use std::path::PathBuf;
+use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
+
+/// Serializes tests that change current_dir so they don't race (current_dir is process-global).
+static CWD_TEST_MUTEX: Mutex<()> = Mutex::new(());
 
 use crate::clippy::{status_to_result, ClippyArgs};
 use crate::git::{cmd_git, GitAddArgs, GitArgs, GitCommitArgs, GitSub};
@@ -59,6 +63,7 @@ fn run_subcommand_git_commit() {
 
 #[test]
 fn cmd_git_add_in_nongit_dir_returns_err() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let dir = std::env::temp_dir().join(format!("xtask_nongit_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -72,6 +77,7 @@ fn cmd_git_add_in_nongit_dir_returns_err() {
 
 #[test]
 fn cmd_clippy_fail_returns_err() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let dir = std::env::temp_dir().join(format!("xtask_clippy_fail_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -94,6 +100,7 @@ nonexistent_crate_xyz = "999"
 
 #[test]
 fn cmd_git_commit_with_nothing_to_commit_returns_err() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let dir = std::env::temp_dir().join(format!("xtask_git_commit_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -215,6 +222,7 @@ fn is_old_open_old_true() {
 
 #[test]
 fn cmd_todo_add_list_save_load() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let dir = std::env::temp_dir().join(format!("xtask_todo_test_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -252,6 +260,7 @@ impl Drop for RestoreCwd {
 
 #[test]
 fn cmd_todo_complete_and_delete() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let dir = std::env::temp_dir().join("xtask_todo_test2");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -285,6 +294,7 @@ fn cmd_todo_complete_and_delete() {
 
 #[test]
 fn load_todos_from_invalid_json_defaults_empty() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let dir = std::env::temp_dir().join("xtask_todo_test_invalid");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -313,6 +323,7 @@ fn print_todo_list_items_old_open_with_color() {
 
 #[test]
 fn cmd_todo_list_empty_prints_no_tasks() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let dir = std::env::temp_dir().join("xtask_todo_list_empty");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -327,6 +338,7 @@ fn cmd_todo_list_empty_prints_no_tasks() {
 
 #[test]
 fn cmd_todo_list_with_completed_todo() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let dir = std::env::temp_dir().join("xtask_todo_list_completed");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -350,6 +362,7 @@ fn cmd_todo_list_with_completed_todo() {
 
 #[test]
 fn cmd_todo_complete_id_zero_errors() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let dir = std::env::temp_dir().join("xtask_todo_id0");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -365,6 +378,7 @@ fn cmd_todo_complete_id_zero_errors() {
 
 #[test]
 fn cmd_todo_delete_id_zero_errors() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let dir = std::env::temp_dir().join("xtask_todo_del_id0");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
