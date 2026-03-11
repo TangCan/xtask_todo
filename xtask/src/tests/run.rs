@@ -4,6 +4,7 @@ use crate::coverage::{cmd_coverage, parse_coverage_percentage, CoverageArgs};
 use crate::fmt::{cmd_fmt, FmtArgs};
 use crate::run::RunArgs;
 use crate::tests::{RestoreCwd, CWD_TEST_MUTEX};
+use crate::todo::{TodoArgs, TodoListArgs, TodoSub};
 use crate::{run_with, XtaskCmd, XtaskSub};
 use todo::{InMemoryStore, TodoId, TodoList};
 
@@ -97,6 +98,23 @@ fn run_subcommand_fmt() {
         sub: XtaskSub::Fmt(FmtArgs {}),
     };
     let _ = run_with(cmd);
+}
+
+#[test]
+fn run_subcommand_todo_list() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let dir = std::env::temp_dir().join(format!("xtask_todo_run_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _restore = RestoreCwd::new(&dir, &cwd);
+    let _ = std::fs::remove_file(".todo.json");
+    let cmd = XtaskCmd {
+        sub: XtaskSub::Todo(TodoArgs {
+            sub: TodoSub::List(TodoListArgs {}),
+        }),
+    };
+    let out = run_with(cmd);
+    assert!(out.is_ok());
 }
 
 #[test]

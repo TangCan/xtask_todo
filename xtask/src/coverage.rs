@@ -78,7 +78,7 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
         let (name, pct) = run_tarpaulin(
             "xtask",
             &["--exclude-files", "xtask/src/main.rs"],
-            &["--test-threads=1"],
+            &["--test-threads=1", "--include-ignored"],
         );
         results.push((name, pct));
     }
