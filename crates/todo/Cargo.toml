@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Todo workspace library"
 license = "MIT OR Apache-2.0"
-# repository = "https://github.com/your-org/xtask_todo"  # set before publishing
+repository = "https://github.com/TangCan/xtask_todo"
 
 [lints.clippy]
 all = "warn"
