@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
-[lints]
-"clippy::all" = { level = "warn" }
+[lints.clippy]
+all = "warn"
 
 [[bin]]
 name = "xtask"
