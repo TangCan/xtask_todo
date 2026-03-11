@@ -45,6 +45,15 @@ fn run_subcommand_clippy() {
 #[test]
 fn run_subcommand_git_add() {
     let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let dir = std::env::temp_dir().join(format!("xtask_git_add_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _restore = RestoreCwd::new(&dir, &cwd);
+    let _ = std::process::Command::new("git")
+        .args(["init", "-b", "main"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
     let cmd = XtaskCmd {
         sub: XtaskSub::Git(GitArgs {
             sub: GitSub::Add(GitAddArgs {}),
@@ -56,6 +65,15 @@ fn run_subcommand_git_add() {
 #[test]
 fn run_subcommand_git_commit() {
     let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let dir = std::env::temp_dir().join(format!("xtask_git_commit_run_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _restore = RestoreCwd::new(&dir, &cwd);
+    let _ = std::process::Command::new("git")
+        .args(["init", "-b", "main"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
     let cmd = XtaskCmd {
         sub: XtaskSub::Git(GitArgs {
             sub: GitSub::Commit(GitCommitArgs {}),
