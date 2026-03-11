@@ -1,0 +1,25 @@
+//! `fmt` subcommand - run rustfmt on the workspace (equivalent to `cargo fmt`).
+
+use argh::FromArgs;
+use std::ffi::OsString;
+use std::process::Command;
+
+#[derive(FromArgs, Clone)]
+#[argh(subcommand, name = "fmt")]
+/// Run cargo fmt on the workspace
+pub struct FmtArgs {}
+
+/// Run cargo fmt (format all packages).
+///
+/// # Errors
+/// Returns an error if cargo fmt exits with a non-zero status.
+pub fn cmd_fmt(_args: FmtArgs) -> Result<(), Box<dyn std::error::Error>> {
+    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
+    let status = Command::new(cargo).arg("fmt").status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        let code = status.code().unwrap_or(1);
+        Err(std::io::Error::other(format!("cargo fmt exited with code {code}")).into())
+    }
+}

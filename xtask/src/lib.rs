@@ -1,6 +1,7 @@
 //! xtask library - logic for custom cargo tasks (testable).
 
 mod clippy;
+mod fmt;
 mod git;
 mod run;
 mod todo;
@@ -11,6 +12,7 @@ mod tests;
 use argh::FromArgs;
 
 use clippy::ClippyArgs;
+use fmt::FmtArgs;
 use git::GitArgs;
 use run::RunArgs;
 use todo::TodoArgs;
@@ -35,6 +37,7 @@ pub fn run_with(cmd: XtaskCmd) -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
         XtaskSub::Clippy(args) => clippy::cmd_clippy(args),
+        XtaskSub::Fmt(args) => fmt::cmd_fmt(args),
         XtaskSub::Git(args) => git::cmd_git(&args),
         XtaskSub::Todo(args) => todo::cmd_todo(args),
     }
@@ -52,6 +55,7 @@ pub struct XtaskCmd {
 pub enum XtaskSub {
     Run(RunArgs),
     Clippy(ClippyArgs),
+    Fmt(FmtArgs),
     Git(GitArgs),
     Todo(TodoArgs),
 }
