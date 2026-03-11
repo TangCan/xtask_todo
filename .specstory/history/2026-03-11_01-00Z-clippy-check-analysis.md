@@ -606,8 +606,792 @@ format_duration has more format! calls - let me check. Clippy only reported line
 ```bash
 cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery 2>&1
 ```
+
+```
+    Checking todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+    Checking xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.36s
+
+```
 </details>
 </tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+All clippy warnings are fixed. Let me run the tests to make sure nothing broke.
+</details></think>
+
+---
+
+
+正在运行测试以确认未破坏任何功能：
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo test 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo test 2>&1
+```
+
+```
+   Compiling todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+   Compiling xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;test&#96; profile [unoptimized + debuginfo] target(s) in 0.36s
+     Running unittests src/lib.rs (target/debug/deps/todo-a266546c2cadf74e)
+
+running 8 tests
+test tests::us_t1_empty_title_returns_err_and_list_unchanged ... ok
+test tests::us_t2_list_order_by_creation ... ok
+test tests::us_t2_empty_list ... ok
+test tests::us_t1_valid_title_creates_and_appears_in_list ... ok
+test tests::us_t3_complete_existing ... ok
+test tests::us_t3_complete_nonexistent_returns_not_found ... ok
+test tests::us_t4_delete_existing ... ok
+test tests::us_t4_delete_nonexistent_returns_not_found ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/xtask-0d97672f62e8c7c3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests todo
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+All tests pass. Let me give the user a summary of what was done.
+</details></think>
+
+---
+
+
+Clippy 的修改已全部做完，当前在 `-W clippy::pedantic -W clippy::nursery` 下无警告，测试全部通过。修改总结如下：
+
+---
+
+## 修改总结
+
+### crates/todo
+
+1. **store.rs**
+   - **doc_markdown**：文档里把 `created_at` 改为 `` `created_at` ``，符合 doc 中的代码风格。
+
+2. **lib.rs**
+   - **missing_const_for_fn**：`TodoId::as_u64` 和 `TodoList::with_store` 改为 `const fn`，便于在常量上下文中使用。
+   - **use_self**：`Display for TodoError` 的 `match` 里用 `Self::InvalidInput` / `Self::NotFound` 替代重复的 `TodoError::`。
+   - **match_wildcard_for_single_variants**：两处测试里把 `_ => panic!("expected NotFound")` 改为显式匹配 `TodoError::InvalidInput => panic!(...)`，避免将来新增变体时被通配符吞掉。
+
+### xtask
+
+1. **main.rs**
+   - **uninlined_format_args**：所有 `format!("...", x)` / `println!("...", x)` 改为内联形式 `format!("...{x}...")` / `println!("...{x}...")`（约 8 处）。
+   - **unnecessary_wraps**：`cmd_run` 不再返回 `Result`，改为 `fn cmd_run(_args: RunArgs)`，在 `run()` 的 `XtaskSub::Run` 分支里调用后直接写 `Ok(())`。
+
+效果：在开启 pedantic + nursery 时 `cargo clippy --all-targets` 零警告，`cargo test` 全部通过。
+
+---
+
+_**User**_
+
+很好。请生成 clippy 分析和修正文档。
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants me to generate a document that describes the clippy analysis and the fixes that were made. I should create a markdown document that summarizes:
+1. What clippy was run with (default + pedantic/nursery)
+2. What issues were found
+3. What was fixed in each file
+4. The rationale or clippy lint names
+
+I'll create this in the docs folder since they have docs/improvements-and-rust-style.md there - so docs/ seems like the right place for project documentation.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/improvements-and-rust-style.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I'll create a new document in docs/ that documents the clippy analysis and fixes. I'll use a similar style to the existing improvements doc (Chinese headings/content as the project seems to use Chinese in docs).
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/clippy-analysis-and-fixes.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+The document is written. No need to run lints on a markdown file for this kind of content. I'll give the user a short summary.
+</details></think>
+
+---
+
+
+已在仓库中新增 Clippy 分析文档：`docs/clippy-analysis-and-fixes.md`。
+
+文档结构概览：
+
+1. **检查方式**：使用的 `cargo clippy` 命令与检查范围（pedantic + nursery、all-targets）。
+2. **问题与修正概览**：用表格汇总各位置、对应 lint 与修正思路。
+3. **crates/todo 修正**  
+   - **store.rs**：`doc_markdown`，文档中为 `created_at` 加反引号。  
+   - **lib.rs**：`missing_const_for_fn`（`as_u64`、`with_store`）、`use_self`（Display impl）、`match_wildcard_for_single_variants`（测试中的 match）。
+4. **xtask 修正**：`uninlined_format_args`（多处 format/println）、`unnecessary_wraps`（`cmd_run` 不再返回 `Result`），并列出具体修改位置与 diff 风格示例。
+5. **验证**：说明当前 Clippy 与 `cargo test` 均通过。
+6. **后续建议**：CI 中固定 clippy 参数、可选 `-D warnings`、与 `docs/improvements-and-rust-style.md` 的改进建议对齐。
+
+可直接打开 `docs/clippy-analysis-and-fixes.md` 查看或继续在文档中补充 CI/配置说明。
+
+---
+
+_**User**_
+
+@docs/clippy-analysis-and-fixes.md:87 请实施该项改进
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants me to implement the improvement mentioned at line 87 of the clippy doc: "在 CI 中固定使用上述 clippy 参数，并可考虑 `-D warnings` 将告警视为错误。" - i.e. add CI that runs clippy with the same options and treats warnings as errors (-D warnings).
+
+I need to:
+1. Check if there's already a CI config (e.g. .github/workflows, .gitlab-ci.yml)
+2. Add or create a workflow that runs `cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings`
+
+Let me look for existing CI configuration.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="glob_file_search">
+<details>
+<summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **1** result in **1** directory</summary>
+
+Directory: **/home/ars/richard/2026/pvm_2/xtask_todo** (1 file)
+
+| File |
+|------|
+| `.github/workflows/ci.yml` |
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="glob_file_search">
+<details>
+<summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **0** result in **1** directory</summary>
+
+Directory: **/home/ars/richard/2026/pvm_2/xtask_todo** (0 file)
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="glob_file_search">
+<details>
+<summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **1** result in **1** directory</summary>
+
+Directory: **/home/ars/richard/2026/pvm_2/xtask_todo** (1 file)
+
+| File |
+|------|
+| `.github/workflows/ci.yml` |
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+There's already a CI file. Let me read it and add the clippy step with the documented options and -D warnings.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/.github/workflows/ci.yml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+CI already has a Clippy step but it only uses `-D warnings`. I need to add the pedantic and nursery lints as documented: `-W clippy::pedantic -W clippy::nursery -D warnings`. So the full clippy args should be:
+`cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings`
+
+I'll update the CI file and then update the doc to reflect that this is now implemented.
+</details></think>
+
+---
+
+
+正在将 CI 中的 Clippy 步骤改为使用文档中的 pedantic 与 nursery 参数，并保留 `-D warnings`：
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/.github/workflows/ci.yml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/clippy-analysis-and-fixes.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I'll update the doc to mark that the CI item has been implemented - change "后续建议" so the first bullet reflects that it's done.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/clippy-analysis-and-fixes.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. Let me verify the clippy command still passes locally with the same flags so CI will pass.
+</details></think>
+
+---
+
+
+正在验证本地使用相同参数时 Clippy 是否通过：
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings 2>&1
+```
+
+```
+    Checking todo v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/crates/todo)
+    Checking xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.41s
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+All good. Summary for the user.
+</details></think>
+
+---
+
+
+已按文档完成该项改进，具体如下：
+
+**1. 修改 `.github/workflows/ci.yml`**
+
+- Clippy 步骤由原来的 `-D warnings` 改为与文档一致、并继续把告警当错误：
+  - **原**：`cargo clippy --all-targets -- -D warnings`
+  - **现**：`cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings`
+
+CI 现在会：
+- 启用 `clippy::pedantic` 与 `clippy::nursery`
+- 用 `-D warnings` 把任何 Clippy 告警当作错误，使流水线失败
+
+**2. 更新 `docs/clippy-analysis-and-fixes.md`**
+
+- 在「后续建议」中把「在 CI 中固定使用上述 clippy 参数……」改为 **已实施**，并注明配置位置与完整命令。
+
+本地已用相同参数跑过 `cargo clippy`，通过。推送到 `main`/`master` 或提 PR 时，CI 会按新配置执行 Clippy 检查。
+
+---
+
+_**User**_
+
+请增加一个 cargo xtask clippy 命令，检查项目的 clippy 问题。需要带上 -D warnings 参数。
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants to add a new `cargo xtask clippy` command that runs clippy with -D warnings. I need to:
+
+1. Look at how xtask is structured - the subcommands, the main.rs
+2. Add a new subcommand "clippy" that runs `cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings` (or similar - the user said "需要带上 -D warnings 参数" so they want -D warnings; I should use the same full set of flags we use in CI for consistency)
+3. The xtask would typically invoke `cargo clippy` as a subprocess
+
+Let me read the xtask main.rs to see the structure and how to add a new command.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/Cargo.toml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to:
+1. Add `Clippy(ClippyArgs)` to the XtaskSub enum
+2. Add ClippyArgs struct (can be empty for no args, or we could add optional flags later)
+3. In run(), match XtaskSub::Clippy(args) => cmd_clippy(args)
+4. Implement cmd_clippy to run `cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings` using std::process::Command
+
+The xtask runs from the workspace root when you do `cargo xtask clippy`. So we need to run cargo from the current dir. We can use std::process::Command::new("cargo").args(["clippy", "--all-targets", "--", "-W", "clippy::pedantic", "-W", "clippy::nursery", "-D", "warnings"]).status() and then exit with the same code.
+
+Let me implement this.
+</details></think>
+
+---
+
+
+正在添加 `cargo xtask clippy` 子命令，并实现调用 `cargo clippy`（带 `-D warnings` 及与 CI 一致的参数）：
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+cmd_clippy returns Result but when it fails we call std::process::exit() so we never return Err. So the Ok(()) is correct for success. For failure we exit. Let me run the command to verify it works.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo xtask clippy 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo xtask clippy 2>&1
+```
+
+```
+   Compiling xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.55s
+     Running &#96;target/debug/xtask clippy&#96;
+    Checking xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.35s
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+It ran but the output suggests it might have run clippy only on xtask (since we're in the workspace and invoked through cargo xtask). Let me check - when you run `cargo xtask clippy`, the current directory is the workspace root. The Command::new("cargo").args([...]) runs in the same process cwd, so it should run from workspace root and thus `cargo clippy --all-targets` will check all workspace members. The output "Checking xtask v0.1.0" might just be the last package checked. Let me run again with verbose to see - actually the first run said "Compiling xtask" then "Running target/debug/xtask clippy" then "Checking xtask" - so it's running cargo clippy from the workspace and it's checking the workspace. So we're good. Let me also run `cargo xtask --help` to show the new subcommand.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo xtask --help 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo xtask --help 2>&1
+```
+
+```
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running &#96;target/debug/xtask --help&#96;
+Usage: xtask &lt;command&gt; [&lt;args&gt;]
+
+Cargo xtask - custom build/tooling tasks
+
+Options:
+  --help, help      display usage information
+
+Commands:
+  run               Run the main project (example task)
+  clippy            Run clippy on the workspace (pedantic + nursery, -D
+                    warnings)
+  todo              Todo list: add, list, complete, delete (data in .todo.json)
+
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Good. The subcommand is there. Let me provide a brief summary to the user.
+</details></think>
+
+---
+
+
+已增加 `cargo xtask clippy` 子命令，修改总结如下。
+
+**1. `xtask/src/main.rs`**
+
+- 增加 `ClippyArgs` 与 `XtaskSub::Clippy(ClippyArgs)`。
+- 实现 `cmd_clippy`：在仓库根目录执行  
+  `cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings`  
+  与 CI 一致；若 clippy 非零退出则原样退出码退出。
+- 使用 `std::process::Command` 调用 `cargo`，并增加 `use std::process::Command`。
+
+**2. 使用方式**
+
+```bash
+cargo xtask clippy
+```
+
+- 在 workspace 根目录执行，检查所有 target。
+- 参数：`-W clippy::pedantic`、`-W clippy::nursery`、`-D warnings`（告警即失败）。
+
+本地已运行通过；`cargo xtask --help` 中会看到 `clippy` 子命令及说明。
+
+---
+
+_**User**_
+
+增加一个 cargo xtask  git add 命令，等价于： 直接运行 git add .github .specstory xtask docs 命令
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants to add a new cargo xtask command: `cargo xtask git add` that runs the equivalent of `git add .github .specstory xtask docs`. So I need to:
+
+1. Add a new subcommand - but "git add" has a space. In argh, subcommands are typically single words. So we could do:
+   - `xtask git-add` (one subcommand)
+   - or `xtask git` with a nested `add` subcommand
+
+   The user said "cargo xtask git add" - so they want the invocation to be `cargo xtask git add`. That means we need a "git" top-level subcommand with an "add" subcommand under it. Let me check - in argh we can have nested subcommands. So:
+   - XtaskSub::Git(GitArgs) 
+   - GitArgs has sub: GitSub
+   - GitSub::Add(AddArgs) 
+   Then cmd would be `cargo xtask git add`
+
+   Or we could have a single subcommand "git-add" and the user runs `cargo xtask git-add`. The user specifically said "cargo xtask git add" so I'll implement nested: `git` with subcommand `add`.
+
+2. The "add" subcommand would run `git add .github .specstory xtask docs` - so we need to execute that as a process. We need to run from the workspace root. We can use Command::new("git").args(["add", ".github", ".specstory", "xtask", "docs"]).status()
+
+Let me read the current main.rs to see the exact structure and add the git add command.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to add:
+1. XtaskSub::Git(GitArgs)
+2. GitArgs with a subcommand GitSub
+3. GitSub::Add(GitAddArgs) - can be empty struct
+4. cmd_git that matches on GitSub::Add and runs git add .github .specstory xtask docs
+
+Let me add the enum variant, the Git args struct, and the handler.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Let me verify it works by running cargo xtask git add (dry run or just --help first to see the structure).
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo xtask git --help 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo xtask git --help 2>&1
+```
+
+```
+   Compiling xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.42s
+     Running &#96;target/debug/xtask git --help&#96;
+Usage: xtask git &lt;command&gt; [&lt;args&gt;]
+
+Git helpers (e.g. stage common paths)
+
+Options:
+  --help, help      display usage information
+
+Commands:
+  add               Stage .github, .specstory, xtask, docs (equiv: git add
+                    .github .specstory xtask docs)
+
+
+```
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo xtask git add 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo xtask git add 2>&1
+```
+
+```
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running &#96;target/debug/xtask git add&#96;
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Both work. The git add ran successfully (exit 0). I've implemented the feature. Let me give a short summary to the user.
+</details></think>
+
+---
+
+
+已加上 `cargo xtask git add` 子命令，修改如下。
+
+**`xtask/src/main.rs`**
+
+- 新增顶层子命令 **`git`**，其下子命令 **`add`**。
+- **`git add`** 会执行：`git add .github .specstory xtask docs`（与直接运行该命令等价）。
+- 通过 `std::process::Command` 调用 `git`；若 `git` 非零退出则原样把退出码传给进程。
+
+**用法**
+
+```bash
+cargo xtask git add
+```
+
+查看帮助：
+
+```bash
+cargo xtask git --help
+# 或
+cargo xtask git add --help
+```
+
+已在项目根目录运行 `cargo xtask git add`，执行成功。
 
 ---
 

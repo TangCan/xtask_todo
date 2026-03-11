@@ -5,6 +5,7 @@
 use argh::FromArgs;
 use std::io::IsTerminal;
 use std::path::PathBuf;
+use std::process::Command;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use todo::{InMemoryStore, Todo, TodoId, TodoList};
 
@@ -22,6 +23,8 @@ fn run(cmd: XtaskCmd) -> Result<(), Box<dyn std::error::Error>> {
             cmd_run(args);
             Ok(())
         }
+        XtaskSub::Clippy(args) => cmd_clippy(args),
+        XtaskSub::Git(args) => cmd_git(args),
         XtaskSub::Todo(args) => cmd_todo(args),
     }
 }
@@ -37,6 +40,8 @@ struct XtaskCmd {
 #[argh(subcommand)]
 enum XtaskSub {
     Run(RunArgs),
+    Clippy(ClippyArgs),
+    Git(GitArgs),
     Todo(TodoArgs),
 }
 
@@ -47,6 +52,82 @@ struct RunArgs {}
 
 fn cmd_run(_args: RunArgs) {
     println!("xtask run: placeholder - add your task logic here");
+}
+
+#[derive(FromArgs)]
+#[argh(subcommand, name = "clippy")]
+/// Run clippy on the workspace (pedantic + nursery, -D warnings)
+struct ClippyArgs {}
+
+fn cmd_clippy(_args: ClippyArgs) -> Result<(), Box<dyn std::error::Error>> {
+    let status = Command::new("cargo")
+        .args([
+            "clippy",
+            "--all-targets",
+            "--",
+            "-W",
+            "clippy::pedantic",
+            "-W",
+            "clippy::nursery",
+            "-D",
+            "warnings",
+        ])
+        .status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        std::process::exit(status.code().unwrap_or(1));
+    }
+}
+
+#[derive(FromArgs)]
+#[argh(subcommand, name = "git")]
+/// Git helpers (e.g. stage common paths)
+struct GitArgs {
+    #[argh(subcommand)]
+    sub: GitSub,
+}
+
+#[derive(FromArgs)]
+#[argh(subcommand)]
+enum GitSub {
+    Add(GitAddArgs),
+    Commit(GitCommitArgs),
+}
+
+#[derive(FromArgs)]
+#[argh(subcommand, name = "add")]
+/// Stage .github, .specstory, xtask, docs (equiv: git add .github .specstory xtask docs)
+struct GitAddArgs {}
+
+#[derive(FromArgs)]
+#[argh(subcommand, name = "commit")]
+/// Commit with message "Sync" (equiv: git commit -m "Sync")
+struct GitCommitArgs {}
+
+fn cmd_git(args: GitArgs) -> Result<(), Box<dyn std::error::Error>> {
+    match args.sub {
+        GitSub::Add(_) => {
+            let status = Command::new("git")
+                .args(["add", ".github", ".specstory", "xtask", "docs"])
+                .status()?;
+            if status.success() {
+                Ok(())
+            } else {
+                std::process::exit(status.code().unwrap_or(1));
+            }
+        }
+        GitSub::Commit(_) => {
+            let status = Command::new("git")
+                .args(["commit", "-m", "Sync"])
+                .status()?;
+            if status.success() {
+                Ok(())
+            } else {
+                std::process::exit(status.code().unwrap_or(1));
+            }
+        }
+    }
 }
 
 #[derive(FromArgs)]

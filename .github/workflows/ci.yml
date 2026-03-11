@@ -27,7 +27,7 @@ jobs:
         run: cargo test
 
       - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings
 
       - name: Doc (no-deps)
         run: cargo doc --no-deps
