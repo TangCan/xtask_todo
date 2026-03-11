@@ -3,3 +3,6 @@ name = "todo"
 version = "0.1.0"
 edition = "2021"
 description = "Todo workspace library"
+
+[lints]
+"clippy::all" = { level = "warn" }
