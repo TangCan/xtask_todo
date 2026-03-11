@@ -9,6 +9,7 @@
 - **Workspace**: Cargo workspace, resolver `"2"`, members `crates/todo` and `xtask`
 - **CLI (xtask)**: `argh` for subcommand and argument parsing
 - **Entrypoint**: `cargo xtask` via `.cargo/config.toml` alias (`xtask = "run -p xtask --"`), no global install required
+- **Xtask subcommands**: `run`, `fmt` (same as `cargo fmt`), `clippy`, `coverage` (per-crate tarpaulin), `git add` / `git commit`, `todo add/list/complete/delete` (data in `.todo.json`). See root `README.md`.
 
 ## Project Conventions
 
@@ -16,6 +17,8 @@
 - Rust standard formatting: `cargo fmt`; follow default style (4 spaces, etc.).
 - Naming: `TodoId`, `Todo`, `TodoList`, `TodoError`; crate names `todo` (library), `xtask` (binary).
 - Layout: no `src/` at repo root; each crate has its own `src/` (e.g. `crates/todo/src/`, `xtask/src/`).
+- **Pre-commit**: Enable via `git config core.hooksPath .githooks`. Hook runs `cargo fmt -- --check`, `.rs` file line limit (500 lines), `cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings`, and `cargo test`.
+- **File size**: Single `.rs` file should not exceed 500 lines; split into smaller modules when larger.
 
 ### Architecture Patterns
 - **crates/todo**: Three layers — Public API (e.g. `TodoList` with `create`/`list`/`complete`/`delete`), Domain (types and validation), Storage (trait + `InMemoryStore`). See `docs/design.md`.
@@ -23,8 +26,8 @@
 - Storage is abstracted behind a `Store` trait so implementations can be swapped (e.g. file/DB later) without changing the public API.
 
 ### Testing Strategy
-- **Todo (US-T*)**: Unit and/or integration tests in `crates/todo` (e.g. `crates/todo/tests/` or in-tree tests). Verify create (valid/invalid input), list (empty and ordered), complete, delete per `docs/acceptance.md`.
-- **Xtask (US-X*)**: Manual or CI: `cargo xtask --help`, `cargo xtask run` exit codes and output. No domain logic in xtask, so no dedicated xtask unit tests required for business rules.
+- **Todo (US-T*)**: Unit tests in `crates/todo/src/` and integration tests in `crates/todo/tests/` (e.g. `from_todos` flow). Verify create (valid/invalid input), list (empty and ordered), complete, delete per `docs/acceptance.md`.
+- **Xtask**: Unit tests in `xtask/src/tests/`; integration tests in `xtask/tests/` run the xtask binary (e.g. `xtask run`, `xtask todo add` + `xtask todo list`). CI runs `cargo test` (all crates and integration tests).
 
 ### Git Workflow
 - Not formally specified in repo docs. Prefer conventional commits and a single main branch unless the team defines otherwise.

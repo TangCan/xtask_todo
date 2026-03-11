@@ -4,7 +4,7 @@ A Rust workspace with a todo list library and an xtask-based CLI. Tasks are stor
 
 ## Usage
 
-Run todo commands via cargo xtask:
+### Todo (data in `.todo.json`)
 
 ```bash
 cargo xtask todo add "Buy milk"
@@ -12,6 +12,16 @@ cargo xtask todo list
 cargo xtask todo complete <id>
 cargo xtask todo delete <id>
 ```
+
+### Other xtask commands
+
+| Command | Description |
+|---------|-------------|
+| `cargo xtask fmt` | Format code (same as `cargo fmt`) |
+| `cargo xtask clippy` | Lint with Clippy (pedantic + nursery, warnings as errors) |
+| `cargo xtask coverage` | Run coverage per crate (cargo-tarpaulin) |
+| `cargo xtask git add` | Stage common paths (e.g. .github, xtask, docs, crates) |
+| `cargo xtask git commit` | Commit with message "Sync" (runs pre-commit checks) |
 
 ## Tests
 
@@ -21,7 +31,7 @@ cargo test
 
 ## Git hooks
 
-A pre-commit hook runs `cargo fmt -- --check`, `cargo clippy --all-targets -- -D warnings`, and `cargo test`. Enable it once:
+A pre-commit hook runs `cargo fmt -- --check`, `cargo clippy` (pedantic + nursery), `.rs` file line limit (500), and `cargo test`. Enable it once:
 
 ```bash
 git config core.hooksPath .githooks

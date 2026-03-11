@@ -20,8 +20,8 @@ fi
 echo "Running cargo fmt -- --check..."
 cargo fmt -- --check
 
-echo "Running cargo clippy --all-targets -- -D warnings..."
-cargo clippy --all-targets -- -D warnings
+echo "Running cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings..."
+cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings
 
 echo "Running cargo test..."
 cargo test

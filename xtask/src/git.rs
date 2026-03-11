@@ -38,7 +38,17 @@ pub fn cmd_git(args: &GitArgs) -> Result<(), Box<dyn std::error::Error>> {
     match &args.sub {
         GitSub::Add(_) => {
             let status = Command::new("git")
-                .args(["add", ".github", ".specstory", "xtask", "docs", "crates"])
+                .args([
+                    "add",
+                    ".github",
+                    ".specstory",
+                    "xtask",
+                    "docs",
+                    "crates",
+                    ".githooks",
+                    "openspec",
+                    "README.md",
+                ])
                 .status()?;
             status_to_result(status, "git add")
         }
