@@ -11893,3 +11893,85 @@ Good - now we only see one run of the 29 tests (no more "Running cargo fmt... Ru
 
 ---
 
+_**User**_
+
+@\home\ars\.cursor\projects\home-ars-richard-2026-pvm-2-xtask-todo\terminals\1.txt:936-1059 有错误。请修正
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user is pointing to terminal output. Let me look at what "错误" (errors) appear:
+
+1. Line 976: "fatal: not a git repository (or any of the parent directories): .git" - this appears in the middle of test output (between format_time_ago_days and format_time_ago_hours). So it's from a test that runs git in a non-git dir - expected from cmd_git_add_in_nongit_dir_returns_err.
+
+2. Lines 988-989: "error: could not find `Cargo.toml` in `/tmp/xtask_nongit_279559` or any parent directory" (appears twice). This is happening when something (probably run_subcommand_clippy which runs cargo clippy) runs while the current working directory is still /tmp/xtask_nongit_279559 - i.e. a test that changed cwd to that temp dir didn't restore it before another test (run_subcommand_clippy) ran. So we have a race: cmd_git_add_in_nongit_dir_returns_err sets cwd to /tmp/xtask_nongit_279559, then before it restores, run_subcommand_clippy runs (in parallel?) and runs cargo clippy - but the process cwd is the temp dir, so cargo looks for Cargo.toml there and fails.
+
+So the issue is that cmd_git_add_in_nongit_dir_returns_err changes cwd to a temp dir. When it's done it drops RestoreCwd which restores cwd. But tests run in parallel - so while one test has cwd in the temp dir, another test (run_subcommand_clippy) might run. Run_subcommand_clippy doesn't take the mutex - it just runs cargo clippy. So when it runs, the process cwd might be the temp dir from cmd_git_add_in_nongit_dir_returns_err. So we get "could not find Cargo.toml in /tmp/xtask_nongit_279559".
+
+The fix: run_subcommand_clippy should also take the CWD_TEST_MUTEX so it only runs when no test has the cwd in a temp dir. That way when run_subcommand_clippy runs, cwd is the project root.
+</details></think>
+
+---
+
+
+发现：`run_subcommand_clippy` 与 `cmd_git_add_in_nongit_dir_returns_err` 并行时，进程 cwd 可能仍为 `/tmp/xtask_nongit_*`，导致 `cargo clippy` 报 “could not find Cargo.toml”。给 `run_subcommand_clippy` 加锁，确保在项目根目录运行。
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/tests.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to add the mutex to run_subcommand_clippy so it runs only when cwd is the project root (i.e. when no other test has changed cwd).
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/tests.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+That should fix the "could not find Cargo.toml in /tmp/xtask_nongit_*" - run_subcommand_clippy will now wait for the mutex, so it only runs when no test has cwd in a temp dir. The "fatal: not a git repository" and "On branch main / Initial commit / nothing to commit" and "fatal: pathspec '.github'" are expected test output we've discussed before - they're not failures. So the only actual "error" that was wrong was the cargo one. Let me confirm there are no other tests that run cargo or depend on project root - run_subcommand_run might also need the mutex if it does something with the project. Let me check - run_subcommand_run just runs Run args which is cmd_run, a placeholder. So it's probably fine. The key fix was run_subcommand_clippy.
+</details></think>
+
+---
+
+
+已改好。
+
+**原因**  
+`run_subcommand_clippy` 会执行 `cargo clippy`，依赖当前目录是项目根（有 `Cargo.toml`）。测试是并行跑的，当它和 `cmd_git_add_in_nongit_dir_returns_err` 同时跑时，后者会把 cwd 切到 `/tmp/xtask_nongit_*`，此时再跑 `run_subcommand_clippy`，cargo 就会在临时目录里找 `Cargo.toml`，于是出现：
+
+`error: could not find Cargo.toml in /tmp/xtask_nongit_279559 or any parent directory`
+
+**修改**  
+在 `run_subcommand_clippy` 里也加上 `let _guard = CWD_TEST_MUTEX.lock().unwrap();`，让它在「没有别的测试改 cwd」时再跑，这样执行时 cwd 一定是项目根，`cargo clippy` 能正确找到 `Cargo.toml`。
+
+再跑一次 `xc` 或 `cargo test -p xtask --lib`，这条 error 就不会再出现。终端里剩下的 `fatal: not a git repository`、`On branch main`、`nothing to commit`、`pathspec '.github' did not match` 都是测试里故意触发的 git 输出，不是失败。
+
+---
+
