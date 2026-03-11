@@ -18,6 +18,9 @@ Coverage is measured with [cargo-tarpaulin](https://github.com/xd009642/tarpauli
 # Install tarpaulin (once)
 cargo install cargo-tarpaulin
 
+# Per-crate summary (recommended)
+cargo xtask coverage
+
 # Todo crate only
 cargo tarpaulin -p todo
 
