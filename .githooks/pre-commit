@@ -1,0 +1,29 @@
+#!/bin/sh
+# Pre-commit hook: format check, .rs line limit, clippy, tests.
+# Enable: git config core.hooksPath .githooks
+
+set -e
+cd "$(git rev-parse --show-toplevel)"
+
+MAX_RS_LINES=500
+staged_rs=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.rs$' || true)
+if [ -n "$staged_rs" ]; then
+  for f in $staged_rs; do
+    lines=$(git show ":$f" 2>/dev/null | wc -l)
+    if [ "$lines" -gt "$MAX_RS_LINES" ]; then
+      echo "error: $f has $lines lines (max $MAX_RS_LINES). Split into smaller modules or files."
+      exit 1
+    fi
+  done
+fi
+
+echo "Running cargo fmt -- --check..."
+cargo fmt -- --check
+
+echo "Running cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings..."
+cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings
+
+echo "Running cargo test..."
+cargo test
+
+echo "Pre-commit checks passed."

@@ -1,0 +1,3 @@
+# 使 `cargo xtask` 调用 workspace 中的 xtask 二进制
+[alias]
+xtask = "run -p xtask --"
