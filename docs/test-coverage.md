@@ -7,7 +7,7 @@ Coverage is measured with [cargo-tarpaulin](https://github.com/xd009642/tarpauli
 | Crate   | Coverage | How to run |
 |--------|----------|------------|
 | **todo** | 100%   | `cargo tarpaulin -p todo` |
-| **xtask** (lib) | **96.95%** (127/131) | `cargo tarpaulin -p xtask --exclude-files "xtask/src/main.rs" -- --test-threads=1` |
+| **xtask** | **96.18%+** | `cargo tarpaulin -p xtask --exclude-files "xtask/src/main.rs" -- --test-threads=1` or `cargo xtask coverage` |
 
 - **todo**: All library and store code is covered by unit tests.
 - **xtask**: Library logic is covered; `main.rs` is a 4-line entry that calls `xtask::run()` and is excluded from the coverage denominator so the reported rate reflects the testable library code. Integration test `xtask_run_exits_success` runs the binary to verify the entry point.
