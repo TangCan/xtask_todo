@@ -22,7 +22,7 @@ impl TodoId {
 
     /// Returns the raw numeric id (e.g. for serialization).
     #[must_use]
-    pub fn as_u64(self) -> u64 {
+    pub const fn as_u64(self) -> u64 {
         self.0.get()
     }
 }
@@ -56,8 +56,8 @@ pub enum TodoError {
 impl fmt::Display for TodoError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TodoError::InvalidInput => f.write_str("invalid input: title must be non-empty"),
-            TodoError::NotFound(id) => write!(f, "todo not found: {id}"),
+            Self::InvalidInput => f.write_str("invalid input: title must be non-empty"),
+            Self::NotFound(id) => write!(f, "todo not found: {id}"),
         }
     }
 }
@@ -97,7 +97,7 @@ impl Default for TodoList<InMemoryStore> {
 impl<S: Store> TodoList<S> {
     /// Builds a list with the given store (e.g. for testing or custom backends).
     #[must_use]
-    pub fn with_store(store: S) -> Self {
+    pub const fn with_store(store: S) -> Self {
         Self { store }
     }
 
@@ -210,7 +210,7 @@ mod tests {
         let err = list.complete(bad_id).unwrap_err();
         match &err {
             TodoError::NotFound(x) => assert_eq!(*x, bad_id),
-            _ => panic!("expected NotFound"),
+            TodoError::InvalidInput => panic!("expected NotFound"),
         }
         assert_eq!(list.list().len(), 1);
         assert!(!list.list()[0].completed);
@@ -232,7 +232,7 @@ mod tests {
         let err = list.delete(bad_id).unwrap_err();
         match &err {
             TodoError::NotFound(x) => assert_eq!(*x, bad_id),
-            _ => panic!("expected NotFound"),
+            TodoError::InvalidInput => panic!("expected NotFound"),
         }
         assert_eq!(list.list().len(), 1);
     }

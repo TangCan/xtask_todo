@@ -12,7 +12,7 @@ pub trait Store {
     fn insert(&mut self, todo: Todo);
     /// Returns the todo with the given id, if any.
     fn get(&self, id: TodoId) -> Option<Todo>;
-    /// Returns all todos in creation order (by created_at).
+    /// Returns all todos in creation order (by `created_at`).
     fn list(&self) -> Vec<Todo>;
     /// Updates an existing todo (e.g. after marking completed).
     fn update(&mut self, todo: Todo);

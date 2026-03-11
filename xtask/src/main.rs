@@ -11,14 +11,17 @@ use todo::{InMemoryStore, Todo, TodoId, TodoList};
 fn main() {
     let cmd: XtaskCmd = argh::from_env();
     if let Err(e) = run(cmd) {
-        eprintln!("error: {}", e);
+        eprintln!("error: {e}");
         std::process::exit(1);
     }
 }
 
 fn run(cmd: XtaskCmd) -> Result<(), Box<dyn std::error::Error>> {
     match cmd.sub {
-        XtaskSub::Run(args) => cmd_run(args),
+        XtaskSub::Run(args) => {
+            cmd_run(args);
+            Ok(())
+        }
         XtaskSub::Todo(args) => cmd_todo(args),
     }
 }
@@ -42,9 +45,8 @@ enum XtaskSub {
 /// Run the main project (example task)
 struct RunArgs {}
 
-fn cmd_run(_args: RunArgs) -> Result<(), Box<dyn std::error::Error>> {
+fn cmd_run(_args: RunArgs) {
     println!("xtask run: placeholder - add your task logic here");
-    Ok(())
 }
 
 #[derive(FromArgs)]
@@ -156,7 +158,7 @@ fn format_time_ago(when: SystemTime) -> String {
 fn format_duration(d: Duration) -> String {
     let s = d.as_secs();
     if s < 60 {
-        format!("{}s", s)
+        format!("{s}s")
     } else if s < 3600 {
         format!("{}m", s / 60)
     } else if s < 86400 {
@@ -226,17 +228,17 @@ fn cmd_todo(args: TodoArgs) -> Result<(), Box<dyn std::error::Error>> {
                                 .duration_since(t.created_at)
                                 .ok()
                                 .map(format_duration)
-                                .map(|s| format!("  用时 {}", s))
+                                .map(|s| format!("  用时 {s}"))
                                 .unwrap_or_default();
-                            format!("  创建 {}  完成 {}{}", created, completed, took)
+                            format!("  创建 {created}  完成 {completed}{took}")
                         }
-                        None => format!("  创建 {}", created),
+                        None => format!("  创建 {created}"),
                     };
                     let line = format!("  [{}] {} {}  {}", t.id, mark, t.title, time_info);
                     if use_color && is_old_open(&t, now) {
-                        println!("\x1b[33m{}\x1b[0m", line);
+                        println!("\x1b[33m{line}\x1b[0m");
                     } else {
-                        println!("{}", line);
+                        println!("{line}");
                     }
                 }
             }
@@ -245,13 +247,13 @@ fn cmd_todo(args: TodoArgs) -> Result<(), Box<dyn std::error::Error>> {
             let id = TodoId::from_raw(a.id).ok_or("invalid id 0")?;
             list.complete(id)?;
             save_todos(&list)?;
-            println!("Completed [{}]", id);
+            println!("Completed [{id}]");
         }
         TodoSub::Delete(a) => {
             let id = TodoId::from_raw(a.id).ok_or("invalid id 0")?;
             list.delete(id)?;
             save_todos(&list)?;
-            println!("Deleted [{}]", id);
+            println!("Deleted [{id}]");
         }
     }
     Ok(())

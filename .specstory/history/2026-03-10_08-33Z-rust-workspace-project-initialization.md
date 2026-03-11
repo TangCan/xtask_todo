@@ -9875,3 +9875,183 @@ Let me read the current hook and add the check.
 
 ---
 
+<think><details><summary>Thought Process</summary>
+
+I'll add a check that:
+1. Gets the list of staged .rs files (git diff --cached --name-only --diff-filter=ACMR | grep '\.rs$')
+2. For each staged .rs file, count lines (wc -l) and if any exceed 500, print which file(s) and exit 1
+3. If no staged .rs files, skip. If there are staged .rs files, check each.
+
+Actually the convention says "single .rs file should not exceed 500 lines". So we should check all .rs files in the repo that exist (or only the ones being modified?). The most useful is: check any .rs file that is being committed (staged). If the user is committing a file that has 600 lines, we fail. If they're committing a 100-line file, we pass. But what if they have an existing 600-line file and they're not touching it? We could either:
+A) Check only staged .rs files - so we only block when the committed version of a file has >500 lines.
+B) Check all .rs files in the tree - so we block if any .rs file in the repo has >500 lines.
+
+Option A is better for incremental adoption: we don't block the whole repo if there's already a long file; we only block adding new long files or making a file long in this commit. So: for each staged .rs file, get its content from the index (git show :path) and count lines. If any staged .rs has >500 lines, fail.
+
+Implementation:
+- staged_rs=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.rs$' || true)
+- for f in $staged_rs; do lines=$(git show ":$f" | wc -l); if [ "$lines" -gt 500 ]; then echo "error: $f has $lines lines (max 500)"; exit 1; fi; done
+
+Use git show ":$f" to get the staged content so we check what's being committed, not the working tree.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/.githooks/pre-commit</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. The hook now:
+1. Gets list of staged .rs files (Added, Copied, Modified, Renamed - not Deleted)
+2. For each, shows the staged version with `git show ":$f"` and counts lines
+3. If any staged .rs has > 500 lines, prints error and exits 1
+4. Then runs fmt, clippy, test as before
+
+I used `wc -l` which counts newlines; that's standard for "line count". Empty file = 0 lines, file with one line and no newline = 0 in wc -l (GNU wc can do -l and count partial line). For consistency with "500 lines" we're counting lines (newline-terminated). Good.
+</details></think>
+
+---
+
+
+已加好。
+
+**改动说明**（`.githooks/pre-commit`）：
+
+- **检查对象**：本次提交里**被暂存（staged）的 `.rs` 文件**（新增、复制、修改、重命名都会检查）。
+- **规则**：用 `git show ":$f"` 取暂存区内容，用 `wc -l` 数行数；若**任一早于 500 行**，则：
+  - 打印：`error: <路径> has <行数> lines (max 500). Split into smaller modules or files.`
+  - 以退出码 1 终止，提交不执行。
+- **顺序**：行数检查放在最前面（在 `cargo fmt` / clippy / test 之前），先拦住超长文件。
+
+这样只有“本次提交会带入超过 500 行的 .rs 文件”时才会失败；已存在但未在本次修改的长文件不会影响提交。
+
+---
+
+_**User**_
+
+很好。请检查项目中的 .rs 文件，有没有超过 500 行的？
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants me to check if any .rs files in the project exceed 500 lines. I'll find all .rs files and count their lines.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="unknown" data-tool-name="ripgrep_raw_search">
+<details>
+<summary>Tool use: **ripgrep_raw_search**</summary>
+
+
+Parameters:
+
+```json
+{
+  "pattern": ".",
+  "path": "/home/ars/richard/2026/pvm_2/xtask_todo",
+  "glob": "*.rs",
+  "outputMode": "files_with_matches",
+  "caseInsensitive": false
+}
+```
+Additional data:
+
+```json
+{
+  "isPruned": true,
+  "pattern": ".",
+  "path": "/home/ars/richard/2026/pvm_2/xtask_todo",
+  "outputMode": "files_with_matches",
+  "totalFiles": 3,
+  "totalMatches": 3,
+  "topFiles": [
+    {
+      "uri": "./xtask/src/main.rs",
+      "matchCount": 1
+    },
+    {
+      "uri": "./crates/todo/src/store.rs",
+      "matchCount": 1
+    },
+    {
+      "uri": "./crates/todo/src/lib.rs",
+      "matchCount": 1
+    }
+  ]
+}
+```
+Status: **completed**
+
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I have 3 .rs files. Let me get line counts for each. I can use wc -l via run_terminal_cmd or read the files and count. run_terminal_cmd with wc -l is straightforward.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: wc -l /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/store.rs /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs</summary>
+
+```bash
+wc -l /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/store.rs /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs
+```
+
+```
+  258 /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/main.rs
+   79 /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/store.rs
+  239 /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/src/lib.rs
+  576 total
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+All three files are under 500 lines:
+- xtask/src/main.rs: 258
+- crates/todo/src/store.rs: 79
+- crates/todo/src/lib.rs: 239
+
+No file exceeds 500. I'll report</details></think>
+
+---
+
