@@ -4,7 +4,7 @@ use argh::FromArgs;
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use todo::{InMemoryStore, Todo, TodoId, TodoList};
+use xtask_todo_lib::{InMemoryStore, Todo, TodoId, TodoList};
 
 /// Path to the todo JSON file in the current directory.
 ///

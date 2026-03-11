@@ -64,14 +64,14 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
     let mut results = Vec::new();
 
     if std::env::var_os("XTASK_COVERAGE_TEST_FAKE").is_some() {
-        results.push(("todo".to_string(), Some(100.0)));
+        results.push(("xtask-todo-lib".to_string(), Some(100.0)));
         results.push(("xtask".to_string(), Some(95.0)));
     } else if std::env::var_os("XTASK_COVERAGE_TEST_FAKE_FAIL").is_some() {
-        results.push(("todo".to_string(), None));
+        results.push(("xtask-todo-lib".to_string(), None));
         results.push(("xtask".to_string(), None));
     } else {
-        println!("--- todo ---");
-        let (name, pct) = run_tarpaulin("todo", &[], &[]);
+        println!("--- xtask-todo-lib ---");
+        let (name, pct) = run_tarpaulin("xtask-todo-lib", &[], &[]);
         results.push((name, pct));
 
         println!("\n--- xtask ---");
@@ -83,13 +83,13 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
         results.push((name, pct));
     }
 
-    println!("\n| Crate  | Coverage |");
-    println!("|--------|----------|");
+    println!("\n| Crate           | Coverage |");
+    println!("|-----------------|----------|");
     for (crate_name, pct_opt) in &results {
         let cell = pct_opt
             .as_ref()
             .map_or_else(|| "N/A".to_string(), |p| format!("{p:.2}%"));
-        println!("| {crate_name:<6} | {cell:<8} |");
+        println!("| {crate_name:<14} | {cell:<8} |");
     }
 
     let missing: Vec<_> = results
@@ -130,8 +130,8 @@ mod tests {
     #[test]
     #[ignore = "runs real cargo tarpaulin; use --ignored to run"]
     fn run_tarpaulin_todo_returns_pct_when_installed() {
-        let (name, pct) = run_tarpaulin("todo", &[], &[]);
-        assert_eq!(name, "todo");
+        let (name, pct) = run_tarpaulin("xtask-todo-lib", &[], &[]);
+        assert_eq!(name, "xtask-todo-lib");
         if let Some(p) = pct {
             assert!((0.0..=100.0).contains(&p), "expected percentage, got {p}");
         }

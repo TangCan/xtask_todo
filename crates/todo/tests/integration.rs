@@ -2,7 +2,7 @@
 
 use std::time::SystemTime;
 
-use todo::{InMemoryStore, Todo, TodoId, TodoList};
+use xtask_todo_lib::{InMemoryStore, Todo, TodoId, TodoList};
 
 #[test]
 fn from_todos_then_create_list_complete_delete() {

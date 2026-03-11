@@ -6,7 +6,7 @@ use crate::run::RunArgs;
 use crate::tests::{RestoreCwd, CWD_TEST_MUTEX};
 use crate::todo::{TodoArgs, TodoListArgs, TodoSub};
 use crate::{run_with, XtaskCmd, XtaskSub};
-use todo::{InMemoryStore, TodoId, TodoList};
+use xtask_todo_lib::{InMemoryStore, TodoId, TodoList};
 
 #[test]
 fn todo_crate_api_coverage() {

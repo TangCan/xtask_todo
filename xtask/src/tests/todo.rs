@@ -8,7 +8,7 @@ use crate::todo::{
     todo_file, TodoAddArgs, TodoArgs, TodoCompleteArgs, TodoDeleteArgs, TodoDto, TodoListArgs,
     TodoSub, AGE_THRESHOLD_DAYS,
 };
-use todo::{Todo, TodoId};
+use xtask_todo_lib::{Todo, TodoId};
 
 #[test]
 fn todo_file_returns_path() {

@@ -43,4 +43,4 @@ See the [docs](docs/) folder for requirements, design, acceptance criteria, and 
 
 ## Publishing
 
-Only the **todo** crate is published to [crates.io](https://crates.io); **xtask** is workspace tooling (`publish = false`). For steps (metadata, `cargo login`, `cargo publish -p todo`) and Git-only releases, see [docs/publishing.md](docs/publishing.md).
+Only the **xtask-todo-lib** crate (in `crates/todo`) is published to [crates.io](https://crates.io); **xtask** is workspace tooling (`publish = false`). For steps (metadata, `cargo login`, `cargo publish -p xtask-todo-lib`) and Git-only releases, see [docs/publishing.md](docs/publishing.md).

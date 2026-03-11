@@ -12,12 +12,12 @@ mod tests;
 
 use argh::FromArgs;
 
+use crate::todo::TodoArgs;
 use clippy::ClippyArgs;
 use coverage::CoverageArgs;
 use fmt::FmtArgs;
 use git::GitArgs;
 use run::RunArgs;
-use todo::TodoArgs;
 
 /// Entry point for xtask. Parses args and runs the selected command.
 ///
