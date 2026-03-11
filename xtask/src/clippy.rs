@@ -2,7 +2,7 @@
 
 use argh::FromArgs;
 use std::ffi::OsString;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 #[derive(FromArgs, Clone)]
 #[argh(subcommand, name = "clippy")]
@@ -28,18 +28,21 @@ pub(crate) fn status_to_result(
 /// Returns an error if clippy exits with a non-zero status.
 pub fn cmd_clippy(_args: ClippyArgs) -> Result<(), Box<dyn std::error::Error>> {
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
-    let status = Command::new(cargo)
-        .args([
-            "clippy",
-            "--all-targets",
-            "--",
-            "-W",
-            "clippy::pedantic",
-            "-W",
-            "clippy::nursery",
-            "-D",
-            "warnings",
-        ])
-        .status()?;
+    let mut cmd = Command::new(cargo);
+    cmd.args([
+        "clippy",
+        "--all-targets",
+        "--",
+        "-W",
+        "clippy::pedantic",
+        "-W",
+        "clippy::nursery",
+        "-D",
+        "warnings",
+    ]);
+    if std::env::var_os("XTASK_CLIPPY_QUIET").is_some() {
+        cmd.stdout(Stdio::null()).stderr(Stdio::null());
+    }
+    let status = cmd.status()?;
     status_to_result(status, "clippy")
 }

@@ -1,6 +1,7 @@
 //! Unit tests for xtask commands.
 
 use std::path::PathBuf;
+use std::process::Stdio;
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
 
@@ -43,6 +44,7 @@ fn run_subcommand_clippy() {
 
 #[test]
 fn run_subcommand_git_add() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let cmd = XtaskCmd {
         sub: XtaskSub::Git(GitArgs {
             sub: GitSub::Add(GitAddArgs {}),
@@ -53,6 +55,7 @@ fn run_subcommand_git_add() {
 
 #[test]
 fn run_subcommand_git_commit() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let cmd = XtaskCmd {
         sub: XtaskSub::Git(GitArgs {
             sub: GitSub::Commit(GitCommitArgs {}),
@@ -95,7 +98,9 @@ nonexistent_crate_xyz = "999"
     )
     .unwrap();
     std::fs::write("src/lib.rs", "pub fn f() {}").unwrap();
+    std::env::set_var("XTASK_CLIPPY_QUIET", "1");
     let result = crate::clippy::cmd_clippy(ClippyArgs {});
+    std::env::remove_var("XTASK_CLIPPY_QUIET");
     assert!(result.is_err());
 }
 
@@ -108,6 +113,8 @@ fn cmd_git_commit_with_nothing_to_commit_returns_err() {
     let _guard = RestoreCwd::new(&dir, &cwd);
     let _ = std::process::Command::new("git")
         .args(["init", "-b", "main"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status();
     let cmd = GitArgs {
         sub: GitSub::Commit(GitCommitArgs {}),
