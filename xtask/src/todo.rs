@@ -136,8 +136,9 @@ pub fn print_todo_list_items(items: &[Todo], use_color: bool) {
         for t in items {
             let mark = if t.completed { "✓" } else { " " };
             let created = format_time_ago(t.created_at);
-            let time_info = match &t.completed_at {
-                Some(cat) => {
+            let time_info = t.completed_at.as_ref().map_or_else(
+                || format!("  创建 {created}"),
+                |cat| {
                     let completed = format_time_ago(*cat);
                     let took = cat
                         .duration_since(t.created_at)
@@ -146,9 +147,8 @@ pub fn print_todo_list_items(items: &[Todo], use_color: bool) {
                         .map(|s| format!("  用时 {s}"))
                         .unwrap_or_default();
                     format!("  创建 {created}  完成 {completed}{took}")
-                }
-                None => format!("  创建 {created}"),
-            };
+                },
+            );
             let line = format!("  [{}] {} {}  {}", t.id, mark, t.title, time_info);
             if use_color && is_old_open(t, now) {
                 println!("\x1b[33m{line}\x1b[0m");

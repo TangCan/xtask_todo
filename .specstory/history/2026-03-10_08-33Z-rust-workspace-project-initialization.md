@@ -11420,10 +11420,476 @@ test tests::print_todo_list_items_old_open_with_color ... ok
 test tests::run_subcommand_run ... ok
 test tests::todo_file_returns_path ... ok
 test tests::status_to_result_success ... ok
+test tests::cmd_clippy_fail_returns_err ... ok
+fatal: not a git repository (or any of the parent directories): .git
+test tests::cmd_git_add_in_nongit_dir_returns_err ... ok
+On branch main
+
+Initial commit
+
+nothing to commit (create/copy files and use "git add" to track)
+test tests::cmd_git_commit_with_nothing_to_commit_returns_err ... ok
+test tests::cmd_todo_complete_id_zero_errors ... ok
+test tests::cmd_todo_complete_and_delete ... ok
+test tests::cmd_todo_add_list_save_load ... ok
+test tests::cmd_todo_list_empty_prints_no_tasks ... ok
+test tests::cmd_todo_delete_id_zero_errors ... ok
+test tests::cmd_todo_list_with_completed_todo ... ok
+test tests::load_todos_from_invalid_json_defaults_empty ... ok
+fatal: pathspec '.github' did not match any files
+test tests::run_subcommand_git_add ... ok
+Running cargo fmt -- --check...
+Running cargo clippy --all-targets -- -D warnings...
+    Blocking waiting for file lock on package cache
+test tests::run_subcommand_clippy ... ok
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 1.14s
+Running cargo test...
+    Finished &#96;test&#96; profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/todo-a266546c2cadf74e)
+
+running 14 tests
+test store::tests::from_todos_empty ... ok
+test store::tests::from_todos_with_existing ... ok
+test tests::default_todo_list ... ok
+test tests::us_t1_empty_title_returns_err_and_list_unchanged ... ok
+test tests::todo_id_as_u64_and_display ... ok
+test tests::todo_error_display ... ok
+test tests::us_t1_valid_title_creates_and_appears_in_list ... ok
+test tests::us_t2_empty_list ... ok
+test tests::us_t2_list_order_by_creation ... ok
+test tests::us_t3_complete_existing ... ok
+test tests::us_t4_delete_existing ... ok
+test tests::us_t3_complete_nonexistent_returns_not_found ... ok
+test tests::with_store ... ok
+test tests::us_t4_delete_nonexistent_returns_not_found ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/xtask-c4fb5dcb868dbab5)
+
+running 29 tests
+test tests::format_duration_days ... ok
+test tests::format_duration_minutes ... ok
+test tests::format_time_ago_days ... ok
+test tests::format_duration_seconds ... ok
+test tests::format_time_ago_hours ... ok
+test tests::format_duration_hours ... ok
+test tests::format_time_ago_just_now ... ok
+test tests::format_time_ago_minutes ... ok
+test tests::is_old_open_completed_false ... ok
+test tests::is_old_open_old_true ... ok
+test tests::load_todos_empty_when_no_file ... ok
+test tests::is_old_open_recent_false ... ok
+test tests::run_subcommand_run ... ok
+test tests::print_todo_list_items_old_open_with_color ... ok
+test tests::todo_file_returns_path ... ok
+test tests::status_to_result_success ... ok
+test tests::cmd_clippy_fail_returns_err ... ok
+fatal: not a git repository (or any of the parent directories): .git
+test tests::cmd_git_add_in_nongit_dir_returns_err ... ok
+On branch main
+
+Initial commit
+
+nothing to commit (create/copy files and use "git add" to track)
+test tests::cmd_git_commit_with_nothing_to_commit_returns_err ... ok
+test tests::cmd_todo_add_list_save_load ... ok
+test tests::cmd_todo_complete_and_delete ... ok
+test tests::cmd_todo_complete_id_zero_errors ... ok
+test tests::cmd_todo_list_empty_prints_no_tasks ... ok
+test tests::cmd_todo_delete_id_zero_errors ... ok
+test tests::cmd_todo_list_with_completed_todo ... ok
+test tests::load_todos_from_invalid_json_defaults_empty ... ok
+fatal: pathspec '.github' did not match any files
+test tests::run_subcommand_git_add ... ok
+Running cargo fmt -- --check...
+Running cargo clippy --all-targets -- -D warnings...
+    Blocking waiting for file lock on package cache
+test tests::run_subcommand_clippy ... ok
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 1.23s
+Running cargo test...
+    Finished &#96;test&#96; profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/todo-a266546c2cadf74e)
+
+running 14 tests
+test store::tests::from_todos_empty ... ok
+test tests::default_todo_list ... ok
+test store::tests::from_todos_with_existing ... ok
+test tests::todo_id_as_u64_and_display ... ok
+test tests::todo_error_display ... ok
+test tests::us_t3_complete_existing ... ok
+test tests::us_t1_empty_title_returns_err_and_list_unchanged ... ok
+test tests::us_t2_empty_list ... ok
+test tests::us_t1_valid_title_creates_and_appears_in_list ... ok
+test tests::us_t2_list_order_by_creation ... ok
+test tests::us_t3_complete_nonexistent_returns_not_found ... ok
+test tests::us_t4_delete_nonexistent_returns_not_found ... ok
+test tests::us_t4_delete_existing ... ok
+test tests::with_store ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/xtask-c4fb5dcb868dbab5)
+
+running 29 tests
+test tests::format_duration_days ... ok
+test tests::format_duration_hours ... ok
+test tests::format_time_ago_days ... ok
+test tests::format_duration_minutes ... ok
+test tests::format_duration_seconds ... ok
+test tests::format_time_ago_hours ... ok
+test tests::format_time_ago_just_now ... ok
+test tests::format_time_ago_minutes ... ok
+test tests::is_old_open_completed_false ... ok
+test tests::is_old_open_old_true ... ok
+test tests::is_old_open_recent_false ... ok
+test tests::load_todos_empty_when_no_file ... ok
+test tests::print_todo_list_items_old_open_with_color ... ok
+test tests::run_subcommand_run ... ok
+test tests::todo_file_returns_path ... ok
+test tests::status_to_result_success ... ok
+test tests::cmd_clippy_fail_returns_err ... ok
+fatal: not a git repository (or any of the parent directories): .git
+test tests::cmd_git_add_in_nongit_dir_returns_err ... ok
+On branch main
+
+Initial commit
+
+nothing to commit (create/copy files and use "git add" to track)
+test tests::cmd_git_commit_with_nothing_to_commit_returns_err ... ok
+test tests::cmd_todo_add_list_save_load ... ok
+test tests::cmd_todo_complete_and_delete ... ok
+test tests::cmd_todo_delete_id_zero_errors ... ok
+test tests::cmd_todo_list_empty_prints_no_tasks ... ok
+test tests::cmd_todo_complete_id_zero_errors ... ok
+test tests::cmd_todo_list_with_completed_todo ... ok
+test tests::load_todos_from_invalid_json_defaults_empty ... ok
+fatal: pathspec '.github' did not match any files
+test tests::run_subcommand_git_add ... ok
+Running cargo fmt -- --check...
+Running cargo clippy --all-targets -- -D warnings...
+    Blocking waiting for file lock on package cache
+test tests::run_subcommand_clippy ... ok
+    Finished &#96;dev&#96; profile [unoptimized + debuginfo] target(s) in 2.42s
+Running cargo test...
+    Finished &#96;test&#96; profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/todo-a266546c2cadf74e)
+
+running 14 tests
+test store::tests::from_todos_empty ... ok
+test tests::default_todo_list ... ok
+test store::tests::from_todos_with_existing ... ok
+test tests::us_t1_valid_title_creates_and_appears_in_list ... ok
+test tests::todo_id_as_u64_and_display ... ok
+test tests::us_t2_list_order_by_creation ... ok
+test tests::todo_error_display ... ok
+test tests::us_t1_empty_title_returns_err_and_list_unchanged ... ok
+test tests::us_t3_complete_existing ... ok
+test tests::us_t2_empty_list ... ok
+test tests::us_t4_delete_existing ... ok
+test tests::us_t3_complete_nonexistent_returns_not_found ... ok
+test tests::with_store ... ok
+test tests::us_t4_delete_nonexistent_returns_not_found ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/xtask-c4fb5dcb868dbab5)
+
+running 29 tests
+test tests::format_duration_days ... ok
+test tests::format_duration_hours ... ok
+test tests::format_duration_minutes ... ok
+test tests::format_duration_seconds ... ok
+test tests::format_time_ago_days ... ok
+test tests::format_time_ago_just_now ... ok
+test tests::format_time_ago_hours ... ok
+test tests::format_time_ago_minutes ... ok
+test tests::is_old_open_completed_false ... ok
+test tests::is_old_open_recent_false ... ok
+test tests::is_old_open_old_true ... ok
+test tests::load_todos_empty_when_no_file ... ok
+test tests::print_todo_list_items_old_open_with_color ... ok
+test tests::run_subcommand_run ... ok
+test tests::todo_file_returns_path ... ok
+test tests::status_to_result_success ... ok
 
 ```
 </details>
 </tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+The test run is still showing:
+1. "fatal: not a git repository" - from cmd_git_add_in_nongit_dir_returns_err (that's expected - we're testing that git add in a non-git dir returns err)
+2. "On branch main / Initial commit / nothing to commit" - the git init in cmd_git_commit_with_nothing_to_commit_returns_err is still printing. Oh - I added .stdout(Stdio::null()).stderr(Stdio::null()) to the git init Command in the test, but the output is still showing. Let me check - maybe the order of execution is different and the output we see is from a different run. Actually looking at the output again, "On branch main" and "Initial commit" and "nothing to commit" might be from `git commit` (the command that cmd_git runs), not from `git init`. So when we run cmd_git with Commit, it runs "git commit" which then prints that. So we need to suppress output in the git module when we run git commit, or we can't easily do that from the test. So the remaining noise is:
+- "fatal: not a git repository" - from cmd_git_add_in_nongit_dir_returns_err (intentional: we're in a temp dir with no .git)
+- "On branch main / Initial commit / nothing to commit" - from cmd_git when it runs "git commit" in the test that has an empty repo
+
+The git commit output is from the production code (git module runs the command). To suppress that we'd need to add a quiet mode to cmd_git or have the test run in a way that captures output. That's more invasive. The user said "有错误" - maybe they meant the terminal output they attached (942-1059) which actually shows "Pre-commit checks passed" and commit succeeded. So perhaps they're not saying there's a failure but just that there are warning/hint/error *messages* in the output. We've reduced some of it (clippy fail test is quiet now, git init is suppressed). The "fatal: not a git repository" we can't suppress without changing the test (that test intentionally runs in a non-git dir - the "fatal" is git's stderr). We could run that test's cmd_git with... we don't control the git command in the test. So we'd need the git module to optionally suppress stderr when an env var is set. That's getting heavy. I'll leave the summary for the user: we fixed the run_subcommand_git_add/commit races (so they run with project root cwd), we suppressed clippy fail test output, we suppressed git init output. The remaining "fatal: not a git repository" and "On branch main/Initial commit/nothing to commit" are from git subprocess and would require either running those tests with captured output in the production code or accepting the output.
+
+Actually re-reading the test output - the git init we run with .stderr(Stdio::null()).stdout(Stdio::null()) - so the "Initialized empty Git repository" should be gone. The "On branch main", "Initial commit", "nothing to commit" come from when we then run cmd_git(&cmd) which runs "git commit" - and that command's output. So that's from the git module's Command. So we have reduced what we can easily. Let me double-check the git init - we have .stdout(Stdio::null()).stderr(Stdio::null()) on the git init command. So that should suppress "Initialized empty Git repository in .../.git/" and "On branch main" from git init. But "On branch main" might be printed by both "git init -b main" and "git commit". So the remaining "On branch main / Initial commit / nothing to commit" is from the subsequent "git commit" run by cmd_git. So we've done what we can without modifying the git module to accept a quiet flag. I'll summarize for the user.
+</details></think>
+
+---
+
+
+已按你的需求做了修正，总结如下。
+
+**终端里看到的几类输出**
+
+1. **`fatal: not a git repository`**  
+   来自在**非 git 目录**里跑 git 的测试（例如 `cmd_git_add_in_nongit_dir_returns_err`），属于**预期行为**：测试就是检查“在非 git 目录执行 git 会失败”。
+
+2. **`error: no matching package named 'nonexistent_crate_xyz'`**  
+   来自 `cmd_clippy_fail_returns_err`：在临时项目里故意用不存在的依赖，让 `cargo clippy` 失败，以断言返回 `Err`。  
+   **已做**：在 `cmd_clippy` 中若设置环境变量 `XTASK_CLIPPY_QUIET`，则把该次调用的 stdout/stderr 设为 `Stdio::null()`；在该测试里设置并随后移除该变量，这样这条 error 不再刷屏。
+
+3. **`run_subcommand_git_add` / `run_subcommand_git_commit` 里的 `fatal: not a git repository`**  
+   原因：这两个测试没有拿 `CWD_TEST_MUTEX`，和会改 `current_dir` 的测试并行时，进程 cwd 可能已是临时目录，在项目外执行 `git add`/`git commit` 就会报错。  
+   **已做**：在这两个测试开头也加 `let _guard = CWD_TEST_MUTEX.lock().unwrap();`，让它们与改 cwd 的测试串行，保证运行时 cwd 是项目根，不再误报 “not a git repository”。
+
+4. **`On branch main` / `Initial commit` / `nothing to commit`**  
+   来自 `cmd_git_commit_with_nothing_to_commit_returns_err` 里先 `git init -b main`，再 `cmd_git` 执行 `git commit`。  
+   **已做**：对测试里调用的 `git init` 使用 `.stdout(Stdio::null()).stderr(Stdio::null())`，抑制 init 的输出。  
+   剩下的 “On branch main / Initial commit / nothing to commit” 是**随后** `git commit` 子进程的输出，要彻底去掉需要给 git 子命令加“安静模式”或统一在测试里吞掉子进程输出，改动会更大，目前保留。
+
+**代码改动小结**
+
+- **`xtask/src/tests.rs`**  
+  - `run_subcommand_git_add`、`run_subcommand_git_commit` 开头加 `CWD_TEST_MUTEX` 锁，避免 cwd 竞争。  
+  - `cmd_git_commit_with_nothing_to_commit_returns_err` 里对 `git init` 使用 `Stdio::null()` 抑制输出。  
+  - 增加 `use std::process::Stdio`（并去掉了未使用的 `Write`）。
+- **`xtask/src/clippy.rs`**  
+  - 当存在环境变量 `XTASK_CLIPPY_QUIET` 时，对 `cargo clippy` 的 Command 设置 `.stdout(Stdio::null()).stderr(Stdio::null())`。  
+  - `cmd_clippy_fail_returns_err` 中在调用 `cmd_clippy` 前设 `XTASK_CLIPPY_QUIET=1`，调用后 `remove_var`。
+
+再跑一次 `cargo test -p xtask --lib`（或 `xc`），你会看到：  
+- 不再有 “nonexistent_crate_xyz” 的 error；  
+- 不再有 “Initialized empty Git repository”；  
+- `run_subcommand_git_add` / `run_subcommand_git_commit` 不再误报 “fatal: not a git repository”。  
+仍可能看到：在**故意**非 git 目录里的 “fatal: not a git repository”，以及一次 “On branch main / Initial commit / nothing to commit”（来自 `git commit`），这些是预期或可接受的测试输出。
+
+---
+
+_**User**_
+
+@\home\ars\.cursor\projects\home-ars-richard-2026-pvm-2-xtask-todo\terminals\1.txt:924-1059 应该是出问题了，有些测试被反复运行。请分析并修正。
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user is saying that some tests are being run repeatedly - looking at the terminal output, I can see:
+
+1. First run: todo tests (14), then xtask tests (29) - then we see "Running cargo fmt -- --check...", "Running cargo clippy...", "Running cargo test..." again
+2. So it looks like the pre-commit hook runs: fmt, clippy, test. But when "cargo test" runs, it runs all workspace tests. And somewhere in the xtask tests, there's code that runs the pre-commit steps again (fmt, clippy, test) - likely the `run_subcommand_git_commit` test or similar that actually invokes `xtask git commit`, which triggers the pre-commit hook!
+
+So when we run `cargo test`, one of the tests is `run_subcommand_git_commit` which runs `xtask git commit`. And `xtask git commit` runs the pre-commit hook, which runs cargo fmt, cargo clippy, cargo test again! So we get a recursive loop - cargo test -> run_subcommand_git_commit runs xtask git commit -> pre-commit runs cargo test -> ...
+
+The fix would be to either:
+1. In the test run_subcommand_git_commit, don't actually run the full "xtask git commit" that triggers the hook - but we need to test that the subcommand runs. So we need the hook to not run when we're in a test environment.
+2. Or, make the git commit test run in a temp dir where there's no .git/hooks, so when we run "git commit" it doesn't trigger the project's pre-commit hook. Currently run_subcommand_git_commit uses CWD_TEST_MUTEX and runs in the project root - so when it runs "xtask git commit", that invokes the real git commit which runs the hook.
+3. Or, skip running the hook when an env var is set (e.g. XTASK_SKIP_HOOKS or we're in a test). So when running "xtask git commit", check for an env var and if set, don't run the hook - just run git commit. Then in the test we set that env var.
+
+Let me look at how git commit is implemented - it probably runs the pre-commit hook script. So the flow is: user runs `xc` (xtask git commit) -> that runs git commit -> git runs .githooks/pre-commit -> which runs cargo fmt, cargo clippy, cargo test. So when we're in cargo test and we run run_subcommand_git_commit, we're in the project root (with mutex), and we run run_with(XtaskSub::Git(Commit)) which runs cmd_git which runs "git commit" - and that triggers the hook! So the hook runs cargo test again, which runs the xtask tests again, and run_subcommand_git_commit runs again... and we get recursion or at least multiple runs.
+
+So the fix: when running "git commit" in a way that would trigger the hook, we need to either:
+A) Have the test set an env var that the pre-commit hook checks - if set, the hook exits 0 without doing anything. So we need to modify .githooks/pre-commit to check e.g. SKIP_PRE_COMMIT_HOOK or XTASK_TESTING and exit 0.
+B) Have run_subcommand_git_commit run in a temp dir with its own git repo (so the hook is not the project's hook - there would be no hook in the temp dir). So we need run_subcommand_git_commit to take the mutex, create a temp dir, git init there, and then run "xtask git commit" with cwd in that temp dir - but wait, when we run run_with(cmd), we're running in the current process - and we'd need to change current_dir to the temp dir. So we'd do: lock mutex, create temp dir, set_current_dir(temp_dir), git init -b main (so we have a repo with no hook), then run run_with(git commit). That would run git commit in the temp dir - and there's no .githooks there, so git would use default hooks (or no hooks if the temp dir has no .git/hooks). Actually by default when you git init, there's no pre-commit hook. And the project uses core.hooksPath = .githooks, so that's a config. When we're in the temp dir and run git commit, git looks for hooks - it would use the default .git/hooks unless we've set core.hooksPath. So in the temp dir, we have a fresh git repo with no hooks path set, so git would look in .git/hooks which is empty. So if we run the test in a temp dir with a fresh git init, we wouldn't trigger the project's pre-commit hook!
+
+So the fix is: change run_subcommand_git_commit to run in a temp directory with a fresh git repo (like cmd_git_commit_with_nothing_to_commit_returns_err does), instead of running in the project root. That way when we run "xtask git commit", we're in a temp dir, git commit runs, there's no pre-commit hook in that repo, so we just get "nothing to commit" and the command fails (or we could add a file and commit to get success). Wait, the test is run_subcommand_git_commit - it just runs the subcommand and ignores the result ("let _ = run_with(cmd)"). So it's testing that the subcommand doesn't panic. If we run it in the project root, it runs the real hook. If we run it in a temp dir with git init, we run git commit in that temp dir - no hook, so git commit just says "nothing to commit" and exits with 1. So xtask git commit would get that and return Err? Let me check - cmd_git probably runs "git add" and "git commit" and returns the status. So we'd get an error from git commit (nothing to commit). That's fine for the test - we just want to run the subcommand without triggering the full hook chain.
+
+So the fix: make run_subcommand_git_commit (and maybe run_subcommand_git_add) run in a temp dir with a fresh git repo, so that when they invoke git, they don't trigger the project's pre-commit hook. So we need to:
+1. In run_subcommand_git_commit: take the mutex, create temp dir, set_current_dir to temp dir, git init -b main (with output suppressed), then run run_with(git commit). The git commit will run in temp dir, no hook, "nothing to commit" - command fails but we don't care. Then RestoreCwd restores. So we need to add RestoreCwd to this test and do the temp dir setup.
+2. run_subcommand_git_add: similarly, run in a temp dir with git init, then run run_with(git add). Then git add would run in that temp dir. We could add a file and then git add . to get success. Or we just run it and ignore result - the point is we don't trigger the project hook.
+
+Let me implement: run_subcommand_git_commit and run_subcommand_git_add should both create a temp dir, chdir there, git init, then run the subcommand, then restore cwd. That way we never run the project's pre-commit hook from within the test.
+</details></think>
+
+---
+
+
+发现问题：`run_subcommand_git_commit` 在项目根执行 `xtask git commit`，会触发 pre-commit hook，hook 又执行 `cargo test`，导致测试被重复运行。正在查看 git 子命令的实现与 hook 的调用关系：
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/git.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/.githooks/pre-commit</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+So when we run `run_subcommand_git_commit` in the test, we're in the project root (we have the mutex). We call run_with(XtaskSub::Git(Commit)) which runs cmd_git, which runs `git commit -m "Sync"`. That invokes the project's pre-commit hook (because the project has core.hooksPath = .githooks). The hook runs cargo fmt, cargo clippy, cargo test - so we get another full cargo test run, which runs run_subcommand_git_commit again, which runs git commit again... So we get infinite recursion or at least multiple layers.
+
+The fix: run_subcommand_git_commit and run_subcommand_git_add should run in a **temporary directory with a fresh git repo** that has no hooks (no .githooks, no core.hooksPath). So when we run "git commit" there, Git won't run the project's pre-commit hook. We need to:
+1. run_subcommand_git_commit: lock mutex, create temp dir, chdir to temp dir, git init -b main (suppress output), run run_with(git commit), restore cwd. The commit will fail with "nothing to commit" but we don't care - we're just testing the subcommand runs.
+2. run_subcommand_git_add: same - temp dir, git init, run run_with(git add). Git add might fail because .github etc don't exist in the temp dir - we'll get "pathspec '.github' did not match any files". That's the "fatal: pathspec '.github' did not match any files" we see! So run_subcommand_git_add is also running in project root and doing "git add .github ..." which might partially work in the project. When it runs in project root it adds those paths, and then... actually the test doesn't run git commit, it runs git add. So run_subcommand_git_add runs "git add .github .specstory xtask docs crates" in the project root. That succeeds (adds files). So we don't get recursion from git add. The recursion is only from git commit which triggers the hook.
+
+So the main fix is run_subcommand_git_commit: run it in a temp dir with a fresh git repo so that "git commit" doesn't trigger the project's hook. Then we won't get cargo test running again.
+
+For run_subcommand_git_add - when it runs in project root it runs "git add .github ..." - and we see "fatal: pathspec '.github' did not match any files" in the output. So in some test run order, the cwd might be wrong (a temp dir from another test?) and then .github doesn't exist. So making run_subcommand_git_add run in an isolated temp dir would also make it deterministic: we'd run "git add .github ..." in an empty repo where those paths don't exist, so we'd get the pathspec error, but we wouldn't trigger any hook. So let's do both: run_subcommand_git_add and run_subcommand_git_commit both run in a temp dir with git init. That way (1) no hook is ever triggered, (2) output is predictable (nothing to commit / pathspec didn't match).
+</details></think>
+
+---
+
+
+确认：`run_subcommand_git_commit` 在项目根执行 `git commit`，会触发 `.githooks/pre-commit`，hook 会运行 `cargo test`，导致测试递归。将这两个测试改为在临时目录的干净 git 仓库中运行，避免触发项目的 pre-commit hook。
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/tests.rs</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to change run_subcommand_git_add and run_subcommand_git_commit to run in a temp dir with a fresh git init, so that when they run "git add" / "git commit", they're not in the project and don't trigger the project's pre-commit hook. I'll use RestoreCwd and create the temp dir, git init -b main with output suppressed.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/src/tests.rs</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Good. Now when run_subcommand_git_add runs, we're in a temp dir with a fresh git repo (no .githooks, no core.hooksPath). So "git add .github ..." runs there and will fail with pathspec - that's fine. When run_subcommand_git_commit runs, we're in a temp dir with a fresh git repo, so "git commit -m Sync" runs there and there's no pre-commit hook - we get "nothing to commit" and the command fails, but we don't trigger cargo test again. So the recursion is broken. Let me run the tests to verify.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2">
+<details><summary>Tool use: **run_terminal_command_v2** • Run command: cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo test -p xtask --lib 2>&1</summary>
+
+```bash
+cd /home/ars/richard/2026/pvm_2/xtask_todo && cargo test -p xtask --lib 2>&1
+```
+
+```
+   Compiling xtask v0.1.0 (/ssd_211032807004/richard/2026/pvm_2/xtask_todo/xtask)
+    Finished &#96;test&#96; profile [unoptimized + debuginfo] target(s) in 0.38s
+     Running unittests src/lib.rs (target/debug/deps/xtask-c4fb5dcb868dbab5)
+
+running 29 tests
+test tests::format_duration_days ... ok
+test tests::format_duration_hours ... ok
+test tests::format_duration_minutes ... ok
+test tests::format_duration_seconds ... ok
+test tests::format_time_ago_days ... ok
+test tests::format_time_ago_hours ... ok
+test tests::format_time_ago_minutes ... ok
+test tests::format_time_ago_just_now ... ok
+test tests::is_old_open_old_true ... ok
+test tests::is_old_open_completed_false ... ok
+test tests::is_old_open_recent_false ... ok
+test tests::load_todos_empty_when_no_file ... ok
+test tests::print_todo_list_items_old_open_with_color ... ok
+test tests::run_subcommand_run ... ok
+test tests::todo_file_returns_path ... ok
+test tests::status_to_result_success ... ok
+test tests::cmd_clippy_fail_returns_err ... ok
+fatal: not a git repository (or any of the parent directories): .git
+test tests::cmd_git_add_in_nongit_dir_returns_err ... ok
+On branch main
+
+Initial commit
+
+nothing to commit (create/copy files and use "git add" to track)
+test tests::cmd_git_commit_with_nothing_to_commit_returns_err ... ok
+test tests::cmd_todo_add_list_save_load ... ok
+test tests::cmd_todo_complete_id_zero_errors ... ok
+test tests::cmd_todo_complete_and_delete ... ok
+test tests::cmd_todo_delete_id_zero_errors ... ok
+test tests::cmd_todo_list_empty_prints_no_tasks ... ok
+test tests::cmd_todo_list_with_completed_todo ... ok
+test tests::load_todos_from_invalid_json_defaults_empty ... ok
+fatal: pathspec '.github' did not match any files
+test tests::run_subcommand_git_add ... ok
+On branch main
+
+Initial commit
+
+nothing to commit (create/copy files and use "git add" to track)
+test tests::run_subcommand_git_commit ... ok
+test tests::run_subcommand_clippy ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.09s
+
+
+```
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Good - now we only see one run of the 29 tests (no more "Running cargo fmt... Running clippy... Running cargo test..." and then the tests running again). The fix works. There's still some noise ("fatal: not a git repository", "On branch main...", "fatal: pathspec '.github'") but the main issue - tests being run repeatedly - is fixed.
+</details></think>
+
+---
+
+
+修复已经生效，测试现在只跑一遍，不再出现递归。
+
+**原因说明**
+
+- `run_subcommand_git_commit` 和 `run_subcommand_git_add` 之前在**项目根目录**里执行。
+- 执行 `run_subcommand_git_commit` 时会跑 `xtask git commit` → 实际执行 `git commit -m "Sync"`。
+- 项目配置了 `core.hooksPath = .githooks`，所以会执行 `.githooks/pre-commit`。
+- pre-commit 里会依次执行：`cargo fmt -- --check`、`cargo clippy`、**`cargo test`**。
+- 于是：`cargo test` → 跑到 `run_subcommand_git_commit` → 触发 `git commit` → 触发 pre-commit → 再次 `cargo test` → 形成递归，测试被反复执行。
+
+**修改方式**
+
+让这两个测试**不再在项目根执行**，而是各自在一个**临时目录 + 新初始化的 git 仓库**里跑：
+
+- **`run_subcommand_git_add`**：加锁 → 创建临时目录 → `chdir` 到该目录 → `git init -b main`（输出已抑制）→ 调用 `run_with(git add)` → 用 `RestoreCwd` 恢复 cwd。  
+  临时仓库里没有 `.githooks`、也没有配置 `core.hooksPath`，所以不会触发项目的 pre-commit。
+- **`run_subcommand_git_commit`**：同样在独立临时目录里 `git init -b main` 后执行 `run_with(git commit)`，这样 `git commit` 只在临时仓库里执行，不会触发项目 hook。
+
+这样既验证了「git add / git commit 子命令能正常跑」，又不会触发 pre-commit，`cargo test` 只执行一次。你看到的 “fatal: pathspec '.github' did not match” 和 “nothing to commit” 是临时仓库里没有这些路径/没有暂存内容时的正常输出，不影响结果。
 
 ---
 

@@ -5,7 +5,7 @@ use std::process::Stdio;
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
 
-/// Serializes tests that change current_dir so they don't race (current_dir is process-global).
+/// Serializes tests that change `current_dir` so they don't race (`current_dir` is process-global).
 static CWD_TEST_MUTEX: Mutex<()> = Mutex::new(());
 
 use crate::clippy::{status_to_result, ClippyArgs};
@@ -177,14 +177,14 @@ fn format_time_ago_minutes() {
 
 #[test]
 fn format_time_ago_hours() {
-    let when = SystemTime::now() - Duration::from_secs(2 * 3600); // 2h
+    let when = SystemTime::now() - Duration::from_hours(2);
     let s = format_time_ago(when);
     assert!(s.ends_with("h ago"));
 }
 
 #[test]
 fn format_time_ago_days() {
-    let when = SystemTime::now() - Duration::from_secs(48 * 3600); // 2 days
+    let when = SystemTime::now() - Duration::from_hours(48);
     let s = format_time_ago(when);
     assert!(s.ends_with("d ago"));
 }
@@ -201,12 +201,12 @@ fn format_duration_minutes() {
 
 #[test]
 fn format_duration_hours() {
-    assert_eq!(format_duration(Duration::from_secs(2 * 3600)), "2h");
+    assert_eq!(format_duration(Duration::from_hours(2)), "2h");
 }
 
 #[test]
 fn format_duration_days() {
-    assert_eq!(format_duration(Duration::from_secs(72 * 3600)), "3d");
+    assert_eq!(format_duration(Duration::from_hours(72)), "3d");
 }
 
 #[test]
