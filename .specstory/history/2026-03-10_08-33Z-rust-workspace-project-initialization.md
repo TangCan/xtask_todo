@@ -9302,22 +9302,573 @@ Let me try another search for the lints table format.
 
 ---
 
-<tool-use data-tool-type="unknown" data-tool-name="web_search">
+<tool-use data-tool-type="search" data-tool-name="web_search">
 <details>
-<summary>Tool use: **web_search**</summary>
+            <summary>Tool use: **web_search** • Searched web `undefined` • **1** results</summary>
+        
+| Title | URL | Chunk |
+|-------|-----|-------|
+| Web search results for query: Cargo lints table "level" manifest |  | Links:<br/>1. [3389-manifest-lint - The Rust RFC Book](https://rust-lang.github.io/rfcs/3389-manifest-lint.html)<br/>2. [Make `level` field optional in the `[lints]` table · Pull Request #13934 · rust-lang/cargo](https://github.com/rust-lang/cargo/pull/13934)<br/>3. [The Manifest Format - The Cargo Book](https://doc.rust-lang.org/cargo/reference/manifest.html)<br/>4. [Tracking Issue for `[lints]` table RFC 3389 · Issue #12115 · rust-lang/cargo](https://github.com/rust-lang/cargo/issues/12115)<br/>5. [cargo::util::lints - Rust](https://doc.rust-lang.org/stable/nightly-rustc/cargo/util/lints/index.html)<br/><br/># Cargo Lints Table "Level" Manifest<br/><br/>The `level` field in Cargo's `[lints]` table specifies the reporting level for lints from rustc and other tools.[1] <br/><br/>## Level Values<br/><br/>The `level` field accepts four values that correspond to rustc's lint levels:[1]<br/>- `allow`<br/>- `warn`<br/>- `deny`<br/>- `forbid`<br/><br/>## Usage<br/><br/>Lints can be configured in the `[lints]` table in `Cargo.toml`. The shorthand syntax directly assigns a level:[1]<br/><br/>```toml<br/>[lints.rust]<br/>unsafe_code = "forbid"<br/>```<br/><br/>This is equivalent to the explicit long form:[1]<br/><br/>```toml<br/>[lints.rust]<br/>unsafe_code = \{ level = "forbid", priority = 0 \}<br/>```<br/><br/>The `level` field works alongside a `priority` field (a signed integer) that controls which lints override others, with lower numbers having lower priority.[1]<br/><br/>## Workspace Inheritance<br/><br/>Lints can be defined at the workspace level and inherited by members:[1]<br/><br/>```toml<br/>[workspace.lints.rust]<br/>unsafe_code = "forbid"<br/>```<br/><br/>Workspace lints are applied when a package specifies `[lints] workspace = true`.[1] |
 
+</details>
+</tool-use>
 
-Parameters:
+---
 
-```json
-{
-  "searchTerm": "Cargo lints table \"level\" manifest"
-}
+<think><details><summary>Thought Process</summary>
+
+So the search says we can use either:
+- shorthand: `unsafe_code = "forbid"` under `[lints.rust]`
+- or long form: `unsafe_code = { level = "forbid", priority = 0 }`
+
+But the user's Cargo is saying that `"clippy::all" = "warn"` is wrong - "expected a map". So in their version, the shorthand string might not be allowed for [lints] at the package level, and we must use the table form. So we need:
+
+```toml
+[lints]
+"clippy::all" = { level = "warn" }
 ```
-User decision: **accepted**
 
-Status: **loading**
+Let me try that. Or maybe the structure is that each lint name must be under a category, like [lints.rust] or [lints.clippy], and then the value can be string. The error was in crates/todo/Cargo.toml at "clippy::all" = "warn" - so the value "warn" is wrong, they want a map. So:
 
+"clippy::all" = { level = "warn" }
+
+I'll apply that.
+</details></think>
+
+---
+
+
+改用表形式：`"clippy::all" = { level = "warn" }`。
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/Cargo.toml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/Cargo.toml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. In newer Cargo (e.g. 1.95 nightly), the [lints] entries may require the long form with a table { level = "warn" } instead of the shorthand string "warn". The user can run cargo fmt again to verify.
+</details></think>
+
+---
+
+
+已经按新语法改好了。
+
+**原因**：在当前的 Cargo（例如 1.95 nightly）里，`[lints]` 里每条 lint 的值必须是**表（map）**，不能直接写字符串。所以 `"clippy::all" = "warn"` 会报错。
+
+**修改**：在两个包的 `Cargo.toml` 里都改成显式表形式：
+
+```toml
+[lints]
+"clippy::all" = { level = "warn" }
+```
+
+请再执行：
+
+```bash
+cargo fmt
+# 或 pre-commit 会跑的
+cargo fmt -- --check && cargo clippy --all-targets -- -D warnings && cargo test
+```
+
+---
+
+_**User**_
+
+@\home\ars\.cursor\projects\home-ars-richard-2026-pvm-2-xtask-todo\terminals\1.txt:212-272 仍然有 warning 请分析
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user is seeing warnings:
+
+1. `unrecognized lint tool 'lints.clippy::all'` - Cargo is interpreting the key `"clippy::all"` under `[lints]` as a *tool name* (like "clippy", "rust", "rustdoc"), so it's treating the whole thing as "lints.clippy::all" as a tool name. The supported tools are: cargo, clippy, rust, rustdoc.
+
+2. `unknown lint: 'clippy::all::level'` - So it's passing something like `clippy::all::level` to the compiler, which suggests the [lints] table is being parsed in a way that the key "clippy::all" and the value { level = "warn" } are being combined or misinterpreted.
+
+So the correct format for Cargo [lints] is that you have a *tool* (clippy, rust, rustdoc, cargo) and then under that tool you have lint names. So it should be:
+
+```toml
+[lints.clippy]
+all = "warn"
+```
+
+or with the long form:
+
+```toml
+[lints.clippy]
+all = { level = "warn" }
+```
+
+So the structure is [lints.<tool>] where tool is one of clippy, rust, rustdoc, cargo. Then under that, the key is the lint name (e.g. "all") and the value is the level. So we need to change from:
+
+```toml
+[lints]
+"clippy::all" = { level = "warn" }
+```
+
+to:
+
+```toml
+[lints.clippy]
+all = "warn"
+```
+
+That way "clippy" is the recognized tool and "all" is the lint name. Let me make that change.
+</details></think>
+
+---
+
+
+Cargo 把 `[lints]` 下的键当作“工具名”，支持的工具有 `cargo`、`clippy`、`rust`、`rustdoc`。应使用 `[lints.clippy]`，并在其下用 lint 名（如 `all`）作为键。
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/Cargo.toml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/Cargo.toml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I'll change to [lints.clippy] with all = "warn" (or all = { level = "warn" } if they require map - but the warning said "unrecognized lint tool `lints.clippy::all`" so the tool name was wrong. So the correct structure is [lints.clippy] and then all = "warn". Let me try the shorthand first.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/crates/todo/Cargo.toml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/xtask/Cargo.toml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. Now the structure is:
+- [lints.clippy] → tool is "clippy" (recognized)
+- all = "warn" → lint name "all" with level "warn"
+
+This should eliminate both warnings: no more "unrecognized lint tool" (we're using the tool "clippy") and no more "clippy::all::level" (we're not creating a weird key).
+</details></think>
+
+---
+
+
+已经改好了。
+
+**原因简要说明**
+
+- `[lints]` 下的一级键会被当成 **lint 工具名**，只认：`cargo`、`clippy`、`rust`、`rustdoc`。
+- 你写的是 `"clippy::all"`，Cargo 把它当成一个叫 `lints.clippy::all` 的“工具”，所以报 `unrecognized lint tool 'lints.clippy::all'`。
+- 正确写法是：**先选工具** `clippy`，再在下面写具体 lint 名，即用 `[lints.clippy]`，下面再写 `all = "warn"`。
+
+**已做修改**
+
+两个包里的配置都从：
+
+```toml
+[lints]
+"clippy::all" = { level = "warn" }
+```
+
+改成了：
+
+```toml
+[lints.clippy]
+all = "warn"
+```
+
+这样工具名是 `clippy`，lint 名是 `all`，级别是 `warn`，符合 Cargo 的约定。请再跑一次：
+
+```bash
+cargo clippy --all-targets -- -D warnings
+```
+
+之前的两个 warning 应该会消失。
+
+---
+
+_**User**_
+
+很好。rust 编程规范里面有没有对一个 .rs 文件的行数限制？比如 ：不能超过500 行？
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user is asking whether there's an official Rust style/guideline that limits the number of lines in a .rs file (e.g., max 500 lines). I should search for this - rustfmt, Rust API guidelines, or official style guide.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="web_search">
+<details>
+            <summary>Tool use: **web_search** • Searched web `undefined` • **1** results</summary>
+        
+| Title | URL | Chunk |
+|-------|-----|-------|
+| Web search results for query: Rust style guide .rs file maximum lines limit official |  | Links:<br/>1. [Introduction - The Rust Style Guide](https://doc.rust-lang.org/style-guide/)<br/>2. [Items - The Rust Style Guide](https://doc.rust-lang.org/beta/style-guide/items.html)<br/>3. [Configuring Rustfmt](https://chromium.googlesource.com/external/github.com/rust-lang/rust/+/HEAD/src/tools/rustfmt/Configurations.md)<br/>4. [rust-style-guide 0.1.4 - Docs.rs](https://docs.rs/crate/rust-style-guide/latest/source/README.md)<br/>5. [Statements - The Rust Style Guide](https://doc.rust-lang.org/style-guide/statements.html)<br/><br/>According to the official Rust Style Guide, there is **no maximum lines limit specified for .rs files**.[1] <br/><br/>However, the style guide does establish a **maximum line width of 100 characters** for individual lines of code.[1] This applies to all code formatting, including indentation, which must be in multiples of 4 spaces.<br/><br/>The style guide focuses on line-level formatting conventions rather than file-level restrictions, delegating file organization decisions to developers and tools like `rustfmt`. |
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+The search didn't give a definitive "no line limit" from the official guide. Let me check the Rust style guide and rustfmt config to confirm there's no file line limit.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="web_search">
+<details>
+            <summary>Tool use: **web_search** • Searched web `undefined` • **1** results</summary>
+        
+| Title | URL | Chunk |
+|-------|-----|-------|
+| Web search results for query: rustfmt file line count limit clippy module too long |  | Links:<br/>1. [Warn on line overflow when macro formatting fails · Pull Request #5706 · rust-lang/rustfmt](https://github.com/rust-lang/rustfmt/pull/5706)<br/>2. [`too_long_first_doc_paragraph` is extremely noisy and painful to fix and should not be enabled by default · Issue #13441 · rust-lang/rust-clippy](https://github.com/rust-lang/rust-clippy/issues/13441)<br/>3. [Configuring Rustfmt](https://chromium.googlesource.com/external/github.com/rust-lang/rust/+/HEAD/src/tools/rustfmt/Configurations.md)<br/>4. [Search code, repositories, users, issues, pull requests...](https://github.com/rust-lang/rustfmt/issues/6288)<br/>5. [Gives up on chains if any line is too long. · Issue #3863 · rust-lang/rustfmt](https://github.com/rust-lang/rustfmt/issues/3863)<br/><br/># Rustfmt and Clippy: Line Length and Module Size Issues<br/><br/>## Rustfmt Line Length Handling<br/><br/>Rustfmt has a known issue where it "gives up" on formatting when lines exceed the maximum width limit, even after attempting to split them.[4][5] When rustfmt cannot reformat code to fit within `max_width`, it leaves the original formatting unchanged rather than applying partial formatting.[5] This affects method chains and string literals particularly—if any element in a chain is too long, the entire chain may not be formatted.[5]<br/><br/>There is an unstable `error_on_line_overflow` configuration option that can warn about lines exceeding the limit, though its behavior has been subject to discussion regarding macro formatting failures.[1]<br/><br/>## Clippy Module Length Concerns<br/><br/>The search results don't directly address a Clippy lint for "module too long," but they do reveal related issues with line-length linting. Clippy's `too_long_first_doc_paragraph` lint was found to be "extremely noisy and painful to fix" and generates massive amounts of trivial changes (+11k/-7k for one codebase), leading maintainers to blanket-allow it despite agreeing with its motivation.[2]<br/><br/>The core challenge is that rustfmt's comment wrapping functionality is unstable and error-prone, making it difficult to automatically fix long documentation paragraph issues without manual intervention or invasive refactoring.[2] |
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+No official file line limit. Let me give a clear answer to the user.
+</details></think>
+
+---
+
+
+**没有。** 官方 Rust 风格里**没有**对「一个 `.rs` 文件最多多少行」的硬性规定，也没有 500 行这种上限。
+
+- **有规定的是「行宽」**：默认每行不超过 100 个字符（`rustfmt` 的 `max_width`，可在 `rustfmt.toml` 里改）。
+- **文件行数**：风格指南和 rustfmt 都不管「一个文件总共多少行」；拆不拆文件、拆多细，是项目/团队自己的约定。
+
+常见做法是**按可读性和职责拆**，而不是死守一个行数：
+
+- 一个模块/文件职责清晰、好找、好改即可。
+- 文件特别长（例如上千行）时，很多人会考虑按子模块、按类型或按功能拆成多个 `.rs`，但这是工程习惯，不是语言或工具强制要求。
+
+所以：**可以超过 500 行**，只要团队/项目没有自己定「单文件不超过 N 行」的规矩；若你想在项目里加这样的约定，可以写在 `docs/` 或 CONTRIBUTING 里，而不是依赖官方规范。
+
+---
+
+_**User**_
+
+好的。请增加这个约定。
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants to add a project convention that limits .rs file length (e.g., not exceeding 500 lines). I should:
+
+1. Find where project conventions are documented - likely in docs/ (e.g. improvements-and-rust-style.md, or a dedicated style/conventions doc) or in CONTRIBUTING or README.
+2. Add the convention clearly (e.g. "single .rs file should not exceed 500 lines; split by submodule or responsibility when larger").
+
+Let me check what docs exist and where this fits best.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="glob_file_search">
+<details>
+<summary>Tool use: **glob_file_search** • Searched codebase "undefined" • **98** results in **1** directory</summary>
+
+Directory: **/home/ars/richard/2026/pvm_2/xtask_todo** (98 files)
+
+| File |
+|------|
+| `.specstory/history/2026-03-10_08-33Z-rust-workspace-project-initialization.md` |
+| `README.md` |
+| `openspec/changes/add-code-quality-and-ci/tasks.md` |
+| `openspec/changes/add-code-quality-and-ci/specs/development-conventions/spec.md` |
+| `openspec/changes/add-code-quality-and-ci/proposal.md` |
+| `docs/improvements-and-rust-style.md` |
+| `.specstory/.what-is-this.md` |
+| `docs/tasks.md` |
+| `docs/acceptance.md` |
+| `docs/test-cases.md` |
+| `docs/design.md` |
+| `docs/requirements.md` |
+| `openspec/specs/todo/spec.md` |
+| `openspec/changes/archive/2026-03-10-add-todo-timestamps-and-age-highlight/tasks.md` |
+| `openspec/changes/archive/2026-03-10-add-todo-timestamps-and-age-highlight/specs/todo/spec.md` |
+| `openspec/changes/archive/2026-03-10-add-todo-timestamps-and-age-highlight/design.md` |
+| `openspec/changes/archive/2026-03-10-add-todo-timestamps-and-age-highlight/proposal.md` |
+| `openspec/changes/archive/2026-03-10-implement-todo-domain/tasks.md` |
+| `openspec/changes/archive/2026-03-10-implement-todo-domain/specs/todo/spec.md` |
+| `openspec/changes/archive/2026-03-10-implement-todo-domain/proposal.md` |
+| `openspec/specs/test-documentation/spec.md` |
+| `openspec/changes/archive/2026-03-10-add-test-case-documentation/tasks.md` |
+| `AGENTS.md` |
+| `.claude/skills/xlsx/SKILL.md` |
+| `.claude/skills/template/SKILL.md` |
+| `.claude/skills/pptx/editing.md` |
+| `.claude/skills/theme-factory/themes/tech-innovation.md` |
+| `.claude/skills/theme-factory/themes/golden-hour.md` |
+| `.claude/skills/theme-factory/themes/modern-minimalist.md` |
+| `.claude/skills/theme-factory/themes/forest-canopy.md` |
+| `.claude/skills/theme-factory/themes/arctic-frost.md` |
+| `.claude/skills/theme-factory/themes/botanical-garden.md` |
+| `.claude/skills/theme-factory/themes/ocean-depths.md` |
+| `.claude/skills/theme-factory/themes/midnight-galaxy.md` |
+| `.claude/skills/theme-factory/themes/desert-rose.md` |
+| `.claude/skills/theme-factory/SKILL.md` |
+| `.claude/skills/pptx/SKILL.md` |
+| `.claude/skills/theme-factory/themes/sunset-boulevard.md` |
+| `.claude/skills/webapp-testing/SKILL.md` |
+| `.claude/skills/skill-creator/SKILL.md` |
+| `.claude/skills/web-artifacts-builder/SKILL.md` |
+| `.claude/skills/slack-gif-creator/SKILL.md` |
+| `.claude/skills/skill-creator/agents/grader.md` |
+| `.claude/skills/skill-creator/references/schemas.md` |
+| `.claude/skills/skill-creator/agents/comparator.md` |
+| `.claude/skills/skill-creator/agents/analyzer.md` |
+| `.claude/skills/internal-comms/SKILL.md` |
+| `.claude/skills/internal-comms/examples/faq-answers.md` |
+| `.claude/skills/internal-comms/examples/general-comms.md` |
+| `.claude/skills/internal-comms/examples/company-newsletter.md` |
+| `.claude/skills/pdf/forms.md` |
+| `.claude/skills/pdf/SKILL.md` |
+| `.claude/skills/mcp-builder/reference/evaluation.md` |
+| `.claude/skills/pdf/reference.md` |
+| `.claude/skills/mcp-builder/reference/python_mcp_server.md` |
+| `.claude/skills/mcp-builder/reference/mcp_best_practices.md` |
+| `.claude/skills/mcp-builder/reference/node_mcp_server.md` |
+| `.claude/skills/mcp-builder/SKILL.md` |
+| `.claude/skills/pptx/pptxgenjs.md` |
+| `.claude/skills/internal-comms/examples/3p-updates.md` |
+| `.claude/skills/docx/SKILL.md` |
+| `.claude/skills/frontend-design/SKILL.md` |
+| `.claude/skills/doc-coauthoring/SKILL.md` |
+| `.claude/skills/claude-api/ruby/claude-api.md` |
+| `.claude/skills/claude-api/typescript/agent-sdk/patterns.md` |
+| `.claude/skills/claude-api/java/claude-api.md` |
+| `.claude/skills/claude-api/typescript/agent-sdk/README.md` |
+| `.claude/skills/claude-api/python/agent-sdk/patterns.md` |
+| `.claude/skills/claude-api/python/agent-sdk/README.md` |
+| `.claude/skills/claude-api/go/claude-api.md` |
+| `.claude/skills/canvas-design/SKILL.md` |
+| `.claude/skills/claude-api/typescript/claude-api/tool-use.md` |
+| `.claude/skills/claude-api/typescript/claude-api/files-api.md` |
+| `.claude/skills/claude-api/typescript/claude-api/streaming.md` |
+| `.claude/skills/claude-api/python/claude-api/tool-use.md` |
+| `.claude/skills/claude-api/typescript/claude-api/batches.md` |
+| `.claude/skills/claude-api/python/claude-api/streaming.md` |
+| `.claude/skills/claude-api/shared/live-sources.md` |
+| `.claude/skills/claude-api/php/claude-api.md` |
+| `.claude/skills/claude-api/typescript/claude-api/README.md` |
+| `.claude/skills/claude-api/python/claude-api/batches.md` |
+| `.claude/skills/claude-api/SKILL.md` |
+| `.claude/skills/claude-api/shared/models.md` |
+| `.claude/skills/claude-api/python/claude-api/README.md` |
+| `.claude/skills/claude-api/shared/tool-use-concepts.md` |
+| `.claude/skills/claude-api/curl/examples.md` |
+| `.claude/skills/claude-api/python/claude-api/files-api.md` |
+| `.claude/skills/claude-api/shared/error-codes.md` |
+| `.claude/skills/claude-api/csharp/claude-api.md` |
+| `.claude/skills/algorithmic-art/SKILL.md` |
+| `.claude/skills/brand-guidelines/SKILL.md` |
+| `openspec/changes/archive/2026-03-10-add-test-case-documentation/specs/test-documentation/spec.md` |
+| `openspec/changes/archive/2026-03-10-add-test-case-documentation/proposal.md` |
+| `openspec/project.md` |
+| `.cursor/commands/openspec-archive.md` |
+| `.cursor/commands/openspec-apply.md` |
+| `.cursor/commands/openspec-proposal.md` |
+| `openspec/AGENTS.md` |
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/improvements-and-rust-style.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I'll add the file line limit convention. The best place is:
+1. In docs/improvements-and-rust-style.md - in the "Rust 编码规范" section, as a new item (e.g. 3.x 文件规模)
+2. Optionally in the OpenSpec development-conventions spec if we want it as a formal requirement
+
+I'll read the rest of improvements-and-rust-style.md to see the structure and add a clear "单文件行数" convention, then add a brief mention in README or keep it only in docs.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/improvements-and-rust-style.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I'll add a new subsection 3.3 for "文件规模 / 单文件行数" after 3.2, and also add a short note in section 3.2 "建议的本项目配置" as item 5. Actually it's cleaner to add one new subsection 3.3 "单文件行数约定" with the 500-line rule and when to split. Then the doc stays organized.
+</details></think>
+
+---
+
+
+在 `docs/improvements-and-rust-style.md` 的“Rust 编码规范”中新增“单文件行数”约定：
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/improvements-and-rust-style.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I could also add a brief pointer in the README under "Documentation" or in the development section, but the user said "增加这个约定", and the improvements doc is the right place. Optionally add to openspec development-conventions spec - but that might require a change proposal. Keeping it in docs/improvements-and-rust-style.md is enough for "项目约定". Done.
+</details></think>
+
+---
+
+
+已经加好了。
+
+**修改位置**：`docs/improvements-and-rust-style.md`
+
+**新增小节 3.3 单文件行数约定（本项目）**：
+
+- **约定**：单个 `.rs` 文件建议不超过 **500 行**（空行和注释是否计入可自行约定，建议量级一致）。
+- **超过时**：按职责拆成子模块（`mod`）或多个 `.rs`，保证单文件易读、好找、职责单一。
+- **说明**：Rust 官方没有文件行数上限，这是项目内部为可维护性定的约定。
+
+这样团队和评审都有一致的“单文件别太长”的参考标准。
+
+---
+
+_**User**_
+
+在 git commit 的 hook 中，也加上这个行数的检查。
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user wants to add a check in the git pre-commit hook that enforces the .rs file line limit (500 lines). I need to:
+
+1. Read the current .githooks/pre-commit script
+2. Add a step that checks all .rs files (or only staged .rs files) for line count and fails if any exceed 500 lines
+3. Consider: should we check only staged files or all .rs files? Typically pre-commit checks only the files being committed (staged), so we don't block commits that don't touch the long file. So: for each staged .rs file, count lines and fail if > 500.
+
+Let me read the current hook and add the check.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/.githooks/pre-commit</summary>
 
 </details>
 </tool-use>
