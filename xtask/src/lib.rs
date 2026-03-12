@@ -21,11 +21,18 @@ use git::GitArgs;
 use publish::PublishArgs;
 use run::RunArgs;
 
+/// Run failure with exit code (0 = success; 1 general, 2 parameter, 3 data for todo).
+#[derive(Debug)]
+pub struct RunFailure {
+    pub code: i32,
+    pub message: String,
+}
+
 /// Entry point for xtask. Parses args and runs the selected command.
 ///
 /// # Errors
-/// Propagates errors from the selected subcommand (e.g. clippy, git, todo).
-pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+/// Returns `RunFailure` with appropriate exit code on error.
+pub fn run() -> Result<(), RunFailure> {
     let cmd: XtaskCmd = argh::from_env();
     run_with(cmd)
 }
@@ -33,19 +40,29 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 /// Run with a pre-parsed command (for tests).
 ///
 /// # Errors
-/// Propagates errors from the selected subcommand.
-pub fn run_with(cmd: XtaskCmd) -> Result<(), Box<dyn std::error::Error>> {
+/// Returns `RunFailure` with code 1 for most subcommands; todo uses 2 (parameter) or 3 (data).
+pub fn run_with(cmd: XtaskCmd) -> Result<(), RunFailure> {
     match cmd.sub {
         XtaskSub::Run(args) => {
             run::cmd_run(args);
             Ok(())
         }
-        XtaskSub::Clippy(args) => clippy::cmd_clippy(args),
-        XtaskSub::Coverage(args) => coverage::cmd_coverage(args),
-        XtaskSub::Fmt(args) => fmt::cmd_fmt(args),
-        XtaskSub::Git(args) => git::cmd_git(&args),
-        XtaskSub::Publish(args) => publish::cmd_publish(&args),
-        XtaskSub::Todo(args) => todo::cmd_todo(args),
+        XtaskSub::Clippy(args) => clippy::cmd_clippy(args).map_err(|e| to_run_failure(&*e)),
+        XtaskSub::Coverage(args) => coverage::cmd_coverage(args).map_err(|e| to_run_failure(&*e)),
+        XtaskSub::Fmt(args) => fmt::cmd_fmt(args).map_err(|e| to_run_failure(&*e)),
+        XtaskSub::Git(args) => git::cmd_git(&args).map_err(|e| to_run_failure(&*e)),
+        XtaskSub::Publish(args) => publish::cmd_publish(&args).map_err(|e| to_run_failure(&*e)),
+        XtaskSub::Todo(args) => todo::cmd_todo(args).map_err(|e| RunFailure {
+            code: e.exit_code(),
+            message: e.to_string(),
+        }),
+    }
+}
+
+fn to_run_failure(e: &(dyn std::error::Error + 'static)) -> RunFailure {
+    RunFailure {
+        code: 1,
+        message: e.to_string(),
     }
 }
 

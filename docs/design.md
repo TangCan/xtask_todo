@@ -163,21 +163,21 @@ sequenceDiagram
 | 完成 | `complete(&mut self, id: TodoId)` | `Result<(), TodoError>` | id 不存在 |
 | 删除 | `delete(&mut self, id: TodoId)` | `Result<(), TodoError>` | id 不存在（可选：幂等返回 Ok） |
 
-**扩展（US-T7～US-T13、US-A1～US-A4，当前未实现，设计预留）**：
+**扩展（US-T7～US-T13、US-A1～US-A4，已实现）**：
 
 | 操作 | 签名语义 | 说明 |
 |------|----------|------|
-| 查看单条 | `get(&self, id: TodoId) -> Option<Todo>` 或 `show` | US-T7：返回单条完整信息，不存在为 None 或 Err |
-| 更新 | `update(&mut self, id: TodoId, patch)` | US-T8：修改标题、描述、截止日期、优先级、标签、重复规则等 |
-| 列表过滤/排序 | `list(&self, filter?: Filter, sort?: Sort)` | US-T9：按状态、优先级、标签、截止日期过滤与排序 |
-| 搜索 | `search(&self, keyword: &str) -> Vec<Todo>` | US-T10：在标题、描述、标签中匹配 |
-| 统计 | `stats(&self) -> Stats` | US-T11：总数、未完成数、已完成数等 |
-| 导出/导入 | `export(path)`, `import(path)` 或序列化/反序列化接口 | US-T12：JSON/CSV 等格式 |
-| 重复规则 | `Todo` 增加 `repeat_rule: Option<RepeatRule>`；完成时可选 `no_next: bool` | US-T13：规则类型 daily/weekly/monthly/yearly/weekdays 及 2d/3w；完成时自动生成下一实例或 `--no-next` 跳过 |
-| JSON 输出 | CLI 子命令支持 `--json`，输出统一 `{ status, data? }` / `{ status, error? }` | US-A1 |
-| 退出码 | 0 成功，1 一般错误，2 参数错误，3 数据错误 | US-A2 |
-| init-ai | `todo init-ai --for <tool> [--output <dir>]` 生成技能文件到 `.cursor/commands/` 等 | US-A3 |
-| dry-run | 修改类命令支持 `--dry-run`，仅输出拟执行操作、不写数据 | US-A4 |
+| 查看单条 | `get(&self, id: TodoId) -> Option<Todo>`；CLI `todo show <id>` | US-T7：返回单条完整信息，不存在为 None 或 Err |
+| 更新 | `update(&mut self, id: TodoId, patch)`；CLI `todo update <id> <title>` | US-T8：修改标题、描述、截止日期、优先级、标签、重复规则等 |
+| 列表过滤/排序 | `list_with_options(&self, options: &ListOptions)` | US-T9：按状态、优先级、标签、截止日期过滤与排序 |
+| 搜索 | `search(&self, keyword: &str) -> Vec<Todo>`；CLI `todo search <keyword>` | US-T10：在标题、描述、标签中匹配 |
+| 统计 | `stats(&self) -> (total, incomplete, complete)`；CLI `todo stats` | US-T11：总数、未完成数、已完成数 |
+| 导出/导入 | CLI `todo export <file>` / `todo import <file> [--replace]`；库 `add_todo` 等 | US-T12：JSON 格式，merge 或 replace 策略 |
+| 重复规则 | `Todo.repeat_rule: Option<RepeatRule>`；`complete(id, no_next)`；CLI `complete --no-next` | US-T13：daily/weekly/monthly/yearly/weekdays/custom(n)；完成时自动生成下一实例 |
+| JSON 输出 | 全局 `--json`，成功 `{ "status":"success", "data": ... }`，失败含 error 与 code | US-A1 |
+| 退出码 | 0 成功，1 一般错误，2 参数错误，3 数据错误（todo 子命令） | US-A2 |
+| init-ai | `todo init-ai [--for-tool cursor] [--output <dir>]`，默认 `.cursor/commands/` | US-A3 |
+| dry-run | 全局 `--dry-run`，add/update/complete/delete 不写 `.todo.json` | US-A4 |
 
 #### 3.1.3 错误类型
 
@@ -196,13 +196,11 @@ sequenceDiagram
 | （预留）`build` | 构建产物 | 可选 `--release` |
 | （预留）`release` | 发布流程 | 可选版本/目标 |
 
-**todo 子命令（当前）**：`add "标题"`、`list`、`complete <id>`、`delete <id>`。list 输出含创建/完成时间与用时；在 TTY 下对超过阈值未完成项着色。
-
-**todo 子命令（扩展预留）**：`show <id>`（US-T7）、`update <id>`（US-T8）、`search <keyword>`（US-T10）、`stats`（US-T11）、`export <file>` / `import <file>`（US-T12）、`init-ai [--for cursor|claude|...] [--output <dir>]`（US-A3）。全局选项预留：`--json`（US-A1）、`--dry-run`（US-A4）。完成子命令预留 `--no-next`（US-T13）。
+**todo 子命令（已实现）**：`add "标题"`、`list`、`show <id>`、`update <id> <title>`、`complete <id> [--no-next]`、`delete <id>`、`search <keyword>`、`stats`、`export <file>`、`import <file> [--replace]`、`init-ai [--for-tool cursor] [--output <dir>]`。list 输出含创建/完成时间与用时；TTY 下对超过阈值未完成项着色。全局选项：`--json`（统一 JSON 输出）、`--dry-run`（修改类命令不写 `.todo.json`）。
 
 - 入口：`cargo xtask [--] <子命令> [子命令参数]`。
-- 帮助：`cargo xtask --help`、`cargo xtask <子命令> --help`。
-- 退出码（扩展 US-A2）：0 成功，1 一般错误，2 参数错误，3 数据错误；当前实现为成功 0、失败非 0。
+- 帮助：`cargo xtask --help`、`cargo xtask todo --help`。
+- 退出码（US-A2）：0 成功，1 一般错误，2 参数错误，3 数据错误（如 id 不存在）；仅 todo 子命令区分 2/3，其余子命令失败为 1。
 
 ### 3.3 与需求的对应关系
 

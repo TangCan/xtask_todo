@@ -111,7 +111,7 @@ flowchart TD
 | **X4** | 时间戳与完成时间（Todo 模型 + list 展示） | T10 | `Todo` 含 `created_at`、`completed_at`；complete 时写入完成时间；list 显示创建/完成/用时（US-T5） |
 | **X5** | 长时间未完成高亮（TTY 下 list 着色） | X3 | 创建超过 7 天且未完成项在 TTY 下以不同颜色展示；非 TTY 不输出颜色（US-T6） |
 
-### 2.6 扩展任务（US-T7～US-T13、US-A1～US-A4）
+### 2.6 扩展任务（US-T7～US-T13、US-A1～US-A4，已实现）
 
 以下任务对应 requirements 中的扩展需求，实现顺序可按优先级 P0/P1/P2 排期。
 

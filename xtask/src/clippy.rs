@@ -29,6 +29,7 @@ pub fn status_to_result(
 pub fn cmd_clippy(_args: ClippyArgs) -> Result<(), Box<dyn std::error::Error>> {
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
     let mut cmd = Command::new(cargo);
+    cmd.current_dir(std::env::current_dir()?);
     cmd.args([
         "clippy",
         "--all-targets",

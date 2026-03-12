@@ -4,7 +4,7 @@
 
 fn main() {
     if let Err(e) = xtask::run() {
-        eprintln!("error: {e}");
-        std::process::exit(1);
+        eprintln!("error: {}", e.message);
+        std::process::exit(e.code);
     }
 }

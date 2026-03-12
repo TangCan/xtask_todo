@@ -3,12 +3,12 @@
 use std::process::Stdio;
 
 use crate::git::{cmd_git, GitAddArgs, GitArgs, GitCommitArgs, GitSub};
-use crate::tests::{RestoreCwd, CWD_TEST_MUTEX};
+use crate::tests::{cwd_test_lock, RestoreCwd};
 use crate::{run_with, XtaskCmd, XtaskSub};
 
 #[test]
 fn run_subcommand_git_add() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_git_add_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -28,7 +28,7 @@ fn run_subcommand_git_add() {
 
 #[test]
 fn run_subcommand_git_commit() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_git_commit_run_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -48,7 +48,7 @@ fn run_subcommand_git_commit() {
 
 #[test]
 fn cmd_git_add_in_nongit_dir_returns_err() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_nongit_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -62,7 +62,7 @@ fn cmd_git_add_in_nongit_dir_returns_err() {
 
 #[test]
 fn cmd_git_pre_commit_in_nongit_dir_returns_err() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_git_precommit_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -81,7 +81,7 @@ fn cmd_git_pre_commit_in_nongit_dir_returns_err() {
 
 #[test]
 fn cmd_git_pre_commit_in_repo_with_hook_succeeds() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_git_precommit_ok_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -111,7 +111,7 @@ fn cmd_git_pre_commit_in_repo_with_hook_succeeds() {
 
 #[test]
 fn cmd_git_commit_with_nothing_to_commit_returns_err() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_git_commit_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();

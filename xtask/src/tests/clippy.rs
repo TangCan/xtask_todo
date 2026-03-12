@@ -1,7 +1,7 @@
 //! Tests for clippy subcommand.
 
 use crate::clippy::{status_to_result, ClippyArgs};
-use crate::tests::{RestoreCwd, CWD_TEST_MUTEX};
+use crate::tests::{cwd_test_lock, RestoreCwd};
 use crate::{run_with, XtaskCmd, XtaskSub};
 
 #[test]
@@ -12,7 +12,7 @@ fn status_to_result_success() {
 
 #[test]
 fn run_subcommand_clippy() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let cmd = XtaskCmd {
         sub: XtaskSub::Clippy(ClippyArgs {}),
     };
@@ -21,7 +21,7 @@ fn run_subcommand_clippy() {
 
 #[test]
 fn cmd_clippy_fail_returns_err() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_clippy_fail_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();

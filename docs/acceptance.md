@@ -229,4 +229,4 @@
 
 - 需求变更时同步更新 [requirements.md](./requirements.md)，并在此文档中增删或调整对应验收项。
 - 自动化测试与验收项对应关系可在本仓库的测试说明或 CI 配置中注明，便于回归时勾选；具体用例列表见 [test-cases.md](./test-cases.md)。
-- 扩展需求（US-T7～US-T13、US-A1～US-A4）在未实现前验收结果可填「跳过」，实现后再勾选通过。
+- 扩展需求（US-T7～US-T13、US-A1～US-A4）已实现：CLI 支持 show/update/search/stats/export/import/init-ai、全局 --json 与 --dry-run、退出码 0/1/2/3；验收结果可勾选通过。

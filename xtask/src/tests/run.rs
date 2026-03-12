@@ -4,8 +4,8 @@ use crate::coverage::{cmd_coverage, parse_coverage_percentage, CoverageArgs};
 use crate::fmt::{cmd_fmt, FmtArgs};
 use crate::publish::PublishArgs;
 use crate::run::RunArgs;
-use crate::tests::{RestoreCwd, CWD_TEST_MUTEX};
-use crate::todo::{TodoArgs, TodoListArgs, TodoSub};
+use crate::tests::{cwd_test_lock, RestoreCwd};
+use crate::todo::{todo_args, TodoListArgs, TodoSub};
 use crate::{run_with, XtaskCmd, XtaskSub};
 use xtask_todo_lib::{InMemoryStore, TodoId, TodoList};
 
@@ -64,7 +64,7 @@ fn run_subcommand_run() {
 
 #[test]
 fn run_subcommand_publish_returns_err_outside_workspace() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_publish_run_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -89,7 +89,7 @@ fn run_subcommand_coverage() {
 
 #[test]
 fn cmd_coverage_fake_success() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     std::env::set_var("XTASK_COVERAGE_TEST_FAKE", "1");
     let out = cmd_coverage(CoverageArgs {});
     std::env::remove_var("XTASK_COVERAGE_TEST_FAKE");
@@ -98,7 +98,7 @@ fn cmd_coverage_fake_success() {
 
 #[test]
 fn cmd_coverage_fake_fail_returns_err() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     std::env::remove_var("XTASK_COVERAGE_TEST_FAKE");
     std::env::set_var("XTASK_COVERAGE_TEST_FAKE_FAIL", "1");
     let out = cmd_coverage(CoverageArgs {});
@@ -108,7 +108,7 @@ fn cmd_coverage_fake_fail_returns_err() {
 
 #[test]
 fn run_subcommand_fmt() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let cmd = XtaskCmd {
         sub: XtaskSub::Fmt(FmtArgs {}),
     };
@@ -117,16 +117,14 @@ fn run_subcommand_fmt() {
 
 #[test]
 fn run_subcommand_todo_list() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_run_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
     let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
     let cmd = XtaskCmd {
-        sub: XtaskSub::Todo(TodoArgs {
-            sub: TodoSub::List(TodoListArgs {}),
-        }),
+        sub: XtaskSub::Todo(todo_args(TodoSub::List(TodoListArgs {}))),
     };
     let out = run_with(cmd);
     assert!(out.is_ok());
@@ -134,7 +132,7 @@ fn run_subcommand_todo_list() {
 
 #[test]
 fn cmd_fmt_in_nocargo_dir_returns_err() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_fmt_fail_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();

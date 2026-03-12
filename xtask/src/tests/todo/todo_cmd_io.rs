@@ -1,63 +1,50 @@
 //! Tests for `cmd_todo` search, stats, export/import, and save/load path.
 
-use crate::tests::{RestoreCwd, CWD_TEST_MUTEX};
+use crate::tests::{cwd_test_lock, RestoreCwd};
 use crate::todo::{
-    cmd_todo, load_todos, load_todos_from_path, save_todos_to_path, TodoAddArgs, TodoArgs, TodoDto,
-    TodoExportArgs, TodoImportArgs, TodoSearchArgs, TodoStatsArgs, TodoSub,
+    cmd_todo, load_todos, load_todos_from_path, save_todos_to_path, todo_args, TodoAddArgs,
+    TodoDto, TodoExportArgs, TodoImportArgs, TodoSearchArgs, TodoStatsArgs, TodoSub,
 };
 
 #[test]
 fn cmd_todo_search_and_stats() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_srch_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
     let _guard = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
-    cmd_todo(TodoArgs {
-        sub: TodoSub::Add(TodoAddArgs {
-            title: "alpha".to_string(),
-        }),
-    })
+    cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
+        title: "alpha".to_string(),
+    })))
     .unwrap();
-    cmd_todo(TodoArgs {
-        sub: TodoSub::Add(TodoAddArgs {
-            title: "beta".to_string(),
-        }),
-    })
+    cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
+        title: "beta".to_string(),
+    })))
     .unwrap();
-    cmd_todo(TodoArgs {
-        sub: TodoSub::Search(TodoSearchArgs {
-            keyword: "alpha".to_string(),
-        }),
-    })
+    cmd_todo(todo_args(TodoSub::Search(TodoSearchArgs {
+        keyword: "alpha".to_string(),
+    })))
     .unwrap();
-    cmd_todo(TodoArgs {
-        sub: TodoSub::Stats(TodoStatsArgs {}),
-    })
-    .unwrap();
+    cmd_todo(todo_args(TodoSub::Stats(TodoStatsArgs {}))).unwrap();
 }
 
 #[test]
 fn cmd_todo_export_and_import_merge_replace() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_io_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
     let _guard = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
     let export_path = dir.join("export.json");
-    cmd_todo(TodoArgs {
-        sub: TodoSub::Add(TodoAddArgs {
-            title: "one".to_string(),
-        }),
-    })
+    cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
+        title: "one".to_string(),
+    })))
     .unwrap();
-    cmd_todo(TodoArgs {
-        sub: TodoSub::Export(TodoExportArgs {
-            file: export_path.clone(),
-        }),
-    })
+    cmd_todo(todo_args(TodoSub::Export(TodoExportArgs {
+        file: export_path.clone(),
+    })))
     .unwrap();
     assert!(export_path.exists());
     let from_export = load_todos_from_path(&export_path).unwrap();
@@ -82,22 +69,18 @@ fn cmd_todo_export_and_import_merge_replace() {
         serde_json::to_string_pretty(&import_dtos).unwrap(),
     )
     .unwrap();
-    cmd_todo(TodoArgs {
-        sub: TodoSub::Import(TodoImportArgs {
-            file: import_path.clone(),
-            replace: false,
-        }),
-    })
+    cmd_todo(todo_args(TodoSub::Import(TodoImportArgs {
+        file: import_path.clone(),
+        replace: false,
+    })))
     .unwrap();
     let todos = load_todos().unwrap();
     assert_eq!(todos.len(), 2);
 
-    cmd_todo(TodoArgs {
-        sub: TodoSub::Import(TodoImportArgs {
-            file: import_path,
-            replace: true,
-        }),
-    })
+    cmd_todo(todo_args(TodoSub::Import(TodoImportArgs {
+        file: import_path,
+        replace: true,
+    })))
     .unwrap();
     let todos = load_todos().unwrap();
     assert_eq!(todos.len(), 1);
@@ -106,7 +89,7 @@ fn cmd_todo_export_and_import_merge_replace() {
 
 #[test]
 fn save_todos_to_path_and_load_todos_from_path() {
-    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_path_{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let cwd = std::env::current_dir().unwrap();
