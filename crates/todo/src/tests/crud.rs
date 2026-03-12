@@ -1,4 +1,4 @@
-//! Unit tests for the todo crate.
+//! Basic CRUD and core type tests.
 
 use crate::{InMemoryStore, TodoError, TodoId, TodoList};
 
@@ -157,4 +157,9 @@ fn update_title_empty_returns_err() {
     let id = list.create("x").unwrap();
     assert!(list.update_title(id, "").is_err());
     assert_eq!(list.get(id).unwrap().title, "x");
+}
+
+#[test]
+fn todo_id_from_raw_zero_returns_none() {
+    assert!(TodoId::from_raw(0).is_none());
 }

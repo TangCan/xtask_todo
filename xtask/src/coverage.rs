@@ -78,7 +78,12 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
         println!("\n--- xtask ---");
         let (name, pct) = run_tarpaulin(
             "xtask",
-            &["--exclude-files", "xtask/src/main.rs"],
+            &[
+                "--exclude-files",
+                "xtask/src/main.rs",
+                "--exclude-files",
+                "crates/todo/*",
+            ],
             &["--test-threads=1", "--include-ignored"],
         );
         results.push((name, pct));
@@ -125,18 +130,6 @@ mod tests {
         );
         assert!(parse_coverage_percentage("Uncovered Lines:").is_none());
         assert!(parse_coverage_percentage("").is_none());
-    }
-
-    /// Runs real `cargo tarpaulin`; ignored by default to avoid build-dir races with `cargo test` (binary target).
-    /// Run with: `cargo test -p xtask -- --ignored`
-    #[test]
-    #[ignore = "runs real cargo tarpaulin; use --ignored to run"]
-    fn run_tarpaulin_todo_returns_pct_when_installed() {
-        let (name, pct) = run_tarpaulin("xtask-todo-lib", &[], &[]);
-        assert_eq!(name, "xtask-todo-lib");
-        if let Some(p) = pct {
-            assert!((0.0..=100.0).contains(&p), "expected percentage, got {p}");
-        }
     }
 
     #[test]

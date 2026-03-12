@@ -61,6 +61,55 @@ fn cmd_git_add_in_nongit_dir_returns_err() {
 }
 
 #[test]
+fn cmd_git_pre_commit_in_nongit_dir_returns_err() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let dir = std::env::temp_dir().join(format!("xtask_git_precommit_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _guard = RestoreCwd::new(&dir, &cwd);
+    let cmd = GitArgs {
+        sub: GitSub::PreCommit(crate::git::GitPreCommitArgs {}),
+    };
+    let result = cmd_git(&cmd);
+    assert!(result.is_err());
+    let s = result.unwrap_err().to_string();
+    assert!(
+        s.contains("not a git repository") || s.contains("pre-commit hook not found"),
+        "got: {s}"
+    );
+}
+
+#[test]
+fn cmd_git_pre_commit_in_repo_with_hook_succeeds() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let dir = std::env::temp_dir().join(format!("xtask_git_precommit_ok_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _ = std::process::Command::new("git")
+        .args(["init", "-b", "main"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    let githooks = dir.join(".githooks");
+    let _ = std::fs::create_dir_all(&githooks);
+    let hook = githooks.join("pre-commit");
+    std::fs::write(&hook, "#!/bin/sh\nexit 0\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&hook).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&hook, perms).unwrap();
+    }
+    let cmd = GitArgs {
+        sub: GitSub::PreCommit(crate::git::GitPreCommitArgs {}),
+    };
+    let result = cmd_git(&cmd);
+    assert!(result.is_ok(), "pre-commit with hook: {result:?}");
+}
+
+#[test]
 fn cmd_git_commit_with_nothing_to_commit_returns_err() {
     let _guard = CWD_TEST_MUTEX.lock().unwrap();
     let dir = std::env::temp_dir().join(format!("xtask_git_commit_{}", std::process::id()));
