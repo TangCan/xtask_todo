@@ -70,7 +70,7 @@
 
 | # | 验收标准 | 验证方式 | 预期结果 | 结果 |
 |---|----------|----------|----------|------|
-| T7-1 | 给定有效 id，应输出该任务完整字段 | 对已存在 id 执行 `todo show <id>` 或等价 API | 输出 id、标题、创建时间、完成时间、状态等 | |
+| T7-1 | 给定有效 id，应输出该任务完整字段 | 对已存在 id 执行 `todo show <id>`（人类可读含描述、截止、优先级、标签、重复规则；`--json` 含全部字段） | 输出 id、标题、创建时间、完成时间、状态及可选字段 | |
 | T7-2 | 给定不存在的 id，应返回明确错误及非 0 退出码 | 对不存在 id 执行 show | 明确错误信息，退出码非 0 | |
 
 ### 2.8 US-T8：更新任务（扩展）
@@ -85,7 +85,7 @@
 | # | 验收标准 | 验证方式 | 预期结果 | 结果 |
 |---|----------|----------|----------|------|
 | T9-1 | 添加/更新支持描述、截止日期、优先级、标签（CLI：--description、--due-date、--priority、--tags）；列表与 show 能展示 | add/update 带可选参数，list/show 查看 | 字段正确存储与展示 | |
-| T9-2 | 列表支持按状态、优先级、标签、截止日期过滤及排序 | list 带过滤/排序选项 | 结果集与顺序符合选项 | |
+| T9-2 | 列表支持按状态、优先级、标签、截止日期过滤及排序 | `todo list --status incomplete`、`--priority high`、`--tags a,b`、`--due-before`、`--due-after`、`--sort created-at\|due-date\|priority\|title` | 结果集与顺序符合选项 | |
 
 ### 2.10 US-T10：搜索任务（扩展）
 
@@ -113,7 +113,7 @@
 | T13-1 | 定义重复规则：支持 daily/weekly/monthly/yearly/weekdays、2d/3w 简写及 custom:N；可带结束条件 repeat_until（截止日）、repeat_count（剩余次数） | add/update 带 --repeat-rule 及数据模型 repeat_until/repeat_count，show 查看 | 规则正确存储与展示 | |
 | T13-2 | 带重复规则任务完成时，根据规则自动创建下一笔并计算截止日期；满足结束条件时不生成 | 完成一条重复任务后 list；或 repeat_count=1/repeat_until 早于 next_due 时完成 | 未达结束条件时出现新任务且截止日期符合规则；达结束条件时无新实例 | |
 | T13-3 | 完成时支持 --no-next，仅完成当前实例、不生成下一笔 | complete(id --no-next) 后 list | 原任务完成，无新实例 | |
-| T13-4 | show 展示重复规则；update 可修改或取消规则（含可选 --repeat-rule 等） | show(id)、update(id) 修改规则 | 规则正确展示与持久化 | |
+| T13-4 | show 展示重复规则；update 可修改或取消规则（含可选 --repeat-rule、--clear-repeat-rule） | show(id)、update(id) 修改规则或 `update --clear-repeat-rule` 取消 | 规则正确展示与持久化；--clear-repeat-rule 后 repeat_rule 为 None | |
 
 ---
 
@@ -151,7 +151,7 @@
 | # | 验收标准 | 验证方式 | 预期结果 | 结果 |
 |---|----------|----------|----------|------|
 | X4-1 | `todo add/list/complete/delete` 可用且持久化 | 执行 `cargo xtask todo add "标题"`、`list`、`complete <id>`、`delete <id>`；再次运行 list | 数据一致且保留在 `.todo.json` | |
-| X4-2 | todo 子命令与帮助 | 执行 `cargo xtask todo --help`；可选用 show/update/search/stats/export/import/init-ai | 输出含 add、list、show、update、complete、delete、search、stats、export、import、init-ai 及全局 --json、--dry-run | |
+| X4-2 | todo 子命令与帮助 | 执行 `cargo xtask todo --help`、`cargo xtask todo list --help` | 输出含 add、list（含 --status/--sort 等）、show、update（含 --clear-repeat-rule）、complete、delete、search、stats、export、import、init-ai 及全局 --json、--dry-run | |
 
 ### 3.5 AI/CLI 集成验收（扩展）
 

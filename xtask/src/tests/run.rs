@@ -169,7 +169,7 @@ fn run_subcommand_todo_list() {
     let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
     let cmd = XtaskCmd {
-        sub: XtaskSub::Todo(todo_args(TodoSub::List(TodoListArgs {}))),
+        sub: XtaskSub::Todo(todo_args(TodoSub::List(TodoListArgs::default()))),
     };
     let out = run_with(cmd);
     assert!(out.is_ok());

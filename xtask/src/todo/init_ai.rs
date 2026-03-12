@@ -26,16 +26,16 @@ Run via: `cargo xtask todo <subcommand> [options]`
 
 ## Subcommands
 
-- `add <title>` — add a task
-- `list` — list all tasks
-- `show <id>` — show one task
-- `update <id> <title>` — update task title
+- `add <title> [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …]` — add a task (optional fields)
+- `list [--status completed|incomplete] [--priority …] [--tags …] [--due-before …] [--due-after …] [--sort created-at|due-date|priority|title]` — list tasks (optional filter and sort)
+- `show <id>` — show one task (human-readable: description, due, priority, tags, repeat; use --json for full)
+- `update <id> <title> [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …] [--clear-repeat-rule]` — update task (--clear-repeat-rule clears repeat)
 - `complete <id> [--no-next]` — mark done (optional: do not create next for recurring)
 - `delete <id>` — remove task
 - `search <keyword>` — search in title/description/tags
 - `stats` — total, incomplete, complete counts
-- `export <file>` — export JSON to file
-- `import <file> [--replace]` — import from file (merge or replace)
+- `export <file> [--format json|csv]` — export to file (format by extension or --format)
+- `import <file> [--replace]` — import from file (merge or replace; .json or .csv)
 - `init-ai` — generate this skill file
 
 ## JSON output

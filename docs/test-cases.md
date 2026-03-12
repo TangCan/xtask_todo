@@ -56,7 +56,7 @@
 
 | ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |
 |------|-----------|------|------|----------|----------|
-| TC-T7-1 | US-T7 | 有效 id 返回完整字段 | 对已存在 id 调用 `todo show <id>` 或等价 API | 单元/集成/CLI | 输出该任务 id、标题、创建时间、完成时间、状态等 |
+| TC-T7-1 | US-T7 | 有效 id 返回完整字段 | 对已存在 id 调用 `todo show <id>`（人类可读含描述、截止、优先级、标签、重复规则与结束条件；`--json` 含全部字段） | 单元/集成/CLI | 输出该任务 id、标题、创建时间、完成时间、状态及可选字段 |
 | TC-T7-2 | US-T7 | 不存在 id 返回错误 | 对不存在的 id 调用 show | 单元/集成/CLI | 明确错误信息，退出码非 0 |
 
 ### US-T8：更新任务（扩展）
@@ -71,7 +71,7 @@
 | ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |
 |------|-----------|------|------|----------|----------|
 | TC-T9-1 | US-T9 | add/update 支持描述、截止、优先级、标签（CLI：--description、--due-date、--priority、--tags） | add/update 带可选参数，list/show 查看 | 单元/集成/CLI | 字段正确存储与展示 |
-| TC-T9-2 | US-T9 | list 支持按状态/优先级/标签/截止过滤与排序 | 带过滤或排序选项调用 list | 单元/集成 | 结果集与顺序符合选项 |
+| TC-T9-2 | US-T9 | list 支持按状态/优先级/标签/截止过滤与排序 | CLI `todo list --status incomplete`、`--priority high`、`--tags a,b`、`--due-before 2025-12-31`、`--sort due-date` 等 | 单元/集成/CLI | 结果集与顺序符合选项 |
 
 ### US-T10：搜索任务（扩展）
 
@@ -101,7 +101,7 @@
 | TC-T13-2 | US-T13 | --no-next 仅完成不生成下一笔 | complete(id --no-next)，再 list | 单元/集成/CLI | 原任务完成，无新实例 |
 | TC-T13-3 | US-T13 | 重复规则支持 2d/3w 简写及 custom:N | 使用 repeat_rule "2d" 或 "3w" 添加/更新任务，完成时下一实例截止日正确 | 单元/集成 | 2d→每 2 天，3w→每 21 天，next_due 正确 |
 | TC-T13-4 | US-T13 | 结束条件 repeat_count/repeat_until | repeat_count=1 完成时不生成下一笔；repeat_until 早于 next_due 时不生成 | 单元/集成 | 符合结束条件时无新实例 |
-| TC-T13-5 | US-T13 | show/update 展示与修改重复规则 | show(id) 含 repeat_rule；update 修改或取消规则（含可选字段） | 单元/集成/CLI | 规则正确展示与持久化 |
+| TC-T13-5 | US-T13 | show/update 展示与修改重复规则 | show(id) 含 repeat_rule；update 修改规则（含可选字段）或使用 `--clear-repeat-rule` 取消规则 | 单元/集成/CLI | 规则正确展示与持久化；--clear-repeat-rule 后 repeat_rule 为 None |
 
 ### US-A1：结构化 JSON 输出（扩展）
 

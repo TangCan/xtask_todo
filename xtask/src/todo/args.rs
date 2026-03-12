@@ -120,8 +120,11 @@ pub struct TodoUpdateArgs {
     /// optional tags, comma-separated
     pub tags: Option<String>,
     #[argh(option)]
-    /// optional repeat rule: daily, weekly, monthly, yearly, weekdays, 2d, 3w, custom:N; empty to clear
+    /// optional repeat rule: daily, weekly, monthly, yearly, weekdays, 2d, 3w, custom:N
     pub repeat_rule: Option<String>,
+    #[argh(switch)]
+    /// clear repeat rule (set to none)
+    pub clear_repeat_rule: bool,
 }
 
 #[derive(FromArgs, Clone)]
@@ -147,10 +150,29 @@ pub struct TodoAddArgs {
     pub repeat_rule: Option<String>,
 }
 
-#[derive(FromArgs, Clone)]
+#[derive(FromArgs, Clone, Default)]
 #[argh(subcommand, name = "list")]
-/// List all tasks
-pub struct TodoListArgs {}
+/// List tasks (optional filter and sort)
+pub struct TodoListArgs {
+    #[argh(option)]
+    /// filter by status: completed, incomplete
+    pub status: Option<String>,
+    #[argh(option)]
+    /// filter by priority: low, medium, high
+    pub priority: Option<String>,
+    #[argh(option)]
+    /// filter by tags (comma-separated; match any)
+    pub tags: Option<String>,
+    #[argh(option)]
+    /// filter due date on or before (YYYY-MM-DD)
+    pub due_before: Option<String>,
+    #[argh(option)]
+    /// filter due date on or after (YYYY-MM-DD)
+    pub due_after: Option<String>,
+    #[argh(option)]
+    /// sort by: created-at, due-date, priority, title
+    pub sort: Option<String>,
+}
 
 #[derive(FromArgs, Clone)]
 #[argh(subcommand, name = "complete")]

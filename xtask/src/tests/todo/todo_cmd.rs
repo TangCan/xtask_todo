@@ -28,7 +28,7 @@ fn cmd_todo_add_list_save_load() {
     assert_eq!(todos.len(), 1, "expected exactly one todo after add");
     assert_eq!(todos[0].title, "test task");
 
-    let list_cmd = todo_args(TodoSub::List(TodoListArgs {}));
+    let list_cmd = todo_args(TodoSub::List(TodoListArgs::default()));
     cmd_todo(list_cmd).unwrap();
 }
 
@@ -80,7 +80,7 @@ fn cmd_todo_list_empty_prints_no_tasks() {
     let _guard = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
 
-    let list_cmd = todo_args(TodoSub::List(TodoListArgs {}));
+    let list_cmd = todo_args(TodoSub::List(TodoListArgs::default()));
     cmd_todo(list_cmd).unwrap();
 }
 
@@ -108,7 +108,7 @@ fn cmd_todo_list_with_completed_todo() {
     }];
     std::fs::write(".todo.json", serde_json::to_string_pretty(&dtos).unwrap()).unwrap();
 
-    let list_cmd = todo_args(TodoSub::List(TodoListArgs {}));
+    let list_cmd = todo_args(TodoSub::List(TodoListArgs::default()));
     cmd_todo(list_cmd).unwrap();
 }
 
@@ -221,6 +221,7 @@ fn cmd_todo_update_and_update_id_zero_errors() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        clear_repeat_rule: false,
     })))
     .unwrap();
     let todos = load_todos().unwrap();
@@ -235,6 +236,7 @@ fn cmd_todo_update_and_update_id_zero_errors() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        clear_repeat_rule: false,
     })))
     .unwrap_err();
     assert!(err.to_string().contains("invalid id 0"));
@@ -286,7 +288,7 @@ fn cmd_todo_add_and_list_with_json() {
     cmd_todo(add_cmd).unwrap();
 
     let list_cmd = TodoArgs {
-        sub: TodoSub::List(TodoListArgs {}),
+        sub: TodoSub::List(TodoListArgs::default()),
         json: true,
         dry_run: false,
     };

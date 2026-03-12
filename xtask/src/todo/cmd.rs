@@ -1,10 +1,14 @@
 //! Todo subcommand dispatch and handlers.
 
+use std::fmt::Write;
 use std::io::IsTerminal;
 use std::path::Path;
 use std::str::FromStr;
 
-use xtask_todo_lib::{InMemoryStore, Priority, RepeatRule, TodoError, TodoId, TodoList, TodoPatch};
+use xtask_todo_lib::{
+    InMemoryStore, ListFilter, ListOptions, ListSort, Priority, RepeatRule, TodoError, TodoId,
+    TodoList, TodoPatch,
+};
 
 use super::args::{TodoArgs, TodoSub};
 use super::error::{print_json_success, todo_to_json, TodoCliError};
@@ -52,6 +56,82 @@ fn patch_from_add_args(
         repeat_rule: repeat_parsed,
         repeat_until: None,
         repeat_count: None,
+        repeat_rule_clear: false,
+    })
+}
+
+/// Build `ListOptions` from list CLI optional filter/sort args.
+fn list_options_from_args(
+    status: Option<&str>,
+    priority: Option<&str>,
+    tags: Option<&str>,
+    due_before: Option<&str>,
+    due_after: Option<&str>,
+    sort: Option<&str>,
+) -> Result<ListOptions, TodoCliError> {
+    let status_parsed = match status.filter(|s| !s.is_empty()) {
+        None => None,
+        Some(s) => {
+            let s = s.trim().to_lowercase();
+            match s.as_str() {
+                "completed" | "done" | "true" => Some(true),
+                "incomplete" | "open" | "false" => Some(false),
+                _ => {
+                    return Err(TodoCliError::Parameter(format!(
+                        "invalid status: {s} (use completed or incomplete)"
+                    )))
+                }
+            }
+        }
+    };
+
+    let priority_parsed = priority
+        .filter(|s| !s.is_empty())
+        .and_then(|s| Priority::from_str(s).ok());
+    if let Some(p) = priority {
+        if !p.is_empty() && priority_parsed.is_none() {
+            return Err(TodoCliError::Parameter(format!("invalid priority: {p}")));
+        }
+    }
+
+    let tags_any = tags.map(|s| {
+        s.split(',')
+            .map(str::trim)
+            .filter(|x| !x.is_empty())
+            .map(String::from)
+            .collect::<Vec<_>>()
+    });
+
+    let sort_val = sort
+        .filter(|s| !s.is_empty())
+        .map(|s| match s.trim().to_lowercase().as_str() {
+            "due-date" | "due_date" => ListSort::DueDate,
+            "priority" => ListSort::Priority,
+            "title" => ListSort::Title,
+            _ => ListSort::CreatedAt,
+        })
+        .unwrap_or_default();
+
+    let filter = if status_parsed.is_some()
+        || priority_parsed.is_some()
+        || tags_any.as_ref().is_some_and(|t| !t.is_empty())
+        || due_before.is_some()
+        || due_after.is_some()
+    {
+        Some(ListFilter {
+            status: status_parsed,
+            priority: priority_parsed,
+            tags_any,
+            due_before: due_before.map(String::from),
+            due_after: due_after.map(String::from),
+        })
+    } else {
+        None
+    };
+
+    Ok(ListOptions {
+        filter,
+        sort: sort_val,
     })
 }
 
@@ -126,8 +206,16 @@ pub fn cmd_todo(args: TodoArgs) -> Result<(), TodoCliError> {
                 }
             }
         }
-        TodoSub::List(_) => {
-            let items = list.list();
+        TodoSub::List(a) => {
+            let options = list_options_from_args(
+                a.status.as_deref(),
+                a.priority.as_deref(),
+                a.tags.as_deref(),
+                a.due_before.as_deref(),
+                a.due_after.as_deref(),
+                a.sort.as_deref(),
+            )?;
+            let items = list.list_with_options(&options);
             if json {
                 let data: Vec<serde_json::Value> = items.iter().map(todo_to_json).collect();
                 print_json_success(&serde_json::json!({ "items": data }));
@@ -160,6 +248,28 @@ pub fn cmd_todo(args: TodoArgs) -> Result<(), TodoCliError> {
                             },
                         );
                         println!("  [{}] {} {}  {}", t.id, mark, t.title, time_info);
+                        if let Some(ref d) = t.description {
+                            println!("    描述: {d}");
+                        }
+                        if let Some(ref d) = t.due_date {
+                            println!("    截止: {d}");
+                        }
+                        if let Some(p) = t.priority {
+                            println!("    优先级: {p}");
+                        }
+                        if !t.tags.is_empty() {
+                            println!("    标签: {}", t.tags.join(", "));
+                        }
+                        if let Some(ref r) = t.repeat_rule {
+                            let mut repeat_line = format!("    重复: {r}");
+                            if let Some(ref u) = t.repeat_until {
+                                let _ = write!(repeat_line, "  截止 {u}");
+                            }
+                            if let Some(c) = t.repeat_count {
+                                let _ = write!(repeat_line, "  剩余 {c} 次");
+                            }
+                            println!("{repeat_line}");
+                        }
                     }
                 }
                 None => return Err(TodoCliError::Data(format!("todo not found: {id}"))),
@@ -192,6 +302,7 @@ pub fn cmd_todo(args: TodoArgs) -> Result<(), TodoCliError> {
                     a.repeat_rule.as_deref(),
                 )?;
                 patch.title = Some(a.title.trim().to_string());
+                patch.repeat_rule_clear = a.clear_repeat_rule;
                 list.update(id, patch)
                     .map_err(|e| TodoCliError::Data(e.to_string()))?;
                 save_todos(&list).map_err(TodoCliError::General)?;

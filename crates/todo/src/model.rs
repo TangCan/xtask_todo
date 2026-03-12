@@ -31,6 +31,7 @@ pub struct Todo {
 }
 
 /// Partial update for a todo; only `Some` fields are applied.
+/// When `repeat_rule_clear` is true, `repeat_rule` is set to None (e.g. for CLI `--clear-repeat-rule`).
 #[derive(Clone, Default)]
 pub struct TodoPatch {
     pub title: Option<String>,
@@ -41,6 +42,8 @@ pub struct TodoPatch {
     pub repeat_rule: Option<RepeatRule>,
     pub repeat_until: Option<String>,
     pub repeat_count: Option<u32>,
+    /// When true, clear `repeat_rule` (set to None).
+    pub repeat_rule_clear: bool,
 }
 
 /// Filter criteria for listing todos.

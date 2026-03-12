@@ -135,7 +135,7 @@ sequenceDiagram
 
 ### 2.4 列表展示与时间
 
-- **列表展示**（如 `cargo xtask todo list`）：每条展示创建时间（相对如「Xm/Xh/Xd ago」）；已完成项另展示完成时间与**用时**（完成时间 − 创建时间）。
+- **列表展示**（如 `cargo xtask todo list`）：支持可选 `--status`/`--priority`/`--tags`/`--due-before`/`--due-after` 过滤及 `--sort` 排序；每条展示创建时间（相对如「Xm/Xh/Xd ago」）；已完成项另展示完成时间与**用时**（完成时间 − 创建时间）。
 - **长时间未完成提醒**：当输出为 TTY 时，创建超过约定阈值（默认 7 天）且未完成的任务以不同颜色（如 ANSI 黄色）展示；非 TTY 时不输出颜色码。
 
 ---
@@ -168,7 +168,7 @@ sequenceDiagram
 | 操作 | 签名语义 | 说明 |
 |------|----------|------|
 | 查看单条 | `get(&self, id: TodoId) -> Option<Todo>`；CLI `todo show <id>` | US-T7：返回单条完整信息，不存在为 None 或 Err |
-| 更新 | `update(&mut self, id: TodoId, patch)`；CLI `todo update <id> <title> [--description …]` | US-T8：修改标题及可选描述、截止、优先级、标签、重复规则等（patch 含 repeat_until、repeat_count） |
+| 更新 | `update(&mut self, id: TodoId, patch)`；CLI `todo update <id> <title> [--description …] [--clear-repeat-rule]` | US-T8：修改标题及可选描述、截止、优先级、标签、重复规则等（patch 含 repeat_until、repeat_count、repeat_rule_clear）；`--clear-repeat-rule` 将 repeat_rule 置为 None |
 | 列表过滤/排序 | `list_with_options(&self, options: &ListOptions)` | US-T9：按状态、优先级、标签、截止日期过滤与排序 |
 | 搜索 | `search(&self, keyword: &str) -> Vec<Todo>`；CLI `todo search <keyword>` | US-T10：在标题、描述、标签中匹配 |
 | 统计 | `stats(&self) -> (total, incomplete, complete)`；CLI `todo stats` | US-T11：总数、未完成数、已完成数 |
@@ -196,7 +196,7 @@ sequenceDiagram
 | （预留）`build` | 构建产物 | 可选 `--release` |
 | （预留）`release` | 发布流程 | 可选版本/目标 |
 
-**todo 子命令（已实现）**：`add "标题" [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …]`、`list`、`show <id>`、`update <id> <title> [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …]`、`complete <id> [--no-next]`、`delete <id>`、`search <keyword>`、`stats`、`export <file> [--format json|csv]`（格式也可由文件扩展名推断）、`import <file> [--replace]`（支持 .json/.csv）、`init-ai [--for-tool cursor] [--output <dir>]`。list 输出含创建/完成时间与用时；TTY 下对超过阈值未完成项着色。全局选项：`--json`（统一 JSON 输出）、`--dry-run`（修改类命令不写 `.todo.json` 且不修改内存列表，仅打印拟执行操作）。
+**todo 子命令（已实现）**：`add "标题" [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …]`；`list [--status completed|incomplete] [--priority …] [--tags …] [--due-before …] [--due-after …] [--sort created-at|due-date|priority|title]`（过滤与排序）；`show <id>`（人类可读输出含描述、截止、优先级、标签、重复规则与结束条件）；`update <id> <title> [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …] [--clear-repeat-rule]`（`--clear-repeat-rule` 用于取消重复规则）；`complete <id> [--no-next]`、`delete <id>`、`search <keyword>`、`stats`、`export <file> [--format json|csv]`（格式也可由文件扩展名推断）、`import <file> [--replace]`（支持 .json/.csv）、`init-ai [--for-tool cursor] [--output <dir>]`。list 输出含创建/完成时间与用时；TTY 下对超过阈值未完成项着色。全局选项：`--json`（统一 JSON 输出）、`--dry-run`（修改类命令不写 `.todo.json` 且不修改内存列表，仅打印拟执行操作）。
 
 - 入口：`cargo xtask [--] <子命令> [子命令参数]`。
 - 帮助：`cargo xtask --help`、`cargo xtask todo --help`。

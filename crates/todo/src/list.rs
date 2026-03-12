@@ -214,6 +214,9 @@ impl<S: Store> TodoList<S> {
         if patch.repeat_count.is_some() {
             todo.repeat_count = patch.repeat_count;
         }
+        if patch.repeat_rule_clear {
+            todo.repeat_rule = None;
+        }
         self.store.update(todo);
         Ok(())
     }
