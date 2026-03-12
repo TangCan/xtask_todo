@@ -1,11 +1,16 @@
 # When a tag xtask-todo-lib-v* is pushed, create a GitHub Release and attach the .crate file.
-# This keeps GitHub Releases in sync with crates.io versions (publish to crates.io first, then tag and push).
+# Also supports workflow_dispatch to create a release for an existing tag (e.g. tags pushed before this workflow existed).
 name: Release
 
 on:
   push:
     tags:
       - 'xtask-todo-lib-v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag to release (e.g. xtask-todo-lib-v0.1.0). Only for manual run; leave empty on tag push.'
+        required: true
 
 jobs:
   release:
@@ -14,6 +19,8 @@ jobs:
       contents: write  # create release and upload .crate asset
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag_name || github.ref }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -33,6 +40,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           files: ${{ steps.crate.outputs.path }}
           generate_release_notes: true
           body: |

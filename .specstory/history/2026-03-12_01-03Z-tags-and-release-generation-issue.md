@@ -289,7 +289,492 @@ Tag 名称符合 `xtask-todo-lib-v*`，更可能的原因是：
 ## 已做修改
 
 1. **`.github/workflows/release.yml`**  
-   - 为 `release` job 增加了 `permissions
+   - 为 `release` job 增加了 `permissions: contents: write`，确保有权限创建 Release 并上传 `.crate`。
+
+2. **`docs/publishing.md`**  
+   - 在「已有历史版本」后加了一段说明：**为何已有 tag 却没有自动 Release**，以及三种处理方式（看 Actions、重新推送 tag 触发、或手动建 Release）。
+
+---
+
+## 你现在可以怎么做
+
+- **想为现有 3 个 tag 补上 Release**：  
+  任选一个 tag（例如 `xtask-todo-lib-v0.1.2`），在本地执行：
+  ```bash
+  git push origin :refs/tags/xtask-todo-lib-v0.1.2
+  git push origin xtask-todo-lib-v0.1.2
+  ```
+  这样会再次触发「推送 tag」事件，且当前 `main` 上已有 `release.yml`，会用当前 workflow 跑一次并创建 Release。对 v0.1.0、v0.1.1 可同样操作。
+
+- **确认是否曾跑过**：  
+  在 GitHub 仓库 **Actions** 里看是否有与这些 tag 相关的 Run 或失败记录；若从没有，就符合「tag 先于 workflow 存在」的情况。
+
+之后新版本只要先发布到 crates.io，再打并推送 `xtask-todo-lib-v*` tag，就会自动创建带 `.crate` 的 Release。
+
+---
+
+_**User**_
+
+github 页面： https://github.com/TangCan/xtask_todo/actions/runs/22982030393/job/66723791460  提示有错误 Getting action download info
+Error: Unable to resolve action dtolnay/rust-action, repository not found
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user is seeing an error in their GitHub Actions run: "Unable to resolve action dtolnay/rust-action, repository not found". This suggests that the action `dtolnay/rust-action` might have been moved, renamed, or the repository is no longer available.
+
+Let me search for the current recommended way to install Rust in GitHub Actions - the standard approach is often `actions-rs/toolchain` or the official `dtolnay/rust-toolchain` or just using `actions-rust-lang/setup-rust-action` or the simpler approach with `swatinem/rust-cache` and installing rust via a run step.
+
+Actually, I recall that `dtolnay/rust-action` was a popular action. Let me check - maybe the repo was renamed or the owner changed. I'll search for alternatives and update the workflow to use a well-maintained Rust setup action.
+
+Common options:
+1. `actions-rust-lang/setup-rust-action` - uses rust-toolchain.toml
+2. `dtolnay/rust-toolchain` - different from rust-action
+3. Just run `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y` and add cargo to path
+
+Let me search the web for the current state of dtolnay/rust-action and what to use instead.
+</details></think>
+
+---
+
+
+正在查找可用的 Rust 安装方式以替换已不可用的 `dtolnay/rust-action`。
+
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="web_search">
+<details>
+            <summary>Tool use: **web_search** • Searched web `undefined` • **1** results</summary>
+        
+| Title | URL | Chunk |
+|-------|-----|-------|
+| Web search results for query: dtolnay/rust-action repository not found GitHub Actions alternative 2024 2025 |  | Links:<br/>1. [dtolnay/rust-toolchain](https://github.com/dtolnay/rust-toolchain)<br/>2. [GitHub - dtolnay/install: Fast `cargo install` action using a GitHub-based binary cache](https://github.com/dtolnay/install)<br/>3. [GitHub - actions-rust-lang/setup-rust-toolchain: Setup a specific Rust toolchain with extra features like problem matchers](https://github.com/actions-rust-lang/setup-rust-toolchain)<br/>4. [rust-toolchain.toml support · Issue #133 · dtolnay/rust-toolchain](https://github.com/dtolnay/rust-toolchain/issues/133)<br/>5. [Workflow runs · dtolnay/rust-toolchain](https://github.com/dtolnay/rust-toolchain/actions)<br/><br/># dtolnay/rust-action Repository Status and Alternatives<br/><br/>The search results don't show a "dtolnay/rust-action" repository, but they do reveal related dtolnay GitHub Actions that are actively maintained:<br/><br/>## Active dtolnay Actions (2024-2025)<br/><br/>**dtolnay/rust-toolchain** is the primary action for Rust toolchain setup.[1] It's a concise GitHub Action for installing Rust toolchains with 1,484 stars. Key features include:<br/>- Installs toolchains via rustup with one-line usage<br/>- Supports specifying versions like `@stable`, `@nightly`, or specific version numbers (e.g., `@1.89.0`)<br/>- Optional inputs for targets and components<br/>- Recently updated (last push February 2026)[1]<br/><br/>**dtolnay/install** provides fast `cargo install` functionality using a GitHub-based binary cache.[2]<br/><br/>## Alternative Action<br/><br/>**actions-rust-lang/setup-rust-toolchain** offers similar functionality with extra features like problem matchers.[3] It's available on the GitHub Actions Marketplace with 130 stars.<br/><br/>## Design Philosophy<br/><br/>Note that dtolnay/rust-toolchain intentionally does not read from `rust-toolchain.toml` files—the workflow YAML file is the source of truth for CI compiler versions.[4] If you need automatic `rust-toolchain.toml` support, you would need to use a different action or combine it with a TOML parser action. |
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/.github/workflows/release.yml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/.github/workflows/ci.yml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+So `dtolnay/rust-action` doesn't exist or was renamed. The search says **dtolnay/rust-toolchain** is the maintained action for Rust toolchain setup. Let me update both workflows to use `dtolnay/rust-toolchain` instead of `dtolnay/rust-action`.
+
+From the search:
+- dtolnay/rust-toolchain - installs via rustup, supports @stable, @nightly, optional targets and components
+- So I need to replace `dtolnay/rust-action@stable` with `dtolnay/rust-toolchain@stable` 
+- For CI we need components: rustfmt, clippy - I need to check if rust-toolchain action supports that. The search said "Optional inputs for targets and components" so it should.
+
+Let me check the rust-toolchain action syntax for components.
+</details></think>
+
+---
+
+
+正在将两个 workflow 中的 `dtolnay/rust-action` 替换为受维护的 `dtolnay/rust-toolchain`。
+
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="web_search">
+<details>
+            <summary>Tool use: **web_search** • Searched web `undefined` • **1** results</summary>
+        
+| Title | URL | Chunk |
+|-------|-----|-------|
+| Web search results for query: dtolnay/rust-toolchain action components rustfmt clippy usage |  | Links:<br/>1. [dtolnay/rust-toolchain](https://github.com/dtolnay/rust-toolchain)<br/>2. [Search code, repositories, users, issues, pull requests...](https://github.com/dtolnay/rust-toolchain/blob/master/action.yml)<br/>3. [GitHub - actions-rust-lang/setup-rust-toolchain: Setup a specific Rust toolchain with extra features like problem matchers](https://github.com/actions-rust-lang/setup-rust-toolchain)<br/>4. [Workflow runs · dtolnay/rust-toolchain](https://github.com/dtolnay/rust-toolchain/actions)<br/>5. [Don't install unnecessary components · Issue #142 · dtolnay/rust-toolchain](https://github.com/dtolnay/rust-toolchain/issues/142)<br/><br/># dtolnay/rust-toolchain Action: Components Usage<br/><br/>The dtolnay/rust-toolchain GitHub Action allows you to install additional Rust components like rustfmt and clippy through the `components` input parameter.[1]<br/><br/>## How to Use Components<br/><br/>To install components, pass a comma-separated list to the `components` input:[1]<br/><br/>```yaml<br/>- uses: dtolnay/rust-toolchain@stable<br/>  with:<br/>    components: rustfmt, clippy<br/>```<br/><br/>The `components` input accepts a comma-separated string of additional components to install.[1] This works with any toolchain specification, whether you use @stable, @nightly, specific versions like @1.89.0, or a custom toolchain input.[1]<br/><br/>## Example with Specific Version<br/><br/>```yaml<br/>- uses: dtolnay/rust-toolchain@1.85.0<br/>  with:<br/>    components: rustfmt, clippy<br/>```<br/><br/>The action will install the specified toolchain along with rustfmt and clippy as components.[5]<br/><br/>## Important Note<br/><br/>Be aware that if your project has a `rust-toolchain.toml` file in the repository, it may specify additional components (like rust-analyzer) that will be installed automatically, potentially overriding or supplementing the components you explicitly request.[5] |
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Perfect. So the replacement is:
+- `dtolnay/rust-action@stable` → `dtolnay/rust-toolchain@stable`
+- The `components` syntax is the same: `components: rustfmt, clippy`
+
+I'll update both workflow files.
+</details></think>
+
+---
+
+
+正在将两个 workflow 中的 `dtolnay/rust-action` 替换为 `dtolnay/rust-toolchain`。
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/.github/workflows/release.yml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/.github/workflows/ci.yml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. Both files updated. The dtolnay/rust-toolchain action has the same usage: @stable and components: rustfmt, clippy. So the CI and Release workflows should work now.
+</details></think>
+
+---
+
+
+已经改好了。
+
+**原因**：`dtolnay/rust-action` 这个仓库已经不存在或不可用，所以 GitHub 报错 “repository not found”。当前推荐用的是同作者的 **`dtolnay/rust-toolchain`**，用法兼容。
+
+**修改**：
+- **`.github/workflows/release.yml`**：`dtolnay/rust-action@stable` → `dtolnay/rust-toolchain@stable`
+- **`.github/workflows/ci.yml`**：同上，并保留 `components: rustfmt, clippy`（[rust-toolchain 支持 components](https://github.com/dtolnay/rust-toolchain)）
+
+提交并推送后，CI 和基于 tag 的 Release 工作流应能正常运行。若想立刻验证，可以重新跑一次失败的 workflow，或再推送一次 `xtask-todo-lib-v*` tag 触发 Release。
+
+---
+
+_**User**_
+
+https://github.com/TangCan/xtask_todo/actions/runs/22982149900/job/66724169689  重新推送后，CI job: Check 正常了。但是，还看不到 release 
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user says that after re-pushing, the CI job "Check" is now working (that's the ci.yml workflow that runs on push to main). But they still don't see a Release.
+
+Important distinction:
+- **CI workflow** (ci.yml) runs on `push` to branches `main`/`master` and `pull_request`. So when they "re-pushed", they probably pushed a commit to main, which triggered the CI (check) job. That's why CI is green now.
+- **Release workflow** (release.yml) runs only on `push` of **tags** matching `xtask-todo-lib-v*`. So pushing commits to main does NOT trigger the Release workflow. They need to push a **tag** to trigger it.
+
+So the user might have re-pushed their branch/code but not re-pushed the tag. To get a Release created automatically, they need to:
+1. Delete the remote tag (if it already exists)
+2. Push the tag again: `git push origin xtask-todo-lib-v0.1.2` (or whichever version)
+
+That would trigger the Release workflow, which would then create the GitHub Release.
+
+Let me explain this clearly and give them the exact commands. I could also check if there's any other issue with the release workflow - e.g. does it need to checkout the tag ref? When you push a tag, the workflow is triggered and the ref is the tag. Let me check - in the release workflow they use actions/checkout@v4 without specifying ref. When the event is push (tags), the GITHUB_REF is the tag ref, so checkout will check out the tag. Good.
+
+So the fix is: they need to trigger the Release workflow by pushing a tag, not by pushing to main. If the tags already exist on the remote, pushing again won't trigger (you can't "re-push" an existing tag - it's already there). So they need to delete the remote tag first, then push the tag again. That will trigger the "push tags" event and run the release workflow.
+
+Commands:
+```bash
+# Delete remote tag (e.g. for 0.1.2)
+git push origin :refs/tags/xtask-todo-lib-v0.1.2
+# Push the tag again (this triggers the Release workflow)
+git push origin xtask-todo-lib-v0.1.2
+```
+
+They need to do this for each tag they want to create a Release for (0.1.0, 0.1.1, 0.1.2). Or they could just do the latest one (0.1.2) to verify it works.
+</details></think>
+
+---
+
+
+区分两个工作流：
+
+- **CI（Sync / Check）**：由**推送到分支**（如 `main`）或 PR 触发，所以你重新推代码后 Check 会变绿。
+- **Release**：只由**推送 tag**（`xtask-todo-lib-v*`）触发，推分支不会跑 Release。
+
+因此：要出现 Release，必须**推送 tag**，而不是只推分支。如果 tag 已经在远程存在，直接再 `git push` 不会重新触发；需要先删远程 tag，再推送同名的 tag，才会触发 Release 工作流。
+
+按下面步骤操作（以 `xtask-todo-lib-v0.1.2` 为例）：
+
+```bash
+# 1. 删除远程 tag（本地 tag 可保留）
+git push origin :refs/tags/xtask-todo-lib-v0.1.2
+
+# 2. 再推送该 tag，触发 Release 工作流
+git push origin xtask-todo-lib-v0.1.2
+```
+
+推送后到 **Actions** 里应能看到名为 **Release** 的 workflow run；跑完后在仓库 **Releases** 页会出现对应版本和 `.crate` 附件。
+
+若 0.1.0、0.1.1 也要有 Release，对每个 tag 重复上述两步即可（把 `xtask-todo-lib-v0.1.2` 换成 `xtask-todo-lib-v0.1.0`、`xtask-todo-lib-v0.1.1`）。
+
+---
+
+_**User**_
+
+@\home\ars\.cursor\projects\home-ars-richard-2026-pvm-2-xtask-todo\terminals\1.txt:614-616 @\home\ars\.cursor\projects\home-ars-richard-2026-pvm-2-xtask-todo\terminals\1.txt:617-620 就是重复运行了这两个命令，发布 v0.1.0 版本。但是看不到 https://github.com/TangCan/xtask_todo/actions  页面，看不到名为 Release 的 workflow 
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user ran the two commands to delete and re-push the tag `xtask-todo-lib-v0.1.0`. The tag was successfully pushed (they see "new tag" in the output). But on the GitHub Actions page they only see "Sync" (CI) workflow runs - no "Release" workflow runs at all.
+
+So the Release workflow is not being triggered when they push the tag. Possible reasons:
+
+1. **Workflow file not on the commit that the tag points to** - When you push a tag, GitHub runs the workflow from the **commit that the tag points to**. So if `xtask-todo-lib-v0.1.0` points to an old commit (e.g. from when the project was first created), that commit might not have the `.github/workflows/release.yml` file. So when the tag push event fires, GitHub looks at the workflow files in the tagged commit - if release.yml doesn't exist there, the Release workflow won't run!
+
+2. **Tag pattern mismatch** - Unlikely since we verified it's `xtask-todo-lib-v*`.
+
+3. **Release workflow exists only on main** - The workflow is in the repo. When you push a tag, which commit does GitHub use? It uses the commit that the tag points to. So if the tag `xtask-todo-lib-v0.1.0` points to commit X, GitHub will look for .github/workflows/release.yml in commit X. If that file was added in a later commit (on main), then commit X doesn't have it - so no Release workflow is triggered!
+
+That's the key. The tag `xtask-todo-lib-v0.1.0` likely points to an old commit that doesn't have the release.yml file. So when the tag is pushed, GitHub tries to run workflows for that tag - but the workflow definitions are read from the tagged commit. No release.yml in that commit = no Release workflow run.
+
+Solution options:
+1. **Re-tag**: Create a new tag (or move the tag) to point to the current main commit (which has release.yml), then push. So: delete the tag locally and remotely, create the tag on the latest main, push. Then the Release workflow will exist in that commit and will run.
+2. **Or** use a different trigger - e.g. workflow_dispatch with a tag input - to create releases for existing tags. That way the workflow runs from the default branch (main) and can create a release for any tag.
+
+Let me suggest option 1 first since it's the standard flow: tag the current commit (which has the workflow), push. So they need to:
+- Delete remote tag again
+- Delete local tag
+- Create tag on current HEAD (which should be the latest main with release.yml)
+- Push the tag
+
+But wait - if they tag the current HEAD, the version in Cargo.toml might not be 0.1.0. So we need to be careful. Actually for a "release" they want to release the version that's in the repo at that tag. So if they want to "release v0.1.0", the tag should point to the commit that has version 0.1.0 in Cargo.toml. So the flow would be:
+- The commit that has xtask-todo-lib 0.1.0 might be an old commit that doesn't have release.yml
+- So when they push that tag, no workflow runs
+
+The fix: we need the Release workflow to run when a matching tag is pushed, but use the workflow file from the default branch (main) instead of from the tagged commit. Unfortunately GitHub Actions doesn't work that way - when you push a tag, it runs workflows from the tagged commit.
+
+So the solutions are:
+A) Move the tag to point to a commit that has release.yml. But that commit might have a different version (e.g. 0.1.2) in Cargo.toml - so we'd be creating a "v0.1.0" release from code that says 0.1.2. That's wrong.
+B) Add release.yml to the history - not practical (rewrite history).
+C) Use a different approach: trigger the Release workflow from the default branch when a tag is pushed. In GitHub Actions, you can use a workflow that triggers on tag push but checks out the default branch... Actually no - when you use `on: push: tags`, the workflow that runs is the one in the commit the tag points to. So we're stuck unless we use workflow_dispatch or a different trigger.
+
+Actually, I need to double-check GitHub's behavior. When you push a tag, which workflow files are used?
+From GitHub docs: "When you push a tag, the workflow runs are triggered by the commit that the tag points to." So the workflow definition is taken from the tagged commit. So if the tag points to an old commit without release.yml, the Release workflow never runs.
+
+The proper fix for *future* releases: always tag from a commit that already has the release workflow (i.e. from current main). So for new versions (e.g. 0.1.3), they tag the current commit and push - that will have release.yml and will run.
+
+For *existing* tags (0.1.0, 0.1.1, 0.1.2) that point to old commits: those commits might not have release.yml. So pushing those tags again still won't trigger Release because the workflow is read from the tagged commit.
+
+So we have two approaches:
+1. For old tags: manually create the Release on GitHub for those tags, or add a workflow_dispatch that can create a release for an existing tag (the workflow would checkout the tag, build the crate, create release). That way the workflow runs from main (when manually triggered) and can create releases for any tag.
+2. For new tags going forward: make sure to tag from the latest main (or at least a commit that has release.yml), then push - then Release will run.
+
+Let me also add a workflow that can be manually triggered to create a release for a given tag - so they can run it for the existing tags. The workflow would:
+- workflow_dispatch with input: tag name (e.g. xtask-todo-lib-v0.1.0)
+- Checkout that tag
+- Install Rust, package, create release
+
+That way they don't have to move tags or anything. Let me implement that.
+
+Actually re-reading again - the user said they don't see the "Release" workflow at all on the Actions page. So when they filter by workflow, they only see "CI" and "Release" in the workflow list, but the runs shown are all "Sync" (CI). So no run of Release has ever happened. That confirms: when they pushed the tag, the Release workflow didn't run because the workflow file wasn't in the commit that the tag points to.
+
+I'll:
+1. Explain why (tag points to old commit without release.yml)
+2. Add a workflow_dispatch to release.yml so they can manually trigger "create release for this tag" - and we need to pass the tag name. Actually when you workflow_dispatch, you could have an input for tag. Then checkout that tag, build, release. So the workflow would need to support both: automatic on tag push (for new tags from current main) and manual with tag input (for old tags).
+3. Update the doc to mention that the tag must point to a commit that contains the Release workflow (i.e. tag from current main when releasing).
+
+Let me read the current release.yml again and add the manual trigger.
+</details></think>
+
+---
+
+
+确认原因：推送 tag 时，GitHub 会从该 tag 指向的提交读取 workflow 文件。若 `xtask-todo-lib-v0.1.0` 指向的提交是在添加 `release.yml` 之前，该提交没有 Release 工作流，因此不会触发。正在确认 release 工作流并添加手动触发（workflow_dispatch），以便为已有 tag 创建 Release。
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/.github/workflows/release.yml</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to:
+1. Add workflow_dispatch with an input for the tag name, so they can manually run the Release workflow for an existing tag. When manually triggered, we need to checkout that tag.
+2. When triggered by tag push, we use the ref that was pushed (the tag). When triggered manually, we need to checkout the tag from the input.
+
+Actually, when we use workflow_dispatch with input tag, we need to:
+- Checkout the repository with ref set to the tag
+- Then run the same steps
+
+And for the release creation step, we need to tell action-gh-release which tag to create the release for. Looking at softprops/action-gh-release: it creates a release for the tag that triggered the workflow when it's a tag push. When we're in workflow_dispatch and we checked out a tag, the GITHUB_REF might not be the tag... We need to pass the tag to the action. Let me check - when you checkout a tag, what is GITHUB_REF? Actually when you run workflow_dispatch, GITHUB_REF is refs/heads/main (or whatever branch). So we need to pass the tag to action-gh-release. The action has a `tag_name` input - we can pass the input tag.
+
+So the workflow would be:
+- on: push tags OR workflow_dispatch with input tag_name
+- steps:
+  - checkout: for tag push use default (already at tag), for workflow_dispatch use ref: inputs.tag_name
+  - ... same steps ...
+  - Create GitHub Release: for workflow_dispatch we need to pass tag_name: inputs.tag_name so it creates release for that tag. For tag push, the default behavior is to use the ref (the tag), so we don't need to pass tag_name.
+
+Let me check softprops/action-gh-release - it says "tag_name" - The tag to create a release for. Defaults to the tag that triggered the workflow run. So we need tag_name: ${{ github.ref_name }} for tag push (which is the tag name), and for workflow_dispatch we need tag_name: inputs.tag_name. We can do: tag_name: ${{ github.event.inputs.tag_name || github.ref_name }} - when it's tag push, inputs.tag_name is empty so we use ref_name (the tag); when it's workflow_dispatch, we use inputs.tag_name.
+
+Also for checkout: when tag push, we're already at the tag (checkout defaults to the ref that triggered). When workflow_dispatch, we need to checkout the tag: uses: actions/checkout@v4 with ref: ${{ github.event.inputs.tag_name }}. But if we always use ref: ${{ github.event.inputs.tag_name || github.ref }}, then for tag push ref is empty so we'd use github.ref (the tag ref). For workflow_dispatch we use the input. So:
+  - uses: actions/checkout@v4
+    with:
+      ref: ${{ github.event.inputs.tag_name || github.ref }}
+
+When it's tag push, github.event.inputs.tag_name is empty, so we use github.ref (e.g. refs/tags/xtask-todo-lib-v0.1.0). Good.
+When it's workflow_dispatch, we need to pass the tag - user could pass "xtask-todo-lib-v0.1.0". So ref would be that. But checkout expects a ref - for a tag it could be "xtask-todo-lib-v0.1.0" or "refs/tags/xtask-todo-lib-v0.1.0". I'll use the input as-is; checkout usually accepts tag names.
+
+Now for the release action - we need tag_name. When tag push, ref_name is e.g. "xtask-todo-lib-v0.1.0". When workflow_dispatch, we use inputs.tag_name. So tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}.
+
+Let me implement this.
+</details></think>
+
+---
+
+
+确认原因：tag 指向的提交里没有 `release.yml`，因此推送该 tag 时 GitHub 不会运行 Release 工作流。添加 `workflow_dispatch`，以便我们手动为已有 tag 创建 Release：
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/.github/workflows/release.yml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Now I need to pass the tag_name to the softprops/action-gh-release so that when we run manually it creates the release for the right tag. When triggered by tag push, we want to use the ref (the tag that was pushed). So tag_name for the release should be: when workflow_dispatch we use inputs.tag_name, when push we use github.ref_name (the tag name without refs/tags/).
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/.github/workflows/release.yml</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+When workflow_dispatch is used without a tag push, github.ref_name might be "main" or similar (the branch that triggered it - actually workflow_dispatch runs in the context of the default branch). So we must use inputs.tag_name for the release tag when it's workflow_dispatch. When it's tag push, github.event.inputs.tag_name is empty, so we use github.ref_name which is the tag name. Good.
+
+Now update the docs to explain why and how to use manual run for old tags.
+</details></think>
+
+---
+
+
+正在更新文档，说明原因并添加手动为已有 tag 创建 Release 的步骤：
+
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2">
+<details><summary>Tool use: **read_file_v2** • Read file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/publishing.md</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+I need to update the troubleshooting paragraph to mention that re-pushing the tag won't help if the tag points to an old commit that doesn't have release.yml - and that they can use the new "Run workflow" manual trigger with the tag name instead.
+</details></think>
+
+---
+
+
+
+
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2">
+
+<details><summary>Tool use: **edit_file_v2** • Edit file: /home/ars/richard/2026/pvm_2/xtask_todo/docs/publishing.md</summary>
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+Done. Let me give the user a clear summary.
+</details></think>
+
+---
+
+
+已经改好了，结论和用法如下。
+
+---
+
+## 原因
+
+GitHub 在**推送 tag** 时，会用 **该 tag 指向的那次提交** 里的 workflow 定义来跑。  
+`xtask-todo-lib-v0.1.0` 指向的是**还没有** `release.yml` 的旧提交，所以即使用「删远程 tag 再重新推送」的方式，触发时读到的仍是那个旧提交，里面没有 Release 工作流，因此 **Release 工作流根本不会出现在 Actions 里**，也不会跑。
+
+---
+
+## 已做修改
+
+1. **`.github/workflows/release.yml`**  
+   - 增加了 **`workflow_dispatch`**，可以手动选 tag 跑 Release。  
+   - 手动运行时用输入 **Tag to release**（例如 `xtask-todo-lib-v0.1.0`），工作流会 checkout 该 tag、打 `.crate` 并创建 GitHub Release。
+
+2. **`docs/publishing.md`**  
+   - 更新了「为何已有 tag 却没有自动 Release」的说明，并写上用 **Run workflow** 为已有 tag 补建 Release 的步骤。
+
+---
+
+## 你现在可以怎么做
+
+1. 把当前改动提交并推到 `main`（让仓库里的 `release.yml` 包含 `workflow_dispatch`）。
+2. 在 GitHub 打开：**Actions → Release**（左侧选 “Release” 工作流）。
+3. 点 **“Run workflow”**，在 **“Tag to release”** 里填 `xtask-todo-lib-v0.1.0`，然后运行。
+4. 跑完后，在 **Releases** 页就能看到 v0.1.0 的 Release 和附带的 `.crate`。  
+   对 v0.1.1、v0.1.2 可以同样再跑两次，分别填 `xtask-todo-lib-v0.1.1` 和 `xtask-todo-lib-v0.1.2`。
+
+之后新版本只要在**当前 main（或已包含 release.yml 的提交）**上打 `xtask-todo-lib-v*` 再推送，就会自动触发 Release 工作流，无需再手动 Run workflow。
 
 ---
 
