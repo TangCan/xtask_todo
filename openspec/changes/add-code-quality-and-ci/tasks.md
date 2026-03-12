@@ -6,7 +6,7 @@
 
 ## 2. Linting (Clippy)
 - [x] 2.1 Fix or allow Clippy warnings so `cargo clippy --all-targets -- -D warnings` passes: doc backticks, `# Errors` for `Result`-returning functions, `#[must_use]` where suggested, inline format args (e.g. `write!(f, "todo not found: {id}")`). Prefer fixing over blanket allow; document any remaining allows.
-- [ ] 2.2 Optionally add lint config in root `Cargo.toml` or `.cargo/config.toml` if the team agrees on a fixed set.
+- [x] 2.2 Optionally add lint config in root `Cargo.toml` or `.cargo/config.toml` if the team agrees on a fixed set. (Documented in root `Cargo.toml`: per-crate `[lints.clippy]` in `crates/todo` and `xtask`; virtual workspace has no root `[lints]`.)
 
 ## 3. Documentation
 - [x] 3.1 In `crates/todo`: add `# Errors` sections to doc comments for `create`, `complete`, `delete`; use backticks for type names (e.g. `` `TodoId` ``) in doc strings.

@@ -1,3 +1,6 @@
+# Lint policy: each member crate defines [lints.clippy] in its own Cargo.toml (e.g. all = "warn").
+# Virtual workspaces cannot set [lints] at root; see crates/todo/Cargo.toml and xtask/Cargo.toml.
+
 [workspace]
 resolver = "2"
 members = ["crates/todo", "xtask"]

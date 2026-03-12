@@ -84,6 +84,7 @@ pub fn cmd_git(args: &GitArgs) -> Result<(), Box<dyn std::error::Error>> {
                     "openspec",
                     "README.md",
                     ".cursor",
+                    "Cargo.toml",
                 ])
                 .status()?;
             status_to_result(status, "git add")
