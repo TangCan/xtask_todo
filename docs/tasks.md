@@ -111,6 +111,27 @@ flowchart TD
 | **X4** | 时间戳与完成时间（Todo 模型 + list 展示） | T10 | `Todo` 含 `created_at`、`completed_at`；complete 时写入完成时间；list 显示创建/完成/用时（US-T5） |
 | **X5** | 长时间未完成高亮（TTY 下 list 着色） | X3 | 创建超过 7 天且未完成项在 TTY 下以不同颜色展示；非 TTY 不输出颜色（US-T6） |
 
+### 2.6 扩展任务（US-T7～US-T13、US-A1～US-A4）
+
+以下任务对应 requirements 中的扩展需求，实现顺序可按优先级 P0/P1/P2 排期。
+
+| ID | 任务 | 依赖 | 产出 / 验收 |
+|----|------|------|-------------|
+| **T16** | 实现 `get(id)` / 查看单条 | T7 | Store 与 TodoList 支持按 id 取单条；不存在返回 None 或 Err（US-T7） |
+| **T17** | 实现 `update(id, patch)` | T7, T16 | 支持修改标题及扩展字段；持久化与 list/show 一致（US-T8） |
+| **T18** | Todo 可选属性 + list 过滤/排序 | T2, T9 | Todo 增加 description、due_date、priority、tags；add/update 支持；list 支持 Filter/Sort（US-T9） |
+| **T19** | 实现 `search(keyword)` | T7, T18 | 在标题（及描述、标签）中匹配，返回匹配列表（US-T10） |
+| **T20** | 实现 `stats()` | T7 | 返回总数、未完成数、已完成数等（US-T11） |
+| **T21** | 导出 export(path, format) | T7 | 将当前 list 序列化为 JSON/CSV 写入文件（US-T12） |
+| **T22** | 导入 import(path) | T7 | 从文件反序列化并合并/覆盖到 Store（US-T12） |
+| **T23** | 重复规则 RepeatRule + 完成时生成下一实例 | T2, T10 | Todo 增加 repeat_rule；complete 时可选生成下一笔并计算 due；complete 支持 no_next 参数（US-T13） |
+| **X6** | CLI：todo show / update / search / stats / export / import | T16～T22, X3 | 子命令 show \<id\>、update \<id\>、search \<keyword\>、stats、export/import \<file\>（US-T7～T12） |
+| **X7** | CLI：todo complete --no-next | T23, X3 | complete 子命令支持 --no-next，不生成下一实例（US-T13） |
+| **X8** | 全局选项 --json | X3, X6 | 各子命令支持 --json，输出统一 JSON 结构（US-A1） |
+| **X9** | 标准退出码 0/1/2/3 | X3 | 成功 0，一般错误 1，参数错误 2，数据错误 3（US-A2） |
+| **X10** | 子命令 todo init-ai | X3 | init-ai --for cursor|claude|... --output \<dir\>，生成技能文件（US-A3） |
+| **X11** | 修改类命令 --dry-run | X3, X6 | add/update/complete/delete 支持 --dry-run，仅输出拟执行操作、不写 .todo.json（US-A4） |
+
 ---
 
 ## 3. 建议执行顺序
@@ -126,6 +147,7 @@ flowchart TD
 7. **第七批**：T12, T13, T14, T15（依赖对应 API 任务）
 8. **第八批**：X1（可选依赖 T7 用于演示），X2（依赖 X1）
 9. **第九批**：X4（时间戳与 completed_at），X3（xtask todo 子命令与 .todo.json），X5（TTY 下列表超 7 天未完成项着色）
+10. **第十批（扩展）**：T16（get）、T17（update）、T18（可选属性+过滤排序）、T19（search）、T20（stats）、T21～T22（export/import）、T23（重复规则）；X6（CLI show/update/search/stats/export/import）、X7（--no-next）、X8（--json）、X9（退出码）、X10（init-ai）、X11（--dry-run）。可按 P0→P1→P2 分阶段实施。
 
 ---
 
@@ -143,5 +165,16 @@ flowchart TD
 | US-T5 时间戳与完成时间 | X4 |
 | US-T6 长时间未完成提醒 | X5 |
 | US-X4 cargo xtask todo | X3 |
+| US-T7 查看单条 | T16, X6 |
+| US-T8 更新任务 | T17, X6 |
+| US-T9 任务可选属性 | T18, X6 |
+| US-T10 搜索 | T19, X6 |
+| US-T11 统计 | T20, X6 |
+| US-T12 导入导出 | T21, T22, X6 |
+| US-T13 定期重复任务 | T23, X6, X7 |
+| US-A1 JSON 输出 | X8 |
+| US-A2 标准退出码 | X9 |
+| US-A3 init-ai | X10 |
+| US-A4 dry-run | X11 |
 
 文档与实现不一致时，以 [requirements.md](./requirements.md) 与 [design.md](./design.md) 为准，并同步更新本任务说明。

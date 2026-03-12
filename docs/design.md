@@ -151,7 +151,7 @@ sequenceDiagram
 | 类型        | 说明 |
 |-------------|------|
 | `TodoId`    | 待办唯一标识，对外不透明（如 `uuid` 或 `NonZeroU64`）。 |
-| `Todo`      | 单条待办：`id`, `title`, `completed: bool`, `created_at`, `completed_at: Option<SystemTime>`（完成时间）。 |
+| `Todo`      | 单条待办：`id`, `title`, `completed: bool`, `created_at`, `completed_at: Option<SystemTime>`。扩展（US-T9、US-T13）：可选 `description`, `due_date`, `priority`, `tags`, `repeat_rule`。 |
 | `TodoList`  | 门面：持有 Store，提供 `create` / `list` / `complete` / `delete`。 |
 
 #### 3.1.2 行为接口（函数语义）
@@ -162,6 +162,22 @@ sequenceDiagram
 | 列表 | `list(&self) -> Vec<Todo>` 或 `list(&self, filter?)` | 按创建时间排序的列表 | - |
 | 完成 | `complete(&mut self, id: TodoId)` | `Result<(), TodoError>` | id 不存在 |
 | 删除 | `delete(&mut self, id: TodoId)` | `Result<(), TodoError>` | id 不存在（可选：幂等返回 Ok） |
+
+**扩展（US-T7～US-T13、US-A1～US-A4，当前未实现，设计预留）**：
+
+| 操作 | 签名语义 | 说明 |
+|------|----------|------|
+| 查看单条 | `get(&self, id: TodoId) -> Option<Todo>` 或 `show` | US-T7：返回单条完整信息，不存在为 None 或 Err |
+| 更新 | `update(&mut self, id: TodoId, patch)` | US-T8：修改标题、描述、截止日期、优先级、标签、重复规则等 |
+| 列表过滤/排序 | `list(&self, filter?: Filter, sort?: Sort)` | US-T9：按状态、优先级、标签、截止日期过滤与排序 |
+| 搜索 | `search(&self, keyword: &str) -> Vec<Todo>` | US-T10：在标题、描述、标签中匹配 |
+| 统计 | `stats(&self) -> Stats` | US-T11：总数、未完成数、已完成数等 |
+| 导出/导入 | `export(path)`, `import(path)` 或序列化/反序列化接口 | US-T12：JSON/CSV 等格式 |
+| 重复规则 | `Todo` 增加 `repeat_rule: Option<RepeatRule>`；完成时可选 `no_next: bool` | US-T13：规则类型 daily/weekly/monthly/yearly/weekdays 及 2d/3w；完成时自动生成下一实例或 `--no-next` 跳过 |
+| JSON 输出 | CLI 子命令支持 `--json`，输出统一 `{ status, data? }` / `{ status, error? }` | US-A1 |
+| 退出码 | 0 成功，1 一般错误，2 参数错误，3 数据错误 | US-A2 |
+| init-ai | `todo init-ai --for <tool> [--output <dir>]` 生成技能文件到 `.cursor/commands/` 等 | US-A3 |
+| dry-run | 修改类命令支持 `--dry-run`，仅输出拟执行操作、不写数据 | US-A4 |
 
 #### 3.1.3 错误类型
 
@@ -180,11 +196,13 @@ sequenceDiagram
 | （预留）`build` | 构建产物 | 可选 `--release` |
 | （预留）`release` | 发布流程 | 可选版本/目标 |
 
-**todo 子命令**：`cargo xtask todo add "标题"`、`cargo xtask todo list`、`cargo xtask todo complete <id>`、`cargo xtask todo delete <id>`。list 输出含创建/完成时间与用时；在 TTY 下对超过阈值未完成项着色。
+**todo 子命令（当前）**：`add "标题"`、`list`、`complete <id>`、`delete <id>`。list 输出含创建/完成时间与用时；在 TTY 下对超过阈值未完成项着色。
+
+**todo 子命令（扩展预留）**：`show <id>`（US-T7）、`update <id>`（US-T8）、`search <keyword>`（US-T10）、`stats`（US-T11）、`export <file>` / `import <file>`（US-T12）、`init-ai [--for cursor|claude|...] [--output <dir>]`（US-A3）。全局选项预留：`--json`（US-A1）、`--dry-run`（US-A4）。完成子命令预留 `--no-next`（US-T13）。
 
 - 入口：`cargo xtask [--] <子命令> [子命令参数]`。
 - 帮助：`cargo xtask --help`、`cargo xtask <子命令> --help`。
-- 退出码：成功 0，失败非 0；错误信息 stderr，正常输出 stdout。
+- 退出码（扩展 US-A2）：0 成功，1 一般错误，2 参数错误，3 数据错误；当前实现为成功 0、失败非 0。
 
 ### 3.3 与需求的对应关系
 
@@ -200,13 +218,25 @@ sequenceDiagram
 | US-T5 时间戳与完成时间 | Todo 的 created_at / completed_at；list 展示创建/完成/用时 |
 | US-T6 长时间未完成提醒 | list 在 TTY 下对超阈值未完成项着色 |
 | US-X4 cargo xtask todo | xtask 子命令 todo add/list/complete/delete，.todo.json 持久化 |
+| US-T7 查看单条 | `TodoList::get(id)` 或 Store::get；CLI `todo show <id>`（扩展） |
+| US-T8 更新任务 | `TodoList::update(id, patch)`；CLI `todo update <id>`（扩展） |
+| US-T9 任务可选属性 | Todo 扩展 description、due_date、priority、tags；add/update 与 list 过滤/排序（扩展） |
+| US-T10 搜索 | `TodoList::search(keyword)`；CLI `todo search <keyword>`（扩展） |
+| US-T11 统计 | `TodoList::stats()`；CLI `todo stats`（扩展） |
+| US-T12 导入导出 | 序列化/反序列化 + 文件 I/O；CLI `todo export|import <file>`（扩展） |
+| US-T13 定期重复任务 | Todo 的 repeat_rule；complete 时可选生成下一实例；CLI `--no-next`、show/update 展示与修改规则（扩展） |
+| US-A1 JSON 输出 | 各子命令 `--json`，统一 JSON 结构（扩展） |
+| US-A2 标准退出码 | 0/1/2/3 约定（扩展） |
+| US-A3 init-ai | `todo init-ai --for <tool>`，生成技能文件到目标目录（扩展） |
+| US-A4 dry-run | 修改类命令 `--dry-run`，不写存储（扩展） |
 
 ---
 
 ## 4. 扩展与维护
 
-- **新增 todo 能力**：在 Domain 与 Public API 增加方法或类型，必要时扩展 `Store` trait 与现有实现。
-- **新增 xtask 子命令**：在 `xtask/src/main.rs` 中增加子命令枚举与实现，保持 `cargo xtask --help` 更新。
+- **新增 todo 能力**：在 Domain 与 Public API 增加方法或类型，必要时扩展 `Store` trait 与现有实现；扩展需求见 US-T7～US-T13、US-A1～US-A4（见 3.1.2 与 3.3）。
+- **新增 xtask 子命令**：在 `xtask/src/main.rs` 中增加子命令枚举与实现，保持 `cargo xtask --help` 更新；扩展子命令 show/update/search/stats/export/import/init-ai 及全局选项 --json、--dry-run 见 3.2。
 - **持久化**：新增实现 `Store` 的 crate，在构造 `TodoList` 时注入，不改变本文档中的 Public API 与数据流图。
+- **重复任务**：实现 US-T13 时需在 Domain 增加 `RepeatRule`（如 type + interval + until），Store 需支持按规则生成下一实例并写入；CLI complete 支持 `--no-next`。
 
 文档与实现不一致时，以代码为准并同步更新本文档。
