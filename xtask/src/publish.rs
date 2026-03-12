@@ -95,7 +95,7 @@ pub fn cmd_publish(_args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>
     )?;
     run(
         Command::new(std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into()))
-            .args(["publish", "-p", PACKAGE])
+            .args(["publish", "-p", PACKAGE, "--registry", "crates-io"])
             .current_dir(&workspace_root),
         "cargo publish",
     )?;
