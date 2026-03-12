@@ -778,3 +778,21 @@ GitHub 在**推送 tag** 时，会用 **该 tag 指向的那次提交** 里的 w
 
 ---
 
+_**User**_
+
+在第3步：选择 xtask-todo-lib-v0.1.0 后，提示：Workflow does not exist or does not have a workflow_dispatch trigger in this tag.
+
+---
+
+_**Agent (model default, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+
+The user is trying to run the Release workflow manually with workflow_dispatch, but they're selecting the tag "xtask-todo-lib-v0.1.0" somewhere in the UI. The error says "Workflow does not exist or does not have a workflow_dispatch trigger in this tag."
+
+I think the issue is that on GitHub's "Run workflow" UI, there's a dropdown to select which **branch/tag** to run the workflow from. If the user selects the tag "xtask-todo-lib-v0.1.0" as the ref to run the workflow from, GitHub tries to find the workflow file in that tag's commit - and that old commit doesn't have the workflow_dispatch trigger (or doesn't have the workflow at all). So GitHub is saying: the workflow you're trying to run doesn't exist or doesn't have workflow_dispatch on the ref you selected (the tag).
+
+So the fix is: when manuall</details></think>
+
+---
+
