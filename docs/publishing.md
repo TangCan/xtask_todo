@@ -92,6 +92,8 @@ cargo publish -p xtask-todo-lib --registry crates-io
 
 **已有历史版本**：若 0.1.0、0.1.1 已发布但未打过 tag，可补打 tag 并推送，再在 GitHub 上对该 tag 手动创建 Release（或重新推送同一 tag 触发工作流，需先删除远程 tag）。
 
+**为何已有 tag 却没有自动 Release？** 工作流只在「推送 tag」时触发，且运行的是 **该 tag 指向的提交** 里的 workflow。若 tag 是在加入 `release.yml` 之前就推送的，当时不会跑工作流，之后也不会补跑。处理方式：（1）在 GitHub → Actions 查看是否有对应 tag 的 Run 或失败记录；（2）需要自动 Release 时，可删除远程 tag 后重新推送同一 tag（`git push origin :refs/tags/xtask-todo-lib-v0.1.0`，再 `git push origin xtask-todo-lib-v0.1.0`），会重新触发工作流；（3）或在该 tag 下于 GitHub 网页端手动创建 Release。
+
 ---
 
 ## 四、仅做 Git 发布（不发布到 crates.io）
