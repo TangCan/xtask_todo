@@ -80,6 +80,29 @@ fn cmd_git_pre_commit_in_nongit_dir_returns_err() {
 }
 
 #[test]
+fn cmd_git_pre_commit_in_repo_without_hook_returns_err() {
+    let _guard = cwd_test_lock();
+    let dir = std::env::temp_dir().join(format!("xtask_git_nohook_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _ = std::process::Command::new("git")
+        .args(["init", "-b", "main"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    let cmd = GitArgs {
+        sub: GitSub::PreCommit(crate::git::GitPreCommitArgs {}),
+    };
+    let result = cmd_git(&cmd);
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("pre-commit hook not found"));
+}
+
+#[test]
 fn cmd_git_pre_commit_in_repo_with_hook_succeeds() {
     let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_git_precommit_ok_{}", std::process::id()));

@@ -2,4 +2,5 @@
 
 mod todo_cmd;
 mod todo_cmd_io;
+mod todo_error;
 mod todo_helpers;

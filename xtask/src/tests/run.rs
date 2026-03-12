@@ -5,7 +5,7 @@ use crate::fmt::{cmd_fmt, FmtArgs};
 use crate::publish::PublishArgs;
 use crate::run::RunArgs;
 use crate::tests::{cwd_test_lock, RestoreCwd};
-use crate::todo::{todo_args, TodoListArgs, TodoSub};
+use crate::todo::{todo_args, TodoArgs, TodoCompleteArgs, TodoListArgs, TodoSub};
 use crate::{run_with, XtaskCmd, XtaskSub};
 use xtask_todo_lib::{InMemoryStore, TodoId, TodoList};
 
@@ -60,6 +60,51 @@ fn run_subcommand_run() {
     };
     let out = run_with(cmd);
     assert!(out.is_ok());
+}
+
+#[test]
+fn run_with_todo_parameter_error_returns_run_failure_exit_code_2() {
+    let _guard = cwd_test_lock();
+    let dir = std::env::temp_dir().join(format!("xtask_run_todo_err_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _ = std::fs::remove_file(".todo.json");
+    let cmd = XtaskCmd {
+        sub: XtaskSub::Todo(TodoArgs {
+            sub: TodoSub::Complete(TodoCompleteArgs {
+                id: 0,
+                no_next: false,
+            }),
+            json: false,
+            dry_run: false,
+        }),
+    };
+    let out = run_with(cmd);
+    let err = out.unwrap_err();
+    assert_eq!(err.code, 2);
+    assert!(err.message.contains("invalid id 0"));
+}
+
+#[test]
+fn run_with_todo_data_error_returns_run_failure_exit_code_3() {
+    let _guard = cwd_test_lock();
+    let dir = std::env::temp_dir().join(format!("xtask_run_todo_data_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _ = std::fs::remove_file(".todo.json");
+    let cmd = XtaskCmd {
+        sub: XtaskSub::Todo(TodoArgs {
+            sub: TodoSub::Show(crate::todo::TodoShowArgs { id: 99 }),
+            json: false,
+            dry_run: false,
+        }),
+    };
+    let out = run_with(cmd);
+    let err = out.unwrap_err();
+    assert_eq!(err.code, 3);
+    assert!(err.message.contains("not found"));
 }
 
 #[test]
