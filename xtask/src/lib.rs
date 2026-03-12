@@ -4,6 +4,7 @@ mod clippy;
 mod coverage;
 mod fmt;
 mod git;
+mod publish;
 mod run;
 mod todo;
 
@@ -17,6 +18,7 @@ use clippy::ClippyArgs;
 use coverage::CoverageArgs;
 use fmt::FmtArgs;
 use git::GitArgs;
+use publish::PublishArgs;
 use run::RunArgs;
 
 /// Entry point for xtask. Parses args and runs the selected command.
@@ -42,6 +44,7 @@ pub fn run_with(cmd: XtaskCmd) -> Result<(), Box<dyn std::error::Error>> {
         XtaskSub::Coverage(args) => coverage::cmd_coverage(args),
         XtaskSub::Fmt(args) => fmt::cmd_fmt(args),
         XtaskSub::Git(args) => git::cmd_git(&args),
+        XtaskSub::Publish(args) => publish::cmd_publish(&args),
         XtaskSub::Todo(args) => todo::cmd_todo(args),
     }
 }
@@ -61,5 +64,6 @@ pub enum XtaskSub {
     Coverage(CoverageArgs),
     Fmt(FmtArgs),
     Git(GitArgs),
+    Publish(PublishArgs),
     Todo(TodoArgs),
 }

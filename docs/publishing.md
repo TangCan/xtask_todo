@@ -76,6 +76,18 @@ cargo publish -p xtask-todo-lib --registry crates-io
 - 页面：`https://crates.io/crates/xtask-todo-lib`。
 - 其他项目可通过在 `Cargo.toml` 中写 `xtask-todo-lib = "0.1"` 依赖，代码中 `use xtask_todo_lib::{TodoList, TodoId, ...};` 使用。
 
+### 2.4 一键发布（推荐）
+
+在仓库根目录执行：
+
+```bash
+cargo xtask publish
+```
+
+该命令会依次：将 **patch 版本号 +1**（如 0.1.2 → 0.1.3）、**提交** `crates/todo/Cargo.toml`、**发布到 crates.io**、**打 tag**（`xtask-todo-lib-vX.Y.Z`）、**推送当前分支与 tag** 到 GitHub。推送 tag 后，Release 工作流会自动创建 GitHub Release 并附带 `.crate` 文件。
+
+**前置条件**：已执行过 `cargo login`；当前在要推送的分支（如 `main`）且工作区无未提交改动（仅允许为即将提交的版本变更）。
+
 ---
 
 ## 三、与 GitHub 对应（Releases 与 crates.io 版本一致）
