@@ -8,5 +8,8 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/TangCan/xtask_todo"
 documentation = "https://docs.rs/xtask-todo-lib"
 
+[dependencies]
+chrono = { version = "0.4", default-features = false }
+
 [lints.clippy]
 all = "warn"

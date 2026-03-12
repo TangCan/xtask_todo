@@ -16,6 +16,11 @@ fn from_todos_then_create_list_complete_delete() {
             completed: false,
             created_at: now,
             completed_at: None,
+            description: None,
+            due_date: None,
+            priority: None,
+            tags: Vec::new(),
+            repeat_rule: None,
         },
         Todo {
             id: id2,
@@ -23,6 +28,11 @@ fn from_todos_then_create_list_complete_delete() {
             completed: false,
             created_at: now,
             completed_at: None,
+            description: None,
+            due_date: None,
+            priority: None,
+            tags: Vec::new(),
+            repeat_rule: None,
         },
     ];
     let store = InMemoryStore::from_todos(existing);
@@ -37,7 +47,7 @@ fn from_todos_then_create_list_complete_delete() {
     assert_eq!(items[1].title, "existing two");
     assert_eq!(items[2].title, "new item");
 
-    list.complete(id1).unwrap();
+    list.complete(id1, false).unwrap();
     let items = list.list();
     assert!(items[0].completed);
     assert!(items[0].completed_at.is_some());

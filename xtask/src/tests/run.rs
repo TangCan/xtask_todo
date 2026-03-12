@@ -23,7 +23,7 @@ fn todo_crate_api_coverage() {
         .contains("invalid input"));
     let bad_id = TodoId::from_raw(999).unwrap();
     assert!(list2
-        .complete(bad_id)
+        .complete(bad_id, false)
         .unwrap_err()
         .to_string()
         .contains("not found"));

@@ -2,16 +2,6 @@
 name = "xtask"
 version = "0.1.0"
 edition = "2021"
-publish = false
-
-[lints.clippy]
-all = "warn"
-
-[lib]
-
-[[bin]]
-name = "xtask"
-path = "src/main.rs"
 
 [dependencies]
 argh = "0.1"

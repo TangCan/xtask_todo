@@ -87,6 +87,11 @@ fn is_old_open_completed_false() {
         completed: true,
         created_at: created,
         completed_at: Some(SystemTime::now()),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: Vec::new(),
+        repeat_rule: None,
     };
     assert!(!is_old_open(&t, SystemTime::now()));
 }
@@ -100,6 +105,11 @@ fn is_old_open_recent_false() {
         completed: false,
         created_at: created,
         completed_at: None,
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: Vec::new(),
+        repeat_rule: None,
     };
     assert!(!is_old_open(&t, SystemTime::now()));
 }
@@ -113,6 +123,11 @@ fn is_old_open_old_true() {
         completed: false,
         created_at: created,
         completed_at: None,
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: Vec::new(),
+        repeat_rule: None,
     };
     assert!(is_old_open(&t, SystemTime::now()));
 }
@@ -157,11 +172,19 @@ fn cmd_todo_complete_and_delete() {
         completed: false,
         created_at_secs: 0,
         completed_at_secs: None,
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: Vec::new(),
+        repeat_rule: None,
     }];
     std::fs::write(&path, serde_json::to_string_pretty(&dtos).unwrap()).unwrap();
 
     cmd_todo(TodoArgs {
-        sub: TodoSub::Complete(TodoCompleteArgs { id: 1 }),
+        sub: TodoSub::Complete(TodoCompleteArgs {
+            id: 1,
+            no_next: false,
+        }),
     })
     .unwrap();
 
@@ -201,6 +224,11 @@ fn print_todo_list_items_old_open_with_color() {
         completed: false,
         created_at: created,
         completed_at: None,
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: Vec::new(),
+        repeat_rule: None,
     }];
     print_todo_list_items(&items, true);
 }
@@ -235,6 +263,11 @@ fn cmd_todo_list_with_completed_todo() {
         completed: true,
         created_at_secs: 0,
         completed_at_secs: Some(60),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: Vec::new(),
+        repeat_rule: None,
     }];
     std::fs::write(".todo.json", serde_json::to_string_pretty(&dtos).unwrap()).unwrap();
 
@@ -254,7 +287,10 @@ fn cmd_todo_complete_id_zero_errors() {
     let _ = std::fs::remove_file(".todo.json");
 
     let err = cmd_todo(TodoArgs {
-        sub: TodoSub::Complete(TodoCompleteArgs { id: 0 }),
+        sub: TodoSub::Complete(TodoCompleteArgs {
+            id: 0,
+            no_next: false,
+        }),
     })
     .unwrap_err();
     assert!(err.to_string().contains("invalid id 0"));

@@ -100,6 +100,11 @@ mod tests {
                 completed: false,
                 created_at,
                 completed_at: None,
+                description: None,
+                due_date: None,
+                priority: None,
+                tags: Vec::new(),
+                repeat_rule: None,
             },
             Todo {
                 id: id2,
@@ -107,6 +112,11 @@ mod tests {
                 completed: true,
                 created_at,
                 completed_at: Some(created_at),
+                description: None,
+                due_date: None,
+                priority: None,
+                tags: Vec::new(),
+                repeat_rule: None,
             },
         ];
         let store = InMemoryStore::from_todos(todos);
