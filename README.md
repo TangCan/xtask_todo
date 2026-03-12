@@ -23,13 +23,18 @@ cargo xtask todo delete <id>
 | `cargo xtask clippy` | Lint with Clippy (pedantic + nursery, warnings as errors) |
 | `cargo xtask coverage` | Run coverage per crate (cargo-tarpaulin) |
 | `cargo xtask git add` | Stage common paths (e.g. .github, xtask, docs, crates) |
-| `cargo xtask git commit` | Commit with message "Sync" (runs pre-commit checks) |
+| `cargo xtask git pre-commit` | Run the same checks as the pre-commit hook (fmt, clippy, .rs line limit, test) without committing |
+| `cargo xtask git commit` | Commit with message "Sync" by default; use `-m "message"` for a custom message (runs pre-commit checks) |
 
 ## Tests
 
 ```bash
 cargo test
 ```
+
+## Cursor skill (commit message)
+
+The project includes a Cursor skill (`.cursor/skills/git-commit-message/`) that, when you ask to commit or run `xc`/`git commit`, can generate a commit message from staged changes and run `cargo xtask git commit -m "..."` or `git commit -m "..."`. Ensure changes are staged first (e.g. `cargo xtask git add` or `git add`).
 
 ## Git hooks
 
