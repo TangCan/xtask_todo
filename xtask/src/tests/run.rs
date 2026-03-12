@@ -2,6 +2,7 @@
 
 use crate::coverage::{cmd_coverage, parse_coverage_percentage, CoverageArgs};
 use crate::fmt::{cmd_fmt, FmtArgs};
+use crate::publish::PublishArgs;
 use crate::run::RunArgs;
 use crate::tests::{RestoreCwd, CWD_TEST_MUTEX};
 use crate::todo::{TodoArgs, TodoListArgs, TodoSub};
@@ -59,6 +60,20 @@ fn run_subcommand_run() {
     };
     let out = run_with(cmd);
     assert!(out.is_ok());
+}
+
+#[test]
+fn run_subcommand_publish_returns_err_outside_workspace() {
+    let _guard = CWD_TEST_MUTEX.lock().unwrap();
+    let dir = std::env::temp_dir().join(format!("xtask_publish_run_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _restore = RestoreCwd::new(&dir, &cwd);
+    let cmd = XtaskCmd {
+        sub: XtaskSub::Publish(PublishArgs {}),
+    };
+    let out = run_with(cmd);
+    assert!(out.is_err());
 }
 
 #[test]

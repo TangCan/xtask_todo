@@ -21,6 +21,7 @@ pub fn parse_coverage_percentage(line: &str) -> Option<f64> {
 }
 
 /// Run coverage for a single package, streaming stdout to the terminal and returning parsed percentage.
+#[cfg_attr(test, allow(dead_code))]
 fn run_tarpaulin(package: &str, extra_args: &[&str], test_args: &[&str]) -> (String, Option<f64>) {
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
     let mut cmd = Command::new(cargo);
@@ -110,6 +111,7 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
 
     #[test]
     fn parse_coverage_percentage_from_line() {
@@ -135,5 +137,43 @@ mod tests {
         if let Some(p) = pct {
             assert!((0.0..=100.0).contains(&p), "expected percentage, got {p}");
         }
+    }
+
+    #[test]
+    fn run_tarpaulin_spawn_fail_returns_none() {
+        std::env::set_var("CARGO", "/nonexistent/cargo-path");
+        let (name, pct) = run_tarpaulin("some-package", &[], &[]);
+        std::env::remove_var("CARGO");
+        assert_eq!(name, "some-package");
+        assert!(pct.is_none());
+    }
+
+    /// Covers `run_tarpaulin` success path and `cmd_coverage` real branch by using a fake CARGO that echoes a coverage line.
+    #[test]
+    #[cfg(unix)]
+    fn run_tarpaulin_fake_script_returns_pct_and_cmd_coverage_succeeds() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("xtask_cov_fake_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let script = dir.join("fake_cargo");
+        let mut f = std::fs::File::create(&script).unwrap();
+        f.write_all(b"#!/bin/sh\necho '|| 100.00% coverage, 61/61 lines covered'\n")
+            .unwrap();
+        f.sync_all().unwrap();
+        drop(f);
+        let mut perms = std::fs::metadata(&script).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&script, perms).unwrap();
+        let script_path = std::fs::canonicalize(&script).unwrap();
+        std::env::remove_var("XTASK_COVERAGE_TEST_FAKE");
+        std::env::remove_var("XTASK_COVERAGE_TEST_FAKE_FAIL");
+        std::env::set_var("CARGO", &script_path);
+        let out = cmd_coverage(CoverageArgs {});
+        std::env::remove_var("CARGO");
+        let _ = std::fs::remove_dir_all(dir);
+        assert!(
+            out.is_ok(),
+            "cmd_coverage with fake CARGO should succeed: {out:?}"
+        );
     }
 }

@@ -120,3 +120,147 @@ pub fn cmd_publish(_args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>
     println!("Done. GitHub Release will be created by workflow for tag {tag}.");
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    #[test]
+    fn run_success() {
+        let mut cmd = Command::new("true");
+        assert!(run(&mut cmd, "true").is_ok());
+    }
+
+    #[test]
+    fn run_failure() {
+        let mut cmd = Command::new("false");
+        let err = run(&mut cmd, "step").unwrap_err();
+        assert!(err.to_string().contains("step"));
+        assert!(err.to_string().contains("exit code"));
+    }
+
+    #[test]
+    fn bump_version_in_cargo_toml_bumps_patch() {
+        let dir = std::env::temp_dir().join(format!("xtask_publish_test_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(dir.join("crates/todo"));
+        let cargo = r#"[package]
+name = "todo"
+version = "0.1.2"
+edition = "2021"
+"#;
+        std::fs::write(dir.join("crates/todo/Cargo.toml"), cargo).unwrap();
+        let new_ver = bump_version_in_cargo_toml(&dir).unwrap();
+        assert_eq!(new_ver, "0.1.3");
+        let content = std::fs::read_to_string(dir.join("crates/todo/Cargo.toml")).unwrap();
+        assert!(content.contains("version = \"0.1.3\""));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn bump_version_in_cargo_toml_single_quotes() {
+        let dir =
+            std::env::temp_dir().join(format!("xtask_publish_test_sq_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(dir.join("crates/todo"));
+        std::fs::write(dir.join("crates/todo/Cargo.toml"), "version = '1.0.0'\n").unwrap();
+        let new_ver = bump_version_in_cargo_toml(&dir).unwrap();
+        assert_eq!(new_ver, "1.0.1");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn bump_version_in_cargo_toml_no_version_line_err() {
+        let dir =
+            std::env::temp_dir().join(format!("xtask_publish_test_nv_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(dir.join("crates/todo"));
+        std::fs::write(
+            dir.join("crates/todo/Cargo.toml"),
+            "[package]\nname = \"x\"\n",
+        )
+        .unwrap();
+        let err = bump_version_in_cargo_toml(&dir).unwrap_err();
+        assert!(err.to_string().contains("no version"));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn bump_version_in_cargo_toml_invalid_triple_err() {
+        let dir =
+            std::env::temp_dir().join(format!("xtask_publish_test_bad_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(dir.join("crates/todo"));
+        std::fs::write(dir.join("crates/todo/Cargo.toml"), "version = \"1.0\"\n").unwrap();
+        let err = bump_version_in_cargo_toml(&dir).unwrap_err();
+        assert!(err.to_string().contains("major.minor.patch"));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn cmd_publish_fails_when_crate_cargo_missing() {
+        let dir = std::env::temp_dir().join(format!("xtask_publish_cmd_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&dir).unwrap();
+        let result = cmd_publish(&PublishArgs {});
+        std::env::set_current_dir(&cwd).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not found"));
+    }
+
+    /// Full `cmd_publish` success path with fake git and cargo (Unix only).
+    #[test]
+    #[cfg(unix)]
+    fn cmd_publish_succeeds_with_fake_git_and_cargo() {
+        use std::io::Write;
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("xtask_publish_ok_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(dir.join("crates/todo"));
+        let _ = std::fs::create_dir_all(dir.join("bin"));
+        let bin = dir.join("bin");
+        for (name, script) in [
+            ("git", "#!/bin/sh\nexit 0\n"),
+            ("cargo", "#!/bin/sh\nexit 0\n"),
+        ] {
+            let p = bin.join(name);
+            let mut f = std::fs::File::create(&p).unwrap();
+            f.write_all(script.as_bytes()).unwrap();
+            f.sync_all().unwrap();
+            drop(f);
+            let mut perms = std::fs::metadata(&p).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&p, perms).unwrap();
+        }
+        std::fs::write(
+            dir.join("crates/todo/Cargo.toml"),
+            "[package]\nname = \"todo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .unwrap();
+        let cwd = std::env::current_dir().unwrap();
+        let old_path = std::env::var_os("PATH");
+        let old_cargo = std::env::var_os("CARGO");
+        let bin_abs = std::fs::canonicalize(&bin).unwrap();
+        let mut path_vec: Vec<_> =
+            std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()).collect();
+        path_vec.insert(0, bin_abs.clone());
+        std::env::set_var("PATH", std::env::join_paths(path_vec).unwrap());
+        std::env::set_var("CARGO", bin_abs.join("cargo"));
+        std::env::set_current_dir(&dir).unwrap();
+        let result = cmd_publish(&PublishArgs {});
+        std::env::set_current_dir(&cwd).unwrap();
+        if let Some(p) = old_path {
+            std::env::set_var("PATH", p);
+        } else {
+            std::env::remove_var("PATH");
+        }
+        if let Some(c) = old_cargo {
+            std::env::set_var("CARGO", c);
+        } else {
+            std::env::remove_var("CARGO");
+        }
+        let _ = std::fs::remove_dir_all(dir);
+        assert!(
+            result.is_ok(),
+            "cmd_publish with fake git/cargo: {result:?}"
+        );
+    }
+}
