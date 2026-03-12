@@ -63,14 +63,14 @@
 
 | ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |
 |------|-----------|------|------|----------|----------|
-| TC-T8-1 | US-T8 | 有效 id 与合法修改更新成功 | update(id, 新标题等) 后 list/show | 单元/集成 | 该任务内容更新，持久化一致 |
+| TC-T8-1 | US-T8 | 有效 id 与合法修改更新成功 | update(id, 新标题及可选 --description/--due-date/--priority/--tags/--repeat-rule) 后 list/show | 单元/集成/CLI | 该任务内容更新，持久化一致 |
 | TC-T8-2 | US-T8 | 不存在 id 或非法参数返回错误 | 对不存在 id 或非法参数调用 update | 单元/集成 | 返回错误，其他任务不变 |
 
 ### US-T9：任务可选属性（扩展）
 
 | ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |
 |------|-----------|------|------|----------|----------|
-| TC-T9-1 | US-T9 | add/update 支持描述、截止、优先级、标签 | 添加/更新时带可选字段，list/show 查看 | 单元/集成 | 字段正确存储与展示 |
+| TC-T9-1 | US-T9 | add/update 支持描述、截止、优先级、标签（CLI：--description、--due-date、--priority、--tags） | add/update 带可选参数，list/show 查看 | 单元/集成/CLI | 字段正确存储与展示 |
 | TC-T9-2 | US-T9 | list 支持按状态/优先级/标签/截止过滤与排序 | 带过滤或排序选项调用 list | 单元/集成 | 结果集与顺序符合选项 |
 
 ### US-T10：搜索任务（扩展）
@@ -90,8 +90,8 @@
 
 | ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |
 |------|-----------|------|------|----------|----------|
-| TC-T12-1 | US-T12 | export 写出文件 | export(file)，检查文件内容 | 单元/集成/CLI | 文件格式正确（如 JSON/CSV） |
-| TC-T12-2 | US-T12 | import 读入并合并/覆盖 | import(file) 后 list | 单元/集成/CLI | 任务列表与文件一致或按约定合并 |
+| TC-T12-1 | US-T12 | export 写出文件（格式由扩展名或 --format json|csv 决定） | export(file.csv) 或 export(file.json)、export(file, --format csv)，检查文件内容 | 单元/集成/CLI | 文件格式正确（JSON 或 CSV） |
+| TC-T12-2 | US-T12 | import 读入并合并/覆盖（支持 .json/.csv 按扩展名识别） | import(file.json) 或 import(file.csv) 后 list | 单元/集成/CLI | 任务列表与文件一致或按约定合并 |
 
 ### US-T13：定期重复任务（扩展）
 
@@ -99,7 +99,9 @@
 |------|-----------|------|------|----------|----------|
 | TC-T13-1 | US-T13 | 带重复规则任务完成时生成下一实例 | 创建 daily 重复任务，complete(id)，再 list | 单元/集成 | 出现新任务且截止日期符合规则 |
 | TC-T13-2 | US-T13 | --no-next 仅完成不生成下一笔 | complete(id --no-next)，再 list | 单元/集成/CLI | 原任务完成，无新实例 |
-| TC-T13-3 | US-T13 | show/update 展示与修改重复规则 | show(id) 含 repeat_rule；update 修改或取消规则 | 单元/集成/CLI | 规则正确展示与持久化 |
+| TC-T13-3 | US-T13 | 重复规则支持 2d/3w 简写及 custom:N | 使用 repeat_rule "2d" 或 "3w" 添加/更新任务，完成时下一实例截止日正确 | 单元/集成 | 2d→每 2 天，3w→每 21 天，next_due 正确 |
+| TC-T13-4 | US-T13 | 结束条件 repeat_count/repeat_until | repeat_count=1 完成时不生成下一笔；repeat_until 早于 next_due 时不生成 | 单元/集成 | 符合结束条件时无新实例 |
+| TC-T13-5 | US-T13 | show/update 展示与修改重复规则 | show(id) 含 repeat_rule；update 修改或取消规则（含可选字段） | 单元/集成/CLI | 规则正确展示与持久化 |
 
 ### US-A1：结构化 JSON 输出（扩展）
 
@@ -123,7 +125,7 @@
 
 | ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |
 |------|-----------|------|------|----------|----------|
-| TC-A4-1 | US-A4 | --dry-run 不写数据 | add/update/complete/delete 带 --dry-run，再 list 或查文件 | 单元/集成/CLI | 输出拟执行操作，.todo.json 未变更 |
+| TC-A4-1 | US-A4 | --dry-run 不写数据且不修改内存 | add/update/complete/delete 带 --dry-run，再 list 或查文件 | 单元/集成/CLI | 输出拟执行操作，.todo.json 未变更，列表条数/内容不变 |
 
 ---
 

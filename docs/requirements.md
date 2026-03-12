@@ -6,7 +6,7 @@
 - **目标**：提供可复用的待办（Todo）能力（库 + 可选入口），并通过 cargo xtask 支持开发与构建自动化。  
 - **范围**：本需求覆盖「todo 领域能力」与「xtask 开发者工作流」两部分的用户故事与验收标准。
 
-**当前实现状态**：US-T1～US-T6、US-X1～US-X4 与扩展 US-T7～US-T13、US-A1～US-A4 均已实现。CLI 入口为 `cargo xtask todo`，子命令含 add、list、show、update、complete、delete、search、stats、export、import、init-ai；全局选项含 `--json`、`--dry-run`；退出码为 0（成功）/1（一般）/2（参数）/3（数据）。
+**当前实现状态**：US-T1～US-T6、US-X1～US-X4 与扩展 US-T7～US-T13、US-A1～US-A4 均已实现。CLI 入口为 `cargo xtask todo`，子命令含 add、list、show、update、complete、delete、search、stats、export、import、init-ai。**add** 支持可选参数 `--description`、`--due-date`、`--priority`、`--tags`、`--repeat-rule`；**update** 支持同上可选参数及标题；**export** 支持 JSON/CSV（由文件扩展名或 `--format json|csv` 决定）；**import** 支持 JSON 与 CSV（按扩展名识别）。重复规则支持 `daily`/`weekly`/`monthly`/`yearly`/`weekdays`、`2d`/`3w` 简写及 `custom:N`，并支持结束条件 `repeat_until`（截止日期）、`repeat_count`（剩余次数）。全局选项含 `--json`、`--dry-run`（修改类命令仅输出拟执行操作，不写入文件且不修改内存列表）；退出码为 0（成功）/1（一般）/2（参数）/3（数据）。
 
 ---
 
@@ -168,7 +168,7 @@
 
 - **用户故事**：作为用户或 AI，我希望对修改类命令（add/update/complete/delete）支持 `--dry-run`，仅展示将要执行的操作而不写数据，以便预览。
 - **验收标准**：
-  - 带 `--dry-run` 时，应 输出拟执行的操作说明，且不修改 `.todo.json` 及内存状态。
+  - 带 `--dry-run` 时，应 输出拟执行的操作说明，且不修改 `.todo.json`，也不对内存中的待办列表做增删改（仅预览）。
 
 ---
 

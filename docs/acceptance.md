@@ -77,14 +77,14 @@
 
 | # | 验收标准 | 验证方式 | 预期结果 | 结果 |
 |---|----------|----------|----------|------|
-| T8-1 | 给定有效 id 与合法修改，应更新并持久化，list/show 反映更新 | update(id, 修改内容) 后 list/show | 该任务内容已更新，持久化一致 | |
+| T8-1 | 给定有效 id 与合法修改，应更新并持久化，list/show 反映更新 | update(id, title) 或带 --description/--due-date/--priority/--tags/--repeat-rule 后 list/show | 该任务内容已更新，持久化一致 | |
 | T8-2 | 给定不存在的 id 或非法参数，应返回错误且不改变其他任务 | 对不存在 id 或非法参数执行 update | 返回错误，其他任务不变 | |
 
 ### 2.9 US-T9：任务可选属性（扩展）
 
 | # | 验收标准 | 验证方式 | 预期结果 | 结果 |
 |---|----------|----------|----------|------|
-| T9-1 | 添加/更新支持描述、截止日期、优先级、标签；列表与 show 能展示 | add/update 带可选字段，list/show 查看 | 字段正确存储与展示 | |
+| T9-1 | 添加/更新支持描述、截止日期、优先级、标签（CLI：--description、--due-date、--priority、--tags）；列表与 show 能展示 | add/update 带可选参数，list/show 查看 | 字段正确存储与展示 | |
 | T9-2 | 列表支持按状态、优先级、标签、截止日期过滤及排序 | list 带过滤/排序选项 | 结果集与顺序符合选项 | |
 
 ### 2.10 US-T10：搜索任务（扩展）
@@ -103,17 +103,17 @@
 
 | # | 验收标准 | 验证方式 | 预期结果 | 结果 |
 |---|----------|----------|----------|------|
-| T12-1 | todo export \<file\> 将当前任务导出为指定格式 | 执行 export，检查文件 | 文件格式正确（如 JSON/CSV） | |
-| T12-2 | todo import \<file\> 从文件导入，与现有数据按约定合并/覆盖 | 执行 import 后 list | 任务列表与约定策略一致 | |
+| T12-1 | todo export \<file\> 将当前任务导出为指定格式（由扩展名或 --format json\|csv 决定） | 执行 export out.json、export out.csv 或 --format csv，检查文件 | 文件格式正确（JSON 或 CSV） | |
+| T12-2 | todo import \<file\> 从文件导入（支持 .json/.csv 按扩展名识别），与现有数据按约定合并/覆盖 | 执行 import 后 list | 任务列表与约定策略一致 | |
 
 ### 2.13 US-T13：定期重复任务（扩展）
 
 | # | 验收标准 | 验证方式 | 预期结果 | 结果 |
 |---|----------|----------|----------|------|
-| T13-1 | 定义重复规则：支持 daily/weekly/monthly/yearly/weekdays 及 2d/3w 等，可带结束条件 | add/update 带重复规则，show 查看 | 规则正确存储与展示 | |
-| T13-2 | 带重复规则任务完成时，根据规则自动创建下一笔并计算截止日期 | 完成一条重复任务后 list | 出现新任务且截止日期符合规则 | |
+| T13-1 | 定义重复规则：支持 daily/weekly/monthly/yearly/weekdays、2d/3w 简写及 custom:N；可带结束条件 repeat_until（截止日）、repeat_count（剩余次数） | add/update 带 --repeat-rule 及数据模型 repeat_until/repeat_count，show 查看 | 规则正确存储与展示 | |
+| T13-2 | 带重复规则任务完成时，根据规则自动创建下一笔并计算截止日期；满足结束条件时不生成 | 完成一条重复任务后 list；或 repeat_count=1/repeat_until 早于 next_due 时完成 | 未达结束条件时出现新任务且截止日期符合规则；达结束条件时无新实例 | |
 | T13-3 | 完成时支持 --no-next，仅完成当前实例、不生成下一笔 | complete(id --no-next) 后 list | 原任务完成，无新实例 | |
-| T13-4 | show 展示重复规则；update 可修改或取消规则 | show(id)、update(id) 修改规则 | 规则正确展示与持久化 | |
+| T13-4 | show 展示重复规则；update 可修改或取消规则（含可选 --repeat-rule 等） | show(id)、update(id) 修改规则 | 规则正确展示与持久化 | |
 
 ---
 
@@ -177,7 +177,7 @@
 
 | # | 验收标准 | 验证方式 | 预期结果 | 结果 |
 |---|----------|----------|----------|------|
-| A4-1 | 修改类命令支持 --dry-run，仅展示拟执行操作、不写数据 | add/update/complete/delete 带 --dry-run，再 list 或查文件 | 有拟执行说明，.todo.json 未变更 | |
+| A4-1 | 修改类命令支持 --dry-run，仅展示拟执行操作、不写数据且不修改内存列表 | add/update/complete/delete 带 --dry-run，再 list 或查文件 | 有拟执行说明，.todo.json 未变更，列表条数/内容不变 | |
 
 ---
 
@@ -229,4 +229,4 @@
 
 - 需求变更时同步更新 [requirements.md](./requirements.md)，并在此文档中增删或调整对应验收项。
 - 自动化测试与验收项对应关系可在本仓库的测试说明或 CI 配置中注明，便于回归时勾选；具体用例列表见 [test-cases.md](./test-cases.md)。
-- 扩展需求（US-T7～US-T13、US-A1～US-A4）已实现：CLI 支持 show/update/search/stats/export/import/init-ai、全局 --json 与 --dry-run、退出码 0/1/2/3；验收汇总已按当前实现填列，签字前可按实际回归结果复核。
+- 扩展需求（US-T7～US-T13、US-A1～US-A4）已实现：add/update 支持可选参数（--description、--due-date、--priority、--tags、--repeat-rule）；export/import 支持 JSON 与 CSV（扩展名或 --format）；重复规则支持 2d/3w 及结束条件 repeat_until/repeat_count；--dry-run 不写文件且不修改内存列表；CLI 支持 show/update/search/stats/export/import/init-ai、全局 --json 与 --dry-run、退出码 0/1/2/3。验收汇总已按当前实现填列，签字前可按实际回归结果复核。

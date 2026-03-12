@@ -131,7 +131,7 @@ sequenceDiagram
 ### 2.3 状态与存储
 
 - **crates/todo**：默认 `InMemoryStore`，进程内无持久化；可通过 `Store` 抽象扩展。
-- **cargo xtask todo**：通过 xtask 将待办持久化到项目根目录的 **`.todo.json`**（JSON）。字段：id、title、completed、created_at_secs、completed_at_secs（必选）；description、due_date、priority、tags、repeat_rule（可选，反序列化时缺省为 None/空）。xtask 启动时加载、操作后写回，与 `TodoList` + `InMemoryStore::from_todos` 配合使用。
+- **cargo xtask todo**：通过 xtask 将待办持久化到项目根目录的 **`.todo.json`**（JSON）。字段：id、title、completed、created_at_secs、completed_at_secs（必选）；description、due_date、priority、tags、repeat_rule、repeat_until、repeat_count（可选，反序列化时缺省为 None/空）。导出可写 JSON 或 CSV（由文件扩展名或 `--format` 指定）；导入支持 JSON/CSV（按扩展名识别）。xtask 启动时加载、操作后写回，与 `TodoList` + `InMemoryStore::from_todos` 配合使用。
 
 ### 2.4 列表展示与时间
 
@@ -151,7 +151,7 @@ sequenceDiagram
 | 类型        | 说明 |
 |-------------|------|
 | `TodoId`    | 待办唯一标识，对外不透明（如 `uuid` 或 `NonZeroU64`）。 |
-| `Todo`      | 单条待办：`id`, `title`, `completed: bool`, `created_at`, `completed_at: Option<SystemTime>`。扩展（US-T9、US-T13）：可选 `description`, `due_date`, `priority`, `tags`, `repeat_rule`。 |
+| `Todo`      | 单条待办：`id`, `title`, `completed: bool`, `created_at`, `completed_at: Option<SystemTime>`。扩展（US-T9、US-T13）：可选 `description`, `due_date`, `priority`, `tags`, `repeat_rule`；重复结束条件：`repeat_until: Option<String>`（YYYY-MM-DD）、`repeat_count: Option<u32>`（剩余次数）。 |
 | `TodoList`  | 门面：持有 Store，提供 `create` / `list` / `complete` / `delete`。 |
 
 #### 3.1.2 行为接口（函数语义）
@@ -168,16 +168,16 @@ sequenceDiagram
 | 操作 | 签名语义 | 说明 |
 |------|----------|------|
 | 查看单条 | `get(&self, id: TodoId) -> Option<Todo>`；CLI `todo show <id>` | US-T7：返回单条完整信息，不存在为 None 或 Err |
-| 更新 | `update(&mut self, id: TodoId, patch)`；CLI `todo update <id> <title>` | US-T8：修改标题、描述、截止日期、优先级、标签、重复规则等 |
+| 更新 | `update(&mut self, id: TodoId, patch)`；CLI `todo update <id> <title> [--description …]` | US-T8：修改标题及可选描述、截止、优先级、标签、重复规则等（patch 含 repeat_until、repeat_count） |
 | 列表过滤/排序 | `list_with_options(&self, options: &ListOptions)` | US-T9：按状态、优先级、标签、截止日期过滤与排序 |
 | 搜索 | `search(&self, keyword: &str) -> Vec<Todo>`；CLI `todo search <keyword>` | US-T10：在标题、描述、标签中匹配 |
 | 统计 | `stats(&self) -> (total, incomplete, complete)`；CLI `todo stats` | US-T11：总数、未完成数、已完成数 |
-| 导出/导入 | CLI `todo export <file>` / `todo import <file> [--replace]`；库 `add_todo` 等 | US-T12：JSON 格式，merge 或 replace 策略 |
-| 重复规则 | `Todo.repeat_rule: Option<RepeatRule>`；`complete(id, no_next)`；CLI `complete --no-next` | US-T13：daily/weekly/monthly/yearly/weekdays/custom(n)；完成时自动生成下一实例 |
+| 导出/导入 | CLI `todo export <file> [--format json\|csv]` / `todo import <file> [--replace]`；库 `add_todo` 等 | US-T12：格式由扩展名或 `--format` 决定，支持 JSON 与 CSV；merge 或 replace 策略 |
+| 重复规则 | `Todo.repeat_rule` + `repeat_until`/`repeat_count`；`complete(id, no_next)`；CLI `complete --no-next` | US-T13：daily/weekly/monthly/yearly/weekdays、2d/3w、custom(n)；结束条件：repeat_until（截止日）、repeat_count（剩余次数）；完成时按条件生成下一实例 |
 | JSON 输出 | 全局 `--json`，成功 `{ "status":"success", "data": ... }`，失败含 error 与 code | US-A1 |
 | 退出码 | 0 成功，1 一般错误，2 参数错误，3 数据错误（todo 子命令） | US-A2 |
 | init-ai | `todo init-ai [--for-tool cursor] [--output <dir>]`，默认 `.cursor/commands/` | US-A3 |
-| dry-run | 全局 `--dry-run`，add/update/complete/delete 不写 `.todo.json` | US-A4 |
+| dry-run | 全局 `--dry-run`，add/update/complete/delete 不写 `.todo.json` 且不修改内存列表，仅输出拟执行操作 | US-A4 |
 
 #### 3.1.3 错误类型
 
@@ -196,7 +196,7 @@ sequenceDiagram
 | （预留）`build` | 构建产物 | 可选 `--release` |
 | （预留）`release` | 发布流程 | 可选版本/目标 |
 
-**todo 子命令（已实现）**：`add "标题"`、`list`、`show <id>`、`update <id> <title>`、`complete <id> [--no-next]`、`delete <id>`、`search <keyword>`、`stats`、`export <file>`、`import <file> [--replace]`、`init-ai [--for-tool cursor] [--output <dir>]`。list 输出含创建/完成时间与用时；TTY 下对超过阈值未完成项着色。全局选项：`--json`（统一 JSON 输出）、`--dry-run`（修改类命令不写 `.todo.json`）。
+**todo 子命令（已实现）**：`add "标题" [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …]`、`list`、`show <id>`、`update <id> <title> [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …]`、`complete <id> [--no-next]`、`delete <id>`、`search <keyword>`、`stats`、`export <file> [--format json|csv]`（格式也可由文件扩展名推断）、`import <file> [--replace]`（支持 .json/.csv）、`init-ai [--for-tool cursor] [--output <dir>]`。list 输出含创建/完成时间与用时；TTY 下对超过阈值未完成项着色。全局选项：`--json`（统一 JSON 输出）、`--dry-run`（修改类命令不写 `.todo.json` 且不修改内存列表，仅打印拟执行操作）。
 
 - 入口：`cargo xtask [--] <子命令> [子命令参数]`。
 - 帮助：`cargo xtask --help`、`cargo xtask todo --help`。
@@ -235,6 +235,6 @@ sequenceDiagram
 - **新增 todo 能力**：在 Domain 与 Public API 增加方法或类型，必要时扩展 `Store` trait 与现有实现；扩展需求见 US-T7～US-T13、US-A1～US-A4（见 3.1.2 与 3.3）。
 - **新增 xtask 子命令**：在 `xtask/src/main.rs` 中增加子命令枚举与实现，保持 `cargo xtask --help` 更新；扩展子命令 show/update/search/stats/export/import/init-ai 及全局选项 --json、--dry-run 见 3.2。
 - **持久化**：新增实现 `Store` 的 crate，在构造 `TodoList` 时注入，不改变本文档中的 Public API 与数据流图。
-- **重复任务**：实现 US-T13 时需在 Domain 增加 `RepeatRule`（如 type + interval + until），Store 需支持按规则生成下一实例并写入；CLI complete 支持 `--no-next`。
+- **重复任务**：Domain 中 `RepeatRule` 支持 daily/weekly/monthly/yearly/weekdays、2d/3w 简写及 custom(n)；`Todo` 可选 `repeat_until`（截止日期）、`repeat_count`（剩余次数），complete 时据此决定是否生成下一实例；CLI complete 支持 `--no-next`。
 
 文档与实现不一致时，以代码为准并同步更新本文档。
