@@ -40,7 +40,7 @@ fn run_subcommand_git_commit() {
         .status();
     let cmd = XtaskCmd {
         sub: XtaskSub::Git(GitArgs {
-            sub: GitSub::Commit(GitCommitArgs {}),
+            sub: GitSub::Commit(GitCommitArgs { message: None }),
         }),
     };
     let _ = run_with(cmd);
@@ -73,7 +73,7 @@ fn cmd_git_commit_with_nothing_to_commit_returns_err() {
         .stderr(Stdio::null())
         .status();
     let cmd = GitArgs {
-        sub: GitSub::Commit(GitCommitArgs {}),
+        sub: GitSub::Commit(GitCommitArgs { message: None }),
     };
     let result = cmd_git(&cmd);
     assert!(result.is_err());

@@ -27,8 +27,12 @@ pub struct GitAddArgs {}
 
 #[derive(FromArgs, Clone)]
 #[argh(subcommand, name = "commit")]
-/// Commit with message "Sync" (equiv: git commit -m "Sync")
-pub struct GitCommitArgs {}
+/// Commit with message "Sync" by default, or use -m/--message to set the message
+pub struct GitCommitArgs {
+    /// commit message (default: "Sync")
+    #[argh(option, short = 'm')]
+    pub message: Option<String>,
+}
 
 /// Run git subcommand (add or commit).
 ///
@@ -52,10 +56,9 @@ pub fn cmd_git(args: &GitArgs) -> Result<(), Box<dyn std::error::Error>> {
                 .status()?;
             status_to_result(status, "git add")
         }
-        GitSub::Commit(_) => {
-            let status = Command::new("git")
-                .args(["commit", "-m", "Sync"])
-                .status()?;
+        GitSub::Commit(a) => {
+            let msg = a.message.as_deref().unwrap_or("Sync");
+            let status = Command::new("git").args(["commit", "-m", msg]).status()?;
             status_to_result(status, "git commit")
         }
     }
