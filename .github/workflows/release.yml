@@ -1,0 +1,40 @@
+# When a tag xtask-todo-lib-v* is pushed, create a GitHub Release and attach the .crate file.
+# This keeps GitHub Releases in sync with crates.io versions (publish to crates.io first, then tag and push).
+name: Release
+
+on:
+  push:
+    tags:
+      - 'xtask-todo-lib-v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Package crate
+        run: cargo package -p xtask-todo-lib --allow-dirty
+        env:
+          CARGO_TERM_COLOR: never
+
+      - name: Find .crate artifact
+        id: crate
+        run: |
+          CRATE=$(ls target/package/xtask-todo-lib-*.crate 2>/dev/null | head -1)
+          echo "path=${CRATE}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename ${CRATE})" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.crate.outputs.path }}
+          generate_release_notes: true
+          body: |
+            **xtask-todo-lib** — same version on [crates.io](https://crates.io/crates/xtask-todo-lib).
+            Docs: [docs.rs/xtask-todo-lib](https://docs.rs/xtask-todo-lib).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

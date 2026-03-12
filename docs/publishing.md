@@ -78,7 +78,23 @@ cargo publish -p xtask-todo-lib --registry crates-io
 
 ---
 
-## 三、仅做 Git 发布（不发布到 crates.io）
+## 三、与 GitHub 对应（Releases 与 crates.io 版本一致）
+
+**说明**：GitHub 的 **Packages** 不支持 Cargo/Rust 包（仅支持 npm、Maven、Docker、NuGet、RubyGems 等），因此无法把同一 crate 发布到 GitHub Packages。要让 GitHub 上也有与 crates.io 一致的版本信息，可用 **GitHub Releases**：
+
+1. 发布到 crates.io 后，打 tag 并推送，例如：
+   ```bash
+   git tag xtask-todo-lib-v0.1.2
+   git push origin xtask-todo-lib-v0.1.2
+   ```
+2. 仓库中的 **Release** 工作流（`.github/workflows/release.yml`）会在推送 tag `xtask-todo-lib-v*` 时自动创建 GitHub Release，并附带对应的 `.crate` 文件。
+3. 这样 **crates.io** 与 **GitHub → Releases** 的版本一一对应（如 0.1.0、0.1.1、0.1.2），用户可在 Releases 页下载 `.crate` 或通过链接跳转到 crates.io / docs.rs。
+
+**已有历史版本**：若 0.1.0、0.1.1 已发布但未打过 tag，可补打 tag 并推送，再在 GitHub 上对该 tag 手动创建 Release（或重新推送同一 tag 触发工作流，需先删除远程 tag）。
+
+---
+
+## 四、仅做 Git 发布（不发布到 crates.io）
 
 若只希望打版本标签、做 GitHub/GitLab Release，而不发布到 crates.io：
 
@@ -88,7 +104,7 @@ cargo publish -p xtask-todo-lib --registry crates-io
 
 ---
 
-## 四、简要对照
+## 五、简要对照
 
 | 目标                 | 操作 |
 |----------------------|------|
