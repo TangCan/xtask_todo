@@ -60,6 +60,13 @@ fn repeat_rule_next_due_and_from_str_display() {
     assert_eq!("yearly".parse::<RepeatRule>().unwrap(), RepeatRule::Yearly);
     assert!("custom:bad".parse::<RepeatRule>().is_err());
     assert!(RepeatRule::next_due_date(&RepeatRule::Daily, "invalid").is_none());
+    // 2d / 3w shorthand
+    assert_eq!("2d".parse::<RepeatRule>().unwrap(), RepeatRule::Custom(2));
+    assert_eq!("3w".parse::<RepeatRule>().unwrap(), RepeatRule::Custom(21));
+    assert_eq!(
+        RepeatRule::Custom(2).next_due_date("2025-01-15"),
+        Some("2025-01-17".to_string())
+    );
 }
 
 #[test]

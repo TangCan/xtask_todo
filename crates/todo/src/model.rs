@@ -24,6 +24,10 @@ pub struct Todo {
     pub tags: Vec<String>,
     /// Optional repeat rule for recurring tasks.
     pub repeat_rule: Option<RepeatRule>,
+    /// Optional end date for recurrence (YYYY-MM-DD); no next instance if next due > this.
+    pub repeat_until: Option<String>,
+    /// Optional remaining occurrences for recurrence; no next instance when this is 0 or 1 (1 = last).
+    pub repeat_count: Option<u32>,
 }
 
 /// Partial update for a todo; only `Some` fields are applied.
@@ -35,6 +39,8 @@ pub struct TodoPatch {
     pub priority: Option<Priority>,
     pub tags: Option<Vec<String>>,
     pub repeat_rule: Option<RepeatRule>,
+    pub repeat_until: Option<String>,
+    pub repeat_count: Option<u32>,
 }
 
 /// Filter criteria for listing todos.

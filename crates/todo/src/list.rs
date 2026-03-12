@@ -63,6 +63,8 @@ impl<S: Store> TodoList<S> {
             priority: None,
             tags: Vec::new(),
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         };
         self.store.insert(todo);
         Ok(id)
@@ -82,6 +84,8 @@ impl<S: Store> TodoList<S> {
             priority: todo.priority,
             tags: todo.tags.clone(),
             repeat_rule: todo.repeat_rule.clone(),
+            repeat_until: todo.repeat_until.clone(),
+            repeat_count: todo.repeat_count,
         };
         self.store.insert(new_todo);
         id
@@ -204,6 +208,12 @@ impl<S: Store> TodoList<S> {
         if patch.repeat_rule.is_some() {
             todo.repeat_rule = patch.repeat_rule;
         }
+        if patch.repeat_until.is_some() {
+            todo.repeat_until = patch.repeat_until;
+        }
+        if patch.repeat_count.is_some() {
+            todo.repeat_count = patch.repeat_count;
+        }
         self.store.update(todo);
         Ok(())
     }
@@ -217,6 +227,8 @@ impl<S: Store> TodoList<S> {
         let mut todo = self.store.get(id).ok_or(TodoError::NotFound(id))?;
         let repeat_rule = todo.repeat_rule.clone();
         let due_date = todo.due_date.clone();
+        let repeat_until = todo.repeat_until.clone();
+        let repeat_count = todo.repeat_count;
         let title = todo.title.clone();
         let description = todo.description.clone();
         let priority = todo.priority;
@@ -226,21 +238,33 @@ impl<S: Store> TodoList<S> {
         self.store.update(todo);
         if !no_next {
             if let (Some(rule), Some(ref from)) = (repeat_rule, &due_date) {
-                if let Some(next_due) = rule.next_due_date(from) {
-                    let next_id = self.store.next_id();
-                    let next_todo = Todo {
-                        id: next_id,
-                        title,
-                        completed: false,
-                        created_at: SystemTime::now(),
-                        completed_at: None,
-                        description,
-                        due_date: Some(next_due),
-                        priority,
-                        tags,
-                        repeat_rule: Some(rule),
-                    };
-                    self.store.insert(next_todo);
+                if repeat_count == Some(0) || repeat_count == Some(1) {
+                    // last occurrence, do not create next
+                } else if let Some(next_due) = rule.next_due_date(from) {
+                    let past_until = repeat_until
+                        .as_ref()
+                        .is_some_and(|until| next_due.as_str() > until);
+                    if past_until {
+                        // next would be after end date
+                    } else {
+                        let next_count = repeat_count.and_then(|n| n.checked_sub(1));
+                        let next_id = self.store.next_id();
+                        let next_todo = Todo {
+                            id: next_id,
+                            title,
+                            completed: false,
+                            created_at: SystemTime::now(),
+                            completed_at: None,
+                            description,
+                            due_date: Some(next_due),
+                            priority,
+                            tags,
+                            repeat_rule: Some(rule),
+                            repeat_until,
+                            repeat_count: next_count,
+                        };
+                        self.store.insert(next_todo);
+                    }
                 }
             }
         }

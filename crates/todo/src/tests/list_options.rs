@@ -25,6 +25,8 @@ fn make_todo(
         priority,
         tags: tags.into_iter().map(str::to_string).collect(),
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     }
 }
 
@@ -98,6 +100,8 @@ fn list_with_options_filter_status() {
             priority: None,
             tags: vec![],
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
         Todo {
             id: TodoId::from_raw(2).unwrap(),
@@ -110,6 +114,8 @@ fn list_with_options_filter_status() {
             priority: None,
             tags: vec![],
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
     ];
     let store = InMemoryStore::from_todos(todos);
@@ -149,6 +155,8 @@ fn list_with_options_filter_priority_and_tags() {
             priority: Some(Priority::Low),
             tags: vec!["x".into()],
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
         Todo {
             id: TodoId::from_raw(2).unwrap(),
@@ -161,6 +169,8 @@ fn list_with_options_filter_priority_and_tags() {
             priority: Some(Priority::High),
             tags: vec!["y".into()],
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
     ];
     let store = InMemoryStore::from_todos(todos);
@@ -199,6 +209,8 @@ fn list_with_options_filter_tags_any_empty() {
         priority: None,
         tags: vec![],
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     }];
     let store = InMemoryStore::from_todos(todos);
     let list = TodoList::with_store(store);
@@ -227,6 +239,8 @@ fn list_with_options_filter_due_before_after() {
             priority: None,
             tags: vec![],
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
         Todo {
             id: TodoId::from_raw(2).unwrap(),
@@ -239,6 +253,8 @@ fn list_with_options_filter_due_before_after() {
             priority: None,
             tags: vec![],
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
         Todo {
             id: TodoId::from_raw(3).unwrap(),
@@ -251,6 +267,8 @@ fn list_with_options_filter_due_before_after() {
             priority: None,
             tags: vec![],
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
     ];
     let store = InMemoryStore::from_todos(todos);
@@ -290,6 +308,8 @@ fn list_with_options_sort_due_date_priority_title() {
             priority: Some(Priority::Low),
             tags: vec![],
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
         Todo {
             id: TodoId::from_raw(2).unwrap(),
@@ -302,6 +322,8 @@ fn list_with_options_sort_due_date_priority_title() {
             priority: Some(Priority::High),
             tags: vec![],
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
     ];
     let store = InMemoryStore::from_todos(todos);

@@ -131,7 +131,7 @@ sequenceDiagram
 ### 2.3 状态与存储
 
 - **crates/todo**：默认 `InMemoryStore`，进程内无持久化；可通过 `Store` 抽象扩展。
-- **cargo xtask todo**：通过 xtask 将待办持久化到项目根目录的 **`.todo.json`**（JSON，含 id、title、completed、created_at_secs、completed_at_secs）；xtask 启动时加载、操作后写回，与 `TodoList` + `InMemoryStore::from_todos` 配合使用。
+- **cargo xtask todo**：通过 xtask 将待办持久化到项目根目录的 **`.todo.json`**（JSON）。字段：id、title、completed、created_at_secs、completed_at_secs（必选）；description、due_date、priority、tags、repeat_rule（可选，反序列化时缺省为 None/空）。xtask 启动时加载、操作后写回，与 `TodoList` + `InMemoryStore::from_todos` 配合使用。
 
 ### 2.4 列表展示与时间
 
@@ -160,7 +160,7 @@ sequenceDiagram
 |------|----------|--------|------|
 | 创建 | `create(&mut self, title: impl AsRef<str>)` | `Result<TodoId, TodoError>` | 标题为空或违反校验规则 |
 | 列表 | `list(&self) -> Vec<Todo>` 或 `list(&self, filter?)` | 按创建时间排序的列表 | - |
-| 完成 | `complete(&mut self, id: TodoId)` | `Result<(), TodoError>` | id 不存在 |
+| 完成 | `complete(&mut self, id: TodoId, no_next: bool)` | `Result<(), TodoError>` | id 不存在；no_next 为 true 时不生成重复任务下一实例 |
 | 删除 | `delete(&mut self, id: TodoId)` | `Result<(), TodoError>` | id 不存在（可选：幂等返回 Ok） |
 
 **扩展（US-T7～US-T13、US-A1～US-A4，已实现）**：
@@ -200,7 +200,7 @@ sequenceDiagram
 
 - 入口：`cargo xtask [--] <子命令> [子命令参数]`。
 - 帮助：`cargo xtask --help`、`cargo xtask todo --help`。
-- 退出码（US-A2）：0 成功，1 一般错误，2 参数错误，3 数据错误（如 id 不存在）；仅 todo 子命令区分 2/3，其余子命令失败为 1。
+- 退出码（US-A2）：xtask 入口返回 `Result<(), RunFailure>`，main 根据 `RunFailure.code` 调用 `std::process::exit(code)`。0 成功，1 一般错误，2 参数错误，3 数据错误（如 id 不存在）；仅 todo 子命令通过 `TodoCliError` 区分 2/3，其余子命令失败统一为 1。
 
 ### 3.3 与需求的对应关系
 

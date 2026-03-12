@@ -17,6 +17,11 @@ fn cmd_todo_add_list_save_load() {
 
     let add_cmd = todo_args(TodoSub::Add(TodoAddArgs {
         title: "test task".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
     }));
     cmd_todo(add_cmd).unwrap();
     let todos = load_todos().unwrap();
@@ -47,6 +52,8 @@ fn cmd_todo_complete_and_delete() {
         priority: None,
         tags: Vec::new(),
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     }];
     std::fs::write(&path, serde_json::to_string_pretty(&dtos).unwrap()).unwrap();
 
@@ -96,6 +103,8 @@ fn cmd_todo_list_with_completed_todo() {
         priority: None,
         tags: Vec::new(),
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     }];
     std::fs::write(".todo.json", serde_json::to_string_pretty(&dtos).unwrap()).unwrap();
 
@@ -152,6 +161,8 @@ fn cmd_todo_show_found_and_not_found() {
         priority: None,
         tags: Vec::new(),
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     }];
     std::fs::write(".todo.json", serde_json::to_string_pretty(&dtos).unwrap()).unwrap();
 
@@ -168,6 +179,8 @@ fn cmd_todo_show_found_and_not_found() {
         priority: None,
         tags: Vec::new(),
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     }];
     std::fs::write(
         ".todo.json",
@@ -193,11 +206,21 @@ fn cmd_todo_update_and_update_id_zero_errors() {
     let _ = std::fs::remove_file(".todo.json");
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: "original".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
     })))
     .unwrap();
     cmd_todo(todo_args(TodoSub::Update(TodoUpdateArgs {
         id: 1,
         title: "updated".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
     })))
     .unwrap();
     let todos = load_todos().unwrap();
@@ -207,6 +230,11 @@ fn cmd_todo_update_and_update_id_zero_errors() {
     let err = cmd_todo(todo_args(TodoSub::Update(TodoUpdateArgs {
         id: 0,
         title: "x".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
     })))
     .unwrap_err();
     assert!(err.to_string().contains("invalid id 0"));
@@ -223,6 +251,11 @@ fn cmd_todo_add_empty_title_returns_parameter_error() {
 
     let err = cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: String::new(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
     })))
     .unwrap_err();
     assert_eq!(err.exit_code(), 2);
@@ -241,6 +274,11 @@ fn cmd_todo_add_and_list_with_json() {
     let add_cmd = TodoArgs {
         sub: TodoSub::Add(TodoAddArgs {
             title: "json task".to_string(),
+            description: None,
+            due_date: None,
+            priority: None,
+            tags: None,
+            repeat_rule: None,
         }),
         json: true,
         dry_run: false,
@@ -271,6 +309,11 @@ fn cmd_todo_dry_run_add_does_not_persist() {
     let add_cmd = TodoArgs {
         sub: TodoSub::Add(TodoAddArgs {
             title: "dry run".to_string(),
+            description: None,
+            due_date: None,
+            priority: None,
+            tags: None,
+            repeat_rule: None,
         }),
         json: false,
         dry_run: true,
@@ -318,6 +361,11 @@ fn cmd_todo_show_and_stats_with_json() {
     let _ = std::fs::remove_file(".todo.json");
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: "item".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
     })))
     .unwrap();
 

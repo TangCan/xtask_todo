@@ -17,6 +17,8 @@ fn complete_with_repeat_creates_next() {
         priority: None,
         tags: vec![],
         repeat_rule: Some(RepeatRule::Daily),
+        repeat_until: None,
+        repeat_count: None,
     }];
     let store = InMemoryStore::from_todos(todos);
     let mut list = TodoList::with_store(store);
@@ -43,10 +45,60 @@ fn complete_with_repeat_no_next_does_not_create() {
         priority: None,
         tags: vec![],
         repeat_rule: Some(RepeatRule::Daily),
+        repeat_until: None,
+        repeat_count: None,
     }];
     let store = InMemoryStore::from_todos(todos);
     let mut list = TodoList::with_store(store);
     list.complete(id1, true).unwrap();
+    assert_eq!(list.list().len(), 1);
+}
+
+#[test]
+fn complete_with_repeat_count_one_does_not_create_next() {
+    let created = std::time::SystemTime::now();
+    let id1 = TodoId::from_raw(1).unwrap();
+    let todos = vec![Todo {
+        id: id1,
+        title: "last".into(),
+        completed: false,
+        created_at: created,
+        completed_at: None,
+        description: None,
+        due_date: Some("2025-01-10".into()),
+        priority: None,
+        tags: vec![],
+        repeat_rule: Some(RepeatRule::Daily),
+        repeat_until: None,
+        repeat_count: Some(1),
+    }];
+    let store = InMemoryStore::from_todos(todos);
+    let mut list = TodoList::with_store(store);
+    list.complete(id1, false).unwrap();
+    assert_eq!(list.list().len(), 1);
+}
+
+#[test]
+fn complete_with_repeat_until_past_does_not_create_next() {
+    let created = std::time::SystemTime::now();
+    let id1 = TodoId::from_raw(1).unwrap();
+    let todos = vec![Todo {
+        id: id1,
+        title: "until".into(),
+        completed: false,
+        created_at: created,
+        completed_at: None,
+        description: None,
+        due_date: Some("2025-01-10".into()),
+        priority: None,
+        tags: vec![],
+        repeat_rule: Some(RepeatRule::Daily),
+        repeat_until: Some("2025-01-10".into()),
+        repeat_count: None,
+    }];
+    let store = InMemoryStore::from_todos(todos);
+    let mut list = TodoList::with_store(store);
+    list.complete(id1, false).unwrap();
     assert_eq!(list.list().len(), 1);
 }
 
@@ -65,6 +117,8 @@ fn search_by_title_description_tags() {
             priority: None,
             tags: vec![],
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
         Todo {
             id: TodoId::from_raw(2).unwrap(),
@@ -77,6 +131,8 @@ fn search_by_title_description_tags() {
             priority: None,
             tags: vec![],
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
         Todo {
             id: TodoId::from_raw(3).unwrap(),
@@ -89,6 +145,8 @@ fn search_by_title_description_tags() {
             priority: None,
             tags: vec!["milk".into()],
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
     ];
     let store = InMemoryStore::from_todos(todos);

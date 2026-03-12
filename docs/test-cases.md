@@ -4,6 +4,8 @@
 
 **结构说明**：每条用例包含用例 ID、需求/验收引用、描述、步骤、验证方式、预期结果。
 
+**实现状态**：上述需求均已实现。TC-T* 对应 `crates/todo` 单元/集成测试；TC-X*、TC-A* 及部分 TC-T* 对应 `xtask` 内 `tests/`（如 `tests/todo/`、`tests/run.rs`、`tests/clippy.rs`、`tests/git.rs`）。pre-commit 或 CI 中通过 `cargo test` 执行回归。
+
 ---
 
 ## 1. Todo 领域
@@ -115,7 +117,7 @@
 
 | ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |
 |------|-----------|------|------|----------|----------|
-| TC-A3-1 | US-A3 | init-ai 生成技能文件 | todo init-ai --for cursor，检查输出目录 | CLI | 约定目录下存在技能文件，含元数据与指令 |
+| TC-A3-1 | US-A3 | init-ai 生成技能文件 | `cargo xtask todo init-ai` 或 `--for-tool cursor`、`--output <dir>`，默认 `.cursor/commands/` | CLI | 约定目录下生成 `todo.md`，含子命令说明与 --json/退出码/dry-run 说明 |
 
 ### US-A4：模拟执行（扩展）
 

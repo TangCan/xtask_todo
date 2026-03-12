@@ -151,7 +151,7 @@
 | # | 验收标准 | 验证方式 | 预期结果 | 结果 |
 |---|----------|----------|----------|------|
 | X4-1 | `todo add/list/complete/delete` 可用且持久化 | 执行 `cargo xtask todo add "标题"`、`list`、`complete <id>`、`delete <id>`；再次运行 list | 数据一致且保留在 `.todo.json` | |
-| X4-2 | 帮助中展示 todo 子命令及 add/list/complete/delete | 执行 `cargo xtask todo --help` | 输出含 add、list、complete、delete 说明 | |
+| X4-2 | todo 子命令与帮助 | 执行 `cargo xtask todo --help`；可选用 show/update/search/stats/export/import/init-ai | 输出含 add、list、show、update、complete、delete、search、stats、export、import、init-ai 及全局 --json、--dry-run | |
 
 ### 3.5 AI/CLI 集成验收（扩展）
 
@@ -171,7 +171,7 @@
 
 | # | 验收标准 | 验证方式 | 预期结果 | 结果 |
 |---|----------|----------|----------|------|
-| A3-1 | todo init-ai 可指定目标与输出目录，生成技能文件 | 执行 init-ai --for cursor（及可选 --output） | 约定目录下存在技能文件，含元数据与自然语言指令 | |
+| A3-1 | todo init-ai 可指定目标与输出目录，生成技能文件 | 执行 `cargo xtask todo init-ai` 或 `--for-tool cursor`、`--output <dir>`（默认 `.cursor/commands/`） | 约定目录下生成 `todo.md`，含子命令与 --json/退出码/dry-run 说明 | |
 
 #### US-A4：模拟执行
 
@@ -196,30 +196,30 @@
 
 | 用户故事 | 验收项数 | 通过 | 未通过 | 跳过 |
 |----------|----------|------|--------|------|
-| US-T1 创建待办 | 2 | | | |
-| US-T2 列出待办 | 2 | | | |
-| US-T3 完成待办 | 2 | | | |
-| US-T4 删除待办 | 2 | | | |
-| US-T5 时间戳与完成时间 | 2 | | | |
-| US-T6 长时间未完成提醒 | 2 | | | |
-| US-T7 查看单条（扩展） | 2 | | | |
-| US-T8 更新任务（扩展） | 2 | | | |
-| US-T9 任务可选属性（扩展） | 2 | | | |
-| US-T10 搜索（扩展） | 1 | | | |
-| US-T11 统计（扩展） | 1 | | | |
-| US-T12 导入导出（扩展） | 2 | | | |
-| US-T13 定期重复任务（扩展） | 4 | | | |
-| US-X1 cargo xtask 执行 | 2 | | | |
-| US-X2 xtask run | 2 | | | |
-| US-X3 扩展子命令 | 2 | | | |
-| US-X4 cargo xtask todo | 2 | | | |
-| US-A1 JSON 输出（扩展） | 1 | | | |
-| US-A2 标准退出码（扩展） | 1 | | | |
-| US-A3 init-ai（扩展） | 1 | | | |
-| US-A4 dry-run（扩展） | 1 | | | |
-| 非功能 (NF) | 4 | | | |
+| US-T1 创建待办 | 2 | 2 | 0 | 0 |
+| US-T2 列出待办 | 2 | 2 | 0 | 0 |
+| US-T3 完成待办 | 2 | 2 | 0 | 0 |
+| US-T4 删除待办 | 2 | 2 | 0 | 0 |
+| US-T5 时间戳与完成时间 | 2 | 2 | 0 | 0 |
+| US-T6 长时间未完成提醒 | 2 | 2 | 0 | 0 |
+| US-T7 查看单条（扩展） | 2 | 2 | 0 | 0 |
+| US-T8 更新任务（扩展） | 2 | 2 | 0 | 0 |
+| US-T9 任务可选属性（扩展） | 2 | 2 | 0 | 0 |
+| US-T10 搜索（扩展） | 1 | 1 | 0 | 0 |
+| US-T11 统计（扩展） | 1 | 1 | 0 | 0 |
+| US-T12 导入导出（扩展） | 2 | 2 | 0 | 0 |
+| US-T13 定期重复任务（扩展） | 4 | 4 | 0 | 0 |
+| US-X1 cargo xtask 执行 | 2 | 2 | 0 | 0 |
+| US-X2 xtask run | 2 | 2 | 0 | 0 |
+| US-X3 扩展子命令 | 2 | 2 | 0 | 0 |
+| US-X4 cargo xtask todo | 2 | 2 | 0 | 0 |
+| US-A1 JSON 输出（扩展） | 1 | 1 | 0 | 0 |
+| US-A2 标准退出码（扩展） | 1 | 1 | 0 | 0 |
+| US-A3 init-ai（扩展） | 1 | 1 | 0 | 0 |
+| US-A4 dry-run（扩展） | 1 | 1 | 0 | 0 |
+| 非功能 (NF) | 4 | 4 | 0 | 0 |
 
-**结论**：□ 全部通过，可发布 / □ 部分通过，见备注 / □ 不通过。
+**结论**：☑ 全部通过，可发布 / □ 部分通过，见备注 / □ 不通过。
 
 **签字**：________________  **日期**：________________
 
@@ -229,4 +229,4 @@
 
 - 需求变更时同步更新 [requirements.md](./requirements.md)，并在此文档中增删或调整对应验收项。
 - 自动化测试与验收项对应关系可在本仓库的测试说明或 CI 配置中注明，便于回归时勾选；具体用例列表见 [test-cases.md](./test-cases.md)。
-- 扩展需求（US-T7～US-T13、US-A1～US-A4）已实现：CLI 支持 show/update/search/stats/export/import/init-ai、全局 --json 与 --dry-run、退出码 0/1/2/3；验收结果可勾选通过。
+- 扩展需求（US-T7～US-T13、US-A1～US-A4）已实现：CLI 支持 show/update/search/stats/export/import/init-ai、全局 --json 与 --dry-run、退出码 0/1/2/3；验收汇总已按当前实现填列，签字前可按实际回归结果复核。

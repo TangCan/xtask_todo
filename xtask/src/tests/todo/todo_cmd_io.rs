@@ -16,10 +16,20 @@ fn cmd_todo_search_and_stats() {
     let _ = std::fs::remove_file(".todo.json");
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: "alpha".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
     })))
     .unwrap();
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: "beta".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
     })))
     .unwrap();
     cmd_todo(todo_args(TodoSub::Search(TodoSearchArgs {
@@ -40,10 +50,16 @@ fn cmd_todo_export_and_import_merge_replace() {
     let export_path = dir.join("export.json");
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: "one".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
     })))
     .unwrap();
     cmd_todo(todo_args(TodoSub::Export(TodoExportArgs {
         file: export_path.clone(),
+        format: None,
     })))
     .unwrap();
     assert!(export_path.exists());
@@ -63,6 +79,8 @@ fn cmd_todo_export_and_import_merge_replace() {
         priority: None,
         tags: Vec::new(),
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     }];
     std::fs::write(
         &import_path,
@@ -97,12 +115,18 @@ fn cmd_todo_export_and_import_with_json() {
     let _ = std::fs::remove_file(".todo.json");
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: "one".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
     })))
     .unwrap();
     let export_path = dir.join("out.json");
     cmd_todo(TodoArgs {
         sub: TodoSub::Export(TodoExportArgs {
             file: export_path.clone(),
+            format: None,
         }),
         json: true,
         dry_run: false,

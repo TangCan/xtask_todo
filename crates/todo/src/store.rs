@@ -105,6 +105,8 @@ mod tests {
                 priority: None,
                 tags: Vec::new(),
                 repeat_rule: None,
+                repeat_until: None,
+                repeat_count: None,
             },
             Todo {
                 id: id2,
@@ -117,6 +119,8 @@ mod tests {
                 priority: None,
                 tags: Vec::new(),
                 repeat_rule: None,
+                repeat_until: None,
+                repeat_count: None,
             },
         ];
         let store = InMemoryStore::from_todos(todos);

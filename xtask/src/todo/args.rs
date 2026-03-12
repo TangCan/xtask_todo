@@ -71,10 +71,13 @@ pub struct TodoStatsArgs {}
 
 #[derive(FromArgs, Clone)]
 #[argh(subcommand, name = "export")]
-/// Export tasks to a JSON file
+/// Export tasks to a file (format by extension or --format: json, csv)
 pub struct TodoExportArgs {
     #[argh(positional)]
     pub file: PathBuf,
+    #[argh(option)]
+    /// output format: json (default), csv
+    pub format: Option<String>,
 }
 
 #[derive(FromArgs, Clone)]
@@ -98,12 +101,27 @@ pub struct TodoShowArgs {
 
 #[derive(FromArgs, Clone)]
 #[argh(subcommand, name = "update")]
-/// Update a task's title by id
+/// Update a task by id (title and optional fields)
 pub struct TodoUpdateArgs {
     #[argh(positional)]
     pub id: u64,
     #[argh(positional)]
     pub title: String,
+    #[argh(option)]
+    /// optional description
+    pub description: Option<String>,
+    #[argh(option)]
+    /// optional due date (YYYY-MM-DD)
+    pub due_date: Option<String>,
+    #[argh(option)]
+    /// optional priority: low, medium, high
+    pub priority: Option<String>,
+    #[argh(option)]
+    /// optional tags, comma-separated
+    pub tags: Option<String>,
+    #[argh(option)]
+    /// optional repeat rule: daily, weekly, monthly, yearly, weekdays, 2d, 3w, custom:N; empty to clear
+    pub repeat_rule: Option<String>,
 }
 
 #[derive(FromArgs, Clone)]
@@ -112,6 +130,21 @@ pub struct TodoUpdateArgs {
 pub struct TodoAddArgs {
     #[argh(positional)]
     pub title: String,
+    #[argh(option)]
+    /// optional description
+    pub description: Option<String>,
+    #[argh(option)]
+    /// optional due date (YYYY-MM-DD)
+    pub due_date: Option<String>,
+    #[argh(option)]
+    /// optional priority: low, medium, high
+    pub priority: Option<String>,
+    #[argh(option)]
+    /// optional tags, comma-separated
+    pub tags: Option<String>,
+    #[argh(option)]
+    /// optional repeat rule: daily, weekly, monthly, yearly, weekdays, 2d, 3w, custom:N
+    pub repeat_rule: Option<String>,
 }
 
 #[derive(FromArgs, Clone)]

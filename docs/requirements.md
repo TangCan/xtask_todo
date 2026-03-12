@@ -6,6 +6,8 @@
 - **目标**：提供可复用的待办（Todo）能力（库 + 可选入口），并通过 cargo xtask 支持开发与构建自动化。  
 - **范围**：本需求覆盖「todo 领域能力」与「xtask 开发者工作流」两部分的用户故事与验收标准。
 
+**当前实现状态**：US-T1～US-T6、US-X1～US-X4 与扩展 US-T7～US-T13、US-A1～US-A4 均已实现。CLI 入口为 `cargo xtask todo`，子命令含 add、list、show、update、complete、delete、search、stats、export、import、init-ai；全局选项含 `--json`、`--dry-run`；退出码为 0（成功）/1（一般）/2（参数）/3（数据）。
+
 ---
 
 ## 2. 用户故事与验收标准

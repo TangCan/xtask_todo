@@ -113,7 +113,7 @@ flowchart TD
 
 ### 2.6 扩展任务（US-T7～US-T13、US-A1～US-A4，已实现）
 
-以下任务对应 requirements 中的扩展需求，实现顺序可按优先级 P0/P1/P2 排期。
+以下任务对应 requirements 中的扩展需求，**当前均已实现**：领域层 get/update、可选属性与 ListOptions、search/stats、export/import、RepeatRule 与 complete(id, no_next)；CLI show/update/search/stats/export/import/init-ai、--no-next、--json、退出码 0/1/2/3、--dry-run。
 
 | ID | 任务 | 依赖 | 产出 / 验收 |
 |----|------|------|-------------|

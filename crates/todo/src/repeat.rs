@@ -79,6 +79,16 @@ impl FromStr for RepeatRule {
             Ok(Self::Weekdays)
         } else if let Some(n) = s.strip_prefix("custom:") {
             n.parse::<u32>().map(Self::Custom).map_err(|_| ())
+        } else if let Some(d) = s.strip_suffix('d') {
+            // e.g. 2d = every 2 days
+            d.parse::<u32>().map(Self::Custom).map_err(|_| ())
+        } else if let Some(w) = s.strip_suffix('w') {
+            // e.g. 3w = every 3 weeks = 21 days
+            w.parse::<u32>()
+                .ok()
+                .and_then(|n| n.checked_mul(7))
+                .map(Self::Custom)
+                .ok_or(())
         } else {
             Err(())
         }

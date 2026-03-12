@@ -90,6 +90,8 @@ fn is_old_open_completed_false() {
         priority: None,
         tags: Vec::new(),
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     };
     assert!(!is_old_open(&t, SystemTime::now()));
 }
@@ -108,6 +110,8 @@ fn is_old_open_recent_false() {
         priority: None,
         tags: Vec::new(),
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     };
     assert!(!is_old_open(&t, SystemTime::now()));
 }
@@ -126,6 +130,8 @@ fn is_old_open_old_true() {
         priority: None,
         tags: Vec::new(),
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     };
     assert!(is_old_open(&t, SystemTime::now()));
 }
@@ -166,6 +172,8 @@ fn print_todo_list_items_old_open_with_color() {
         priority: None,
         tags: Vec::new(),
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     }];
     print_todo_list_items(&items, true);
 }

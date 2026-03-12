@@ -21,6 +21,8 @@ fn from_todos_then_create_list_complete_delete() {
             priority: None,
             tags: Vec::new(),
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
         Todo {
             id: id2,
@@ -33,6 +35,8 @@ fn from_todos_then_create_list_complete_delete() {
             priority: None,
             tags: Vec::new(),
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         },
     ];
     let store = InMemoryStore::from_todos(existing);

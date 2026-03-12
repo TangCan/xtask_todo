@@ -90,5 +90,7 @@ pub(super) fn todo_to_json(t: &Todo) -> serde_json::Value {
         "priority": t.priority.as_ref().map(ToString::to_string),
         "tags": t.tags,
         "repeat_rule": t.repeat_rule.as_ref().map(ToString::to_string),
+        "repeat_until": t.repeat_until,
+        "repeat_count": t.repeat_count,
     })
 }
