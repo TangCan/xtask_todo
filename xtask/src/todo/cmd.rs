@@ -23,6 +23,8 @@ fn patch_from_add_args(
     priority: Option<&str>,
     tags: Option<&str>,
     repeat_rule: Option<&str>,
+    repeat_until: Option<&str>,
+    repeat_count: Option<&str>,
 ) -> Result<TodoPatch, TodoCliError> {
     let priority_parsed = priority
         .filter(|s| !s.is_empty())
@@ -30,6 +32,16 @@ fn patch_from_add_args(
     let repeat_parsed = repeat_rule
         .filter(|s| !s.is_empty())
         .and_then(|s| RepeatRule::from_str(s).ok());
+    let repeat_count_parsed = repeat_count
+        .filter(|s| !s.is_empty())
+        .and_then(|s| s.trim().parse::<u32>().ok());
+    if let Some(c) = repeat_count {
+        if !c.is_empty() && repeat_count_parsed.is_none() {
+            return Err(TodoCliError::Parameter(format!(
+                "invalid repeat_count: {c} (expected positive integer)"
+            )));
+        }
+    }
     let tags_vec = tags.map(|s| {
         s.split(',')
             .map(str::trim)
@@ -54,8 +66,11 @@ fn patch_from_add_args(
         priority: priority_parsed,
         tags: tags_vec,
         repeat_rule: repeat_parsed,
-        repeat_until: None,
-        repeat_count: None,
+        repeat_until: repeat_until
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(String::from),
+        repeat_count: repeat_count_parsed,
         repeat_rule_clear: false,
     })
 }
@@ -163,7 +178,9 @@ pub fn cmd_todo(args: TodoArgs) -> Result<(), TodoCliError> {
                 || a.due_date.is_some()
                 || a.priority.is_some()
                 || a.tags.is_some()
-                || a.repeat_rule.is_some();
+                || a.repeat_rule.is_some()
+                || a.repeat_until.is_some()
+                || a.repeat_count.is_some();
             if dry_run {
                 if json {
                     print_json_success(&serde_json::json!({
@@ -192,6 +209,8 @@ pub fn cmd_todo(args: TodoArgs) -> Result<(), TodoCliError> {
                         a.priority.as_deref(),
                         a.tags.as_deref(),
                         a.repeat_rule.as_deref(),
+                        a.repeat_until.as_deref(),
+                        a.repeat_count.as_deref(),
                     )?;
                     list.update(id, patch)
                         .map_err(|e| TodoCliError::Data(e.to_string()))?;
@@ -300,6 +319,8 @@ pub fn cmd_todo(args: TodoArgs) -> Result<(), TodoCliError> {
                     a.priority.as_deref(),
                     a.tags.as_deref(),
                     a.repeat_rule.as_deref(),
+                    a.repeat_until.as_deref(),
+                    a.repeat_count.as_deref(),
                 )?;
                 patch.title = Some(a.title.trim().to_string());
                 patch.repeat_rule_clear = a.clear_repeat_rule;

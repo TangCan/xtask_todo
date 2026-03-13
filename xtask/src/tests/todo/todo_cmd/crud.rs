@@ -22,6 +22,8 @@ fn cmd_todo_add_list_save_load() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     }));
     cmd_todo(add_cmd).unwrap();
     let add_with_opts = todo_args(TodoSub::Add(TodoAddArgs {
@@ -31,6 +33,8 @@ fn cmd_todo_add_list_save_load() {
         priority: Some("high".to_string()),
         tags: Some("work,urgent".to_string()),
         repeat_rule: Some("daily".to_string()),
+        repeat_until: None,
+        repeat_count: None,
     }));
     cmd_todo(add_with_opts).unwrap();
     let todos = load_todos().unwrap();
@@ -224,6 +228,8 @@ fn cmd_todo_update_and_update_id_zero_errors() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap();
     cmd_todo(todo_args(TodoSub::Update(TodoUpdateArgs {
@@ -234,6 +240,8 @@ fn cmd_todo_update_and_update_id_zero_errors() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
         clear_repeat_rule: false,
     })))
     .unwrap();
@@ -249,6 +257,8 @@ fn cmd_todo_update_and_update_id_zero_errors() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
         clear_repeat_rule: false,
     })))
     .unwrap_err();
@@ -271,6 +281,8 @@ fn cmd_todo_add_empty_title_returns_parameter_error() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap_err();
     assert_eq!(err.exit_code(), 2);

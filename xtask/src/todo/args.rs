@@ -122,6 +122,12 @@ pub struct TodoUpdateArgs {
     #[argh(option)]
     /// optional repeat rule: daily, weekly, monthly, yearly, weekdays, 2d, 3w, custom:N
     pub repeat_rule: Option<String>,
+    #[argh(option)]
+    /// optional repeat end date (YYYY-MM-DD); no next instance if next due > this
+    pub repeat_until: Option<String>,
+    #[argh(option)]
+    /// optional remaining repeat count (1 = last occurrence)
+    pub repeat_count: Option<String>,
     #[argh(switch)]
     /// clear repeat rule (set to none)
     pub clear_repeat_rule: bool,
@@ -148,6 +154,12 @@ pub struct TodoAddArgs {
     #[argh(option)]
     /// optional repeat rule: daily, weekly, monthly, yearly, weekdays, 2d, 3w, custom:N
     pub repeat_rule: Option<String>,
+    #[argh(option)]
+    /// optional repeat end date (YYYY-MM-DD)
+    pub repeat_until: Option<String>,
+    #[argh(option)]
+    /// optional remaining repeat count (1 = last)
+    pub repeat_count: Option<String>,
 }
 
 #[derive(FromArgs, Clone, Default)]

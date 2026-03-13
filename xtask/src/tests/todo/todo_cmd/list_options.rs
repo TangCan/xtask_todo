@@ -3,7 +3,7 @@
 use crate::tests::{cwd_test_lock, RestoreCwd};
 use crate::todo::{
     cmd_todo, load_todos, todo_args, TodoAddArgs, TodoArgs, TodoCompleteArgs, TodoDeleteArgs,
-    TodoListArgs, TodoShowArgs, TodoSub,
+    TodoListArgs, TodoShowArgs, TodoSub, TodoUpdateArgs,
 };
 
 #[test]
@@ -21,6 +21,8 @@ fn cmd_todo_list_with_filters_and_sort() {
         priority: Some("low".to_string()),
         tags: Some("t1".to_string()),
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap();
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
@@ -30,6 +32,8 @@ fn cmd_todo_list_with_filters_and_sort() {
         priority: Some("high".to_string()),
         tags: Some("t2".to_string()),
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap();
 
@@ -111,6 +115,8 @@ fn cmd_todo_dry_run_update_and_complete_and_delete() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap();
 
@@ -123,6 +129,8 @@ fn cmd_todo_dry_run_update_and_complete_and_delete() {
             priority: None,
             tags: None,
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
             clear_repeat_rule: false,
         }),
         json: true,
@@ -139,6 +147,8 @@ fn cmd_todo_dry_run_update_and_complete_and_delete() {
             priority: None,
             tags: None,
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
             clear_repeat_rule: false,
         }),
         json: false,
@@ -199,8 +209,78 @@ fn cmd_todo_show_with_all_fields() {
         priority: Some("medium".to_string()),
         tags: Some("a,b".to_string()),
         repeat_rule: Some("weekly".to_string()),
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap();
 
     cmd_todo(todo_args(TodoSub::Show(TodoShowArgs { id: 1 }))).unwrap();
+}
+
+#[test]
+fn cmd_todo_update_clear_repeat_rule_clears_repeat_rule() {
+    let _guard = cwd_test_lock();
+    let dir = std::env::temp_dir().join(format!("xtask_todo_clear_rep_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _ = std::fs::remove_file(".todo.json");
+
+    cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
+        title: "recurring".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: Some("daily".to_string()),
+        repeat_until: None,
+        repeat_count: None,
+    })))
+    .unwrap();
+    let todos = load_todos().unwrap();
+    assert_eq!(todos.len(), 1);
+    assert!(todos[0].repeat_rule.is_some());
+
+    cmd_todo(todo_args(TodoSub::Update(TodoUpdateArgs {
+        id: 1,
+        title: "recurring".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
+        clear_repeat_rule: true,
+    })))
+    .unwrap();
+    let todos = load_todos().unwrap();
+    assert_eq!(todos.len(), 1);
+    assert!(todos[0].repeat_rule.is_none());
+}
+
+#[test]
+fn cmd_todo_add_with_repeat_until_and_repeat_count() {
+    let _guard = cwd_test_lock();
+    let dir = std::env::temp_dir().join(format!("xtask_todo_repeat_opts_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _ = std::fs::remove_file(".todo.json");
+
+    cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
+        title: "limited repeat".to_string(),
+        description: None,
+        due_date: Some("2026-06-01".to_string()),
+        priority: None,
+        tags: None,
+        repeat_rule: Some("weekly".to_string()),
+        repeat_until: Some("2026-12-31".to_string()),
+        repeat_count: Some("3".to_string()),
+    })))
+    .unwrap();
+    let todos = load_todos().unwrap();
+    assert_eq!(todos.len(), 1);
+    assert_eq!(todos[0].repeat_until.as_deref(), Some("2026-12-31"));
+    assert_eq!(todos[0].repeat_count, Some(3));
 }

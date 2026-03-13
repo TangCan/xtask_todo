@@ -22,6 +22,8 @@ fn cmd_todo_search_and_stats() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap();
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
@@ -31,6 +33,8 @@ fn cmd_todo_search_and_stats() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap();
     cmd_todo(todo_args(TodoSub::Search(TodoSearchArgs {
@@ -56,6 +60,8 @@ fn cmd_todo_export_and_import_merge_replace() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap();
     cmd_todo(todo_args(TodoSub::Export(TodoExportArgs {
@@ -121,6 +127,8 @@ fn cmd_todo_export_and_import_with_json() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap();
     let export_path = dir.join("out.json");
@@ -189,6 +197,8 @@ fn cmd_todo_export_csv_and_import_csv() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap();
 

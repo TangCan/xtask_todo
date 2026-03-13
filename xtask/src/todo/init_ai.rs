@@ -26,10 +26,10 @@ Run via: `cargo xtask todo <subcommand> [options]`
 
 ## Subcommands
 
-- `add <title> [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …]` — add a task (optional fields)
+- `add <title> [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …] [--repeat-until …] [--repeat-count …]` — add a task (optional fields)
 - `list [--status completed|incomplete] [--priority …] [--tags …] [--due-before …] [--due-after …] [--sort created-at|due-date|priority|title]` — list tasks (optional filter and sort)
 - `show <id>` — show one task (human-readable: description, due, priority, tags, repeat; use --json for full)
-- `update <id> <title> [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …] [--clear-repeat-rule]` — update task (--clear-repeat-rule clears repeat)
+- `update <id> <title> [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …] [--repeat-until …] [--repeat-count …] [--clear-repeat-rule]` — update task (--clear-repeat-rule clears repeat)
 - `complete <id> [--no-next]` — mark done (optional: do not create next for recurring)
 - `delete <id>` — remove task
 - `search <keyword>` — search in title/description/tags

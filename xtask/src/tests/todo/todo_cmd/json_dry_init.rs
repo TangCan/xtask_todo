@@ -23,6 +23,8 @@ fn cmd_todo_add_and_list_with_json() {
             priority: None,
             tags: None,
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         }),
         json: true,
         dry_run: false,
@@ -58,6 +60,8 @@ fn cmd_todo_dry_run_add_does_not_persist() {
             priority: None,
             tags: None,
             repeat_rule: None,
+            repeat_until: None,
+            repeat_count: None,
         }),
         json: false,
         dry_run: true,
@@ -110,6 +114,8 @@ fn cmd_todo_show_and_stats_with_json() {
         priority: None,
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap();
 
@@ -187,6 +193,8 @@ fn cmd_todo_add_invalid_priority_returns_parameter_error() {
         priority: Some("invalid_priority".to_string()),
         tags: None,
         repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap_err();
     assert_eq!(err.exit_code(), 2);
@@ -209,6 +217,8 @@ fn cmd_todo_add_invalid_repeat_rule_returns_parameter_error() {
         priority: None,
         tags: None,
         repeat_rule: Some("bad_rule".to_string()),
+        repeat_until: None,
+        repeat_count: None,
     })))
     .unwrap_err();
     assert_eq!(err.exit_code(), 2);

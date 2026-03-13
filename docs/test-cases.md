@@ -63,7 +63,7 @@
 
 | ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |
 |------|-----------|------|------|----------|----------|
-| TC-T8-1 | US-T8 | 有效 id 与合法修改更新成功 | update(id, 新标题及可选 --description/--due-date/--priority/--tags/--repeat-rule) 后 list/show | 单元/集成/CLI | 该任务内容更新，持久化一致 |
+| TC-T8-1 | US-T8 | 有效 id 与合法修改更新成功 | update(id, 新标题及可选 --description/--due-date/--priority/--tags/--repeat-rule/--repeat-until/--repeat-count) 后 list/show | 单元/集成/CLI | 该任务内容更新，持久化一致 |
 | TC-T8-2 | US-T8 | 不存在 id 或非法参数返回错误 | 对不存在 id 或非法参数调用 update | 单元/集成 | 返回错误，其他任务不变 |
 
 ### US-T9：任务可选属性（扩展）

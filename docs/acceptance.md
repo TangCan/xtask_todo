@@ -77,7 +77,7 @@
 
 | # | 验收标准 | 验证方式 | 预期结果 | 结果 |
 |---|----------|----------|----------|------|
-| T8-1 | 给定有效 id 与合法修改，应更新并持久化，list/show 反映更新 | update(id, title) 或带 --description/--due-date/--priority/--tags/--repeat-rule 后 list/show | 该任务内容已更新，持久化一致 | |
+| T8-1 | 给定有效 id 与合法修改，应更新并持久化，list/show 反映更新 | update(id, title) 或带 --description/--due-date/--priority/--tags/--repeat-rule/--repeat-until/--repeat-count 后 list/show | 该任务内容已更新，持久化一致 | |
 | T8-2 | 给定不存在的 id 或非法参数，应返回错误且不改变其他任务 | 对不存在 id 或非法参数执行 update | 返回错误，其他任务不变 | |
 
 ### 2.9 US-T9：任务可选属性（扩展）
