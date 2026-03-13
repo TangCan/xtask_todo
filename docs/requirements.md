@@ -6,7 +6,7 @@
 - **目标**：提供可复用的待办（Todo）能力（库 + 可选入口），并通过 cargo xtask 支持开发与构建自动化。  
 - **范围**：本需求覆盖「todo 领域能力」与「xtask 开发者工作流」两部分的用户故事与验收标准。
 
-**当前实现状态**：US-T1～US-T6、US-X1～US-X4 与扩展 US-T7～US-T13、US-A1～US-A4 均已实现。CLI 入口为 `cargo xtask todo`，子命令含 add、list、show、update、complete、delete、search、stats、export、import、init-ai。**add** 支持可选参数 `--description`、`--due-date`、`--priority`、`--tags`、`--repeat-rule`、`--repeat-until`、`--repeat-count`；**list** 支持可选过滤与排序：`--status`（completed/incomplete）、`--priority`、`--tags`（逗号分隔）、`--due-before`、`--due-after`、`--sort`（created-at/due-date/priority/title）；**show** 的人类可读输出含 id、标题、状态、时间及可选字段（描述、截止、优先级、标签、重复规则与结束条件）；**update** 支持同上可选参数及标题（含 `--repeat-until`、`--repeat-count`），并支持 `--clear-repeat-rule` 取消重复规则；**export** 支持 JSON/CSV（由文件扩展名或 `--format json|csv` 决定）；**import** 支持 JSON 与 CSV（按扩展名识别）。重复规则支持 `daily`/`weekly`/`monthly`/`yearly`/`weekdays`、`2d`/`3w` 简写及 `custom:N`，并支持结束条件 `repeat_until`（截止日期）、`repeat_count`（剩余次数）。全局选项含 `--json`、`--dry-run`（修改类命令仅输出拟执行操作，不写入文件且不修改内存列表）；退出码为 0（成功）/1（一般）/2（参数）/3（数据）。
+**当前实现状态**：US-T1～US-T6、US-X1～US-X4 与扩展 US-T7～US-T13、US-A1～US-A4 均已实现。CLI 入口为 `cargo xtask todo`，子命令含 add、list、show、update、complete、delete、search、stats、export、import、init-ai。**add** 支持可选参数 `--description`、`--due-date`、`--priority`、`--tags`、`--repeat-rule`、`--repeat-until`、`--repeat-count`；**list** 支持可选过滤与排序：`--status`（completed/incomplete）、`--priority`、`--tags`（逗号分隔）、`--due-before`、`--due-after`、`--sort`（created-at/due-date/priority/title）；**show** 的人类可读输出含 id、标题、状态、时间及可选字段（描述、截止、优先级、标签、重复规则与结束条件）；**update** 支持同上可选参数及标题（含 `--repeat-until`、`--repeat-count`），并支持 `--clear-repeat-rule` 取消重复规则；**export** 支持 JSON/CSV（由文件扩展名或 `--format json|csv` 决定）；**import** 支持 JSON 与 CSV（按扩展名识别）。重复规则支持 `daily`/`weekly`/`monthly`/`yearly`/`weekdays`、`2d`/`3w` 简写及 `custom:N`，并支持结束条件 `repeat_until`（截止日期）、`repeat_count`（剩余次数）。全局选项含 `--json`、`--dry-run`（修改类命令仅输出拟执行操作，不写入文件且不修改内存列表）；退出码为 0（成功）/1（一般）/2（参数）/3（数据）。日期类参数（`--due-date`、`--repeat-until`、`--due-before`、`--due-after`）须为 YYYY-MM-DD 格式，否则返回参数错误（退出码 2）。
 
 ---
 
@@ -173,6 +173,30 @@
 ---
 
 ## 3. 非功能与约束
+
+### 3.1 边界、异常与数据约定
+
+- **ID**：任务 id 为正整数；0 视为非法。对不存在的 id 执行 complete/delete/update/show 时，应 返回数据错误（退出码 3）。
+- **可选字段**：日期类参数（due-date、repeat-until、due-before、due-after）须为 YYYY-MM-DD；优先级为 low/medium/high；repeat_rule 为约定枚举或 custom:N；repeat_count 为正整数。格式非法或超出约定时，应 返回参数错误（退出码 2）。
+- **文件与 I/O**：默认读写当前目录下的 `.todo.json`。文件不存在时，list/show 等行为按当前实现约定（如空列表或明确错误）。导入/导出时若目标文件不可写或格式无法识别，应 给出明确错误信息。
+- **规模与限制**：当前不承诺列表长度或导出体积上限；若需可补充「建议/合理使用范围」（如单文件数千条内）。
+
+### 3.2 错误行为汇总
+
+| 退出码 | 含义     | 典型场景 |
+|--------|----------|----------|
+| 0      | 成功     | 命令正常执行并完成 |
+| 1      | 一般错误 | 文件不可用、未分类的 I/O 或内部错误 |
+| 2      | 参数错误 | 空标题 add、非法 --due-date/--priority/--repeat-count、list 非法 --status/--due-before 等 |
+| 3      | 数据错误 | complete/delete/update/show 时 id 不存在或无效 id |
+
+成功时输出依子命令而定；失败时（含 2、3）应 在 stderr 或 --json 的 error.message 中提供可读错误说明。
+
+### 3.3 已知限制与未覆盖需求
+
+当前版本**不包含**以下能力，后续若纳入以本文档修订为准：HTTP API（如 `todo serve`）、多用户或权限、数据备份/恢复策略、并发写入保证、`.todo.json` 的 schema 版本迁移、提醒与自然语言对话界面等。参见 §5「未来可考虑」。
+
+---
 
 - **实现语言**：Rust；workspace 包含 `crates/todo` 与 `xtask`。
 - **入口**：通过 `.cargo/config.toml` 的 `xtask` alias 支持 `cargo xtask`，不要求用户全局安装额外工具。

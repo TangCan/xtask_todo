@@ -3,3 +3,4 @@ Cargo.lock
 **/*.rs.bk
 .env
 .env.*
+/.cursor/skills/superpowers/

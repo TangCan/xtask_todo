@@ -86,6 +86,7 @@
 |---|----------|----------|----------|------|
 | T9-1 | 添加/更新支持描述、截止日期、优先级、标签（CLI：--description、--due-date、--priority、--tags）；列表与 show 能展示 | add/update 带可选参数，list/show 查看 | 字段正确存储与展示 | |
 | T9-2 | 列表支持按状态、优先级、标签、截止日期过滤及排序 | `todo list --status incomplete`、`--priority high`、`--tags a,b`、`--due-before`、`--due-after`、`--sort created-at\|due-date\|priority\|title` | 结果集与顺序符合选项 | |
+| T9-3 | 日期类参数（due-date、repeat-until、due-before、due-after）须为 YYYY-MM-DD，否则返回参数错误 | add 带 `--due-date not-a-date` 或 list 带 `--due-before 2026/01/01` | 退出码 2，错误信息含 invalid due_date / invalid due_before 等 | |
 
 ### 2.10 US-T10：搜索任务（扩展）
 
