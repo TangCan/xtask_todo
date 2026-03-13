@@ -143,7 +143,36 @@ fn cmd_todo_complete_id_zero_errors() {
         no_next: false,
     })))
     .unwrap_err();
+    assert_eq!(err.exit_code(), 2, "id 0 is parameter error per §3.1");
     assert!(err.to_string().contains("invalid id 0"));
+}
+
+#[test]
+fn cmd_todo_complete_nonexistent_id_returns_exit_code_3() {
+    let _guard = cwd_test_lock();
+    let dir = std::env::temp_dir().join(format!("xtask_todo_comp_nx_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _ = std::fs::remove_file(".todo.json");
+    cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
+        title: "only".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
+    })))
+    .unwrap();
+    let err = cmd_todo(todo_args(TodoSub::Complete(TodoCompleteArgs {
+        id: 999,
+        no_next: false,
+    })))
+    .unwrap_err();
+    assert_eq!(err.exit_code(), 3, "nonexistent id is data error per §3.1");
+    assert!(err.to_string().contains("not found"));
 }
 
 #[test]
@@ -156,7 +185,32 @@ fn cmd_todo_delete_id_zero_errors() {
     let _ = std::fs::remove_file(".todo.json");
 
     let err = cmd_todo(todo_args(TodoSub::Delete(TodoDeleteArgs { id: 0 }))).unwrap_err();
+    assert_eq!(err.exit_code(), 2, "id 0 is parameter error per §3.1");
     assert!(err.to_string().contains("invalid id 0"));
+}
+
+#[test]
+fn cmd_todo_delete_nonexistent_id_returns_exit_code_3() {
+    let _guard = cwd_test_lock();
+    let dir = std::env::temp_dir().join(format!("xtask_todo_del_nx_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _ = std::fs::remove_file(".todo.json");
+    cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
+        title: "only".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
+    })))
+    .unwrap();
+    let err = cmd_todo(todo_args(TodoSub::Delete(TodoDeleteArgs { id: 999 }))).unwrap_err();
+    assert_eq!(err.exit_code(), 3, "nonexistent id is data error per §3.1");
+    assert!(err.to_string().contains("not found"));
 }
 
 #[test]
@@ -207,9 +261,11 @@ fn cmd_todo_show_found_and_not_found() {
     cmd_todo(todo_args(TodoSub::Show(TodoShowArgs { id: 1 }))).unwrap();
 
     let err = cmd_todo(todo_args(TodoSub::Show(TodoShowArgs { id: 99 }))).unwrap_err();
+    assert_eq!(err.exit_code(), 3, "nonexistent id is data error per §3.1");
     assert!(err.to_string().contains("not found"));
 
     let err = cmd_todo(todo_args(TodoSub::Show(TodoShowArgs { id: 0 }))).unwrap_err();
+    assert_eq!(err.exit_code(), 2, "id 0 is parameter error per §3.1");
     assert!(err.to_string().contains("invalid id 0"));
 }
 
@@ -262,7 +318,24 @@ fn cmd_todo_update_and_update_id_zero_errors() {
         clear_repeat_rule: false,
     })))
     .unwrap_err();
+    assert_eq!(err.exit_code(), 2, "id 0 is parameter error per §3.1");
     assert!(err.to_string().contains("invalid id 0"));
+
+    let err = cmd_todo(todo_args(TodoSub::Update(TodoUpdateArgs {
+        id: 999,
+        title: "x".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
+        clear_repeat_rule: false,
+    })))
+    .unwrap_err();
+    assert_eq!(err.exit_code(), 3, "nonexistent id is data error per §3.1");
+    assert!(err.to_string().contains("not found"));
 }
 
 #[test]

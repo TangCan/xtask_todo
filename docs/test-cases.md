@@ -123,6 +123,7 @@
 | ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |
 |------|-----------|------|------|----------|----------|
 | TC-A2-1 | US-A2 | 成功 0、参数错误 2、数据错误 3 | 执行成功/缺参/id 不存在等场景，查退出码 | CLI | 0 / 2 / 3 符合约定 |
+| TC-A2-2 | §3.1/§3.2 | id 0 为参数错误（退出码 2）、不存在 id 为数据错误（退出码 3） | complete/delete/update/show 对 id 0 断言 exit_code()==2；对不存在 id 断言 exit_code()==3 | 单元/CLI | cmd_todo_*_id_zero_errors、*_nonexistent_id_returns_exit_code_3、show/update 中对应断言 |
 
 ### US-A3：AI 技能生成（扩展）
 

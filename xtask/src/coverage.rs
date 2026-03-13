@@ -117,6 +117,10 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
 mod tests {
     use super::*;
     use std::io::Write;
+    use std::sync::Mutex;
+
+    /// Serializes tests that set `CARGO` so parallel runs don't overwrite each other.
+    static CARGO_TEST_MUTEX: Mutex<()> = Mutex::new(());
 
     #[test]
     fn parse_coverage_percentage_from_line() {
@@ -134,6 +138,9 @@ mod tests {
 
     #[test]
     fn run_tarpaulin_spawn_fail_returns_none() {
+        let _guard = CARGO_TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         std::env::set_var("CARGO", "/nonexistent/cargo-path");
         let (name, pct) = run_tarpaulin("some-package", &[], &[]);
         std::env::remove_var("CARGO");
@@ -142,11 +149,20 @@ mod tests {
     }
 
     /// Covers `run_tarpaulin` success path and `cmd_coverage` real branch by using a fake CARGO that echoes a coverage line.
+    /// Uses a unique temp dir (pid + nanos) and a mutex so parallel test runs don't clash on CARGO or the same path.
     #[test]
     #[cfg(unix)]
     fn run_tarpaulin_fake_script_returns_pct_and_cmd_coverage_succeeds() {
         use std::os::unix::fs::PermissionsExt;
-        let dir = std::env::temp_dir().join(format!("xtask_cov_fake_{}", std::process::id()));
+        let _guard = CARGO_TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir =
+            std::env::temp_dir().join(format!("xtask_cov_fake_{}_{}", std::process::id(), nanos));
         let _ = std::fs::create_dir_all(&dir);
         let script = dir.join("fake_cargo");
         let mut f = std::fs::File::create(&script).unwrap();
@@ -163,7 +179,7 @@ mod tests {
         std::env::set_var("CARGO", &script_path);
         let out = cmd_coverage(CoverageArgs {});
         std::env::remove_var("CARGO");
-        let _ = std::fs::remove_dir_all(dir);
+        let _ = std::fs::remove_dir_all(&dir);
         assert!(
             out.is_ok(),
             "cmd_coverage with fake CARGO should succeed: {out:?}"
