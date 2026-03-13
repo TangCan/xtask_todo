@@ -1,0 +1,11 @@
+[package]
+name = "dev_shell"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rustyline = "17"
+# 暂无；后续可按需加 tempfile
+
+[dev-dependencies]
+# 暂无
