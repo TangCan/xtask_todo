@@ -224,3 +224,27 @@ fn cmd_todo_add_invalid_repeat_rule_returns_parameter_error() {
     assert_eq!(err.exit_code(), 2);
     assert!(err.to_string().contains("invalid repeat_rule"));
 }
+
+#[test]
+fn cmd_todo_add_invalid_repeat_count_returns_parameter_error() {
+    let _guard = cwd_test_lock();
+    let dir = std::env::temp_dir().join(format!("xtask_todo_bad_rc_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _ = std::fs::remove_file(".todo.json");
+
+    let err = cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
+        title: "x".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
+        repeat_until: None,
+        repeat_count: Some("not_a_number".to_string()),
+    })))
+    .unwrap_err();
+    assert_eq!(err.exit_code(), 2);
+    assert!(err.to_string().contains("invalid repeat_count"));
+}

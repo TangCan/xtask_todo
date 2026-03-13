@@ -102,6 +102,8 @@
 | TC-T13-3 | US-T13 | 重复规则支持 2d/3w 简写及 custom:N | 使用 repeat_rule "2d" 或 "3w" 添加/更新任务，完成时下一实例截止日正确 | 单元/集成 | 2d→每 2 天，3w→每 21 天，next_due 正确 |
 | TC-T13-4 | US-T13 | 结束条件 repeat_count/repeat_until | repeat_count=1 完成时不生成下一笔；repeat_until 早于 next_due 时不生成 | 单元/集成 | 符合结束条件时无新实例 |
 | TC-T13-5 | US-T13 | show/update 展示与修改重复规则 | show(id) 含 repeat_rule；update 修改规则（含可选字段）或使用 `--clear-repeat-rule` 取消规则 | 单元/集成/CLI | 规则正确展示与持久化；--clear-repeat-rule 后 repeat_rule 为 None |
+| TC-T13-6 | US-T13 | add/update 非法 repeat_count 返回参数错误 | add 带 `--repeat-count not_a_number` | CLI | 退出码 2，错误信息含 invalid repeat_count |
+| TC-T13-7 | US-T13 | add 支持 --repeat-until/--repeat-count 端到端 | 命令行 `todo add "标题" --repeat-rule weekly --repeat-until 2026-12-31 --repeat-count 3`，再 list | 集成 | 任务创建成功，list 可见该任务 |
 
 ### US-A1：结构化 JSON 输出（扩展）
 

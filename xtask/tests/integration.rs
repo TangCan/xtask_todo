@@ -56,3 +56,44 @@ fn xtask_todo_add_then_list_shows_task() {
 
     let _ = fs::remove_file(dir.join(".todo.json"));
 }
+
+#[test]
+fn xtask_todo_add_with_repeat_options_then_list() {
+    let dir = std::env::temp_dir().join("xtask_integ_todo_repeat");
+    let _ = fs::create_dir_all(&dir);
+    let _ = fs::remove_file(dir.join(".todo.json"));
+
+    let add = xtask_bin()
+        .arg("todo")
+        .arg("add")
+        .arg("weekly review")
+        .arg("--repeat-rule")
+        .arg("weekly")
+        .arg("--repeat-until")
+        .arg("2026-12-31")
+        .arg("--repeat-count")
+        .arg("3")
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(
+        add.status.success(),
+        "add with repeat options should succeed: {}",
+        String::from_utf8_lossy(&add.stderr)
+    );
+
+    let list = xtask_bin()
+        .arg("todo")
+        .arg("list")
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(list.status.success(), "list should succeed");
+    let out = String::from_utf8_lossy(&list.stdout);
+    assert!(
+        out.contains("weekly review"),
+        "list should show the task: {out}"
+    );
+
+    let _ = fs::remove_file(dir.join(".todo.json"));
+}
