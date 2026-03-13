@@ -3,7 +3,7 @@
 use std::process::Stdio;
 
 use crate::git::{cmd_git, GitAddArgs, GitArgs, GitCommitArgs, GitSub};
-use crate::tests::{cwd_test_lock, RestoreCwd};
+use crate::tests::{cwd_test_lock, dir_outside_cwd, RestoreCwd};
 use crate::{run_with, XtaskCmd, XtaskSub};
 
 #[test]
@@ -49,7 +49,7 @@ fn run_subcommand_git_commit() {
 #[test]
 fn cmd_git_add_in_nongit_dir_returns_err() {
     let _guard = cwd_test_lock();
-    let dir = std::env::temp_dir().join(format!("xtask_nongit_{}", std::process::id()));
+    let dir = dir_outside_cwd("xtask_nongit");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
     let _guard = RestoreCwd::new(&dir, &cwd);
