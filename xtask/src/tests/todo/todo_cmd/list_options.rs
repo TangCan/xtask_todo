@@ -101,6 +101,28 @@ fn cmd_todo_list_invalid_status_returns_parameter_error() {
 }
 
 #[test]
+fn cmd_todo_list_invalid_due_before_returns_parameter_error() {
+    let _guard = cwd_test_lock();
+    let dir = std::env::temp_dir().join(format!("xtask_todo_bad_due_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _ = std::fs::remove_file(".todo.json");
+
+    let err = cmd_todo(todo_args(TodoSub::List(TodoListArgs {
+        status: None,
+        priority: None,
+        tags: None,
+        due_before: Some("2026/01/01".to_string()),
+        due_after: None,
+        sort: None,
+    })))
+    .unwrap_err();
+    assert_eq!(err.exit_code(), 2);
+    assert!(err.to_string().contains("invalid due_before"));
+}
+
+#[test]
 fn cmd_todo_dry_run_update_and_complete_and_delete() {
     let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_dry_ucd_{}", std::process::id()));

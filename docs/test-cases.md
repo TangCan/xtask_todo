@@ -105,6 +105,13 @@
 | TC-T13-6 | US-T13 | add/update 非法 repeat_count 返回参数错误 | add 带 `--repeat-count not_a_number` | CLI | 退出码 2，错误信息含 invalid repeat_count |
 | TC-T13-7 | US-T13 | add 支持 --repeat-until/--repeat-count 端到端 | 命令行 `todo add "标题" --repeat-rule weekly --repeat-until 2026-12-31 --repeat-count 3`，再 list | 集成 | 任务创建成功，list 可见该任务 |
 
+### 日期格式校验（CLI）
+
+| ID   | 描述 | 步骤 | 验证方式 | 预期结果 |
+|------|------|------|----------|----------|
+| TC-DATE-1 | due_date/repeat_until 非 YYYY-MM-DD 返回参数错误 | add 带 `--due-date not-a-date` 或 `--repeat-until 2026/01/01` | CLI | 退出码 2，错误信息含 invalid due_date / invalid repeat_until |
+| TC-DATE-2 | list 的 due_before/due_after 非 YYYY-MM-DD 返回参数错误 | list 带 `--due-before 2026/01/01` | CLI | 退出码 2，错误信息含 invalid due_before / invalid due_after |
+
 ### US-A1：结构化 JSON 输出（扩展）
 
 | ID   | 需求/验收 | 描述 | 步骤 | 验证方式 | 预期结果 |

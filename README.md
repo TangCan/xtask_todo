@@ -15,6 +15,8 @@ cargo xtask todo complete <id>
 cargo xtask todo delete <id>
 ```
 
+**Add/update** support optional fields: `--description`, `--due-date` (YYYY-MM-DD), `--priority` (low/medium/high), `--tags` (comma-separated), `--repeat-rule` (daily, weekly, 2d, 3w, etc.), `--repeat-until` (YYYY-MM-DD), `--repeat-count`. **List** supports filters: `--status` (completed/incomplete), `--priority`, `--tags`, `--due-before`, `--due-after`, and `--sort` (created-at, due-date, priority, title). Use `cargo xtask todo --help` and `cargo xtask todo add --help` for full options.
+
 ### Other xtask commands
 
 | Command | Description |

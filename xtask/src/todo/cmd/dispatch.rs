@@ -1,154 +1,19 @@
-//! Todo subcommand dispatch and handlers.
+//! Todo subcommand dispatch: `cmd_todo` and per-subcommand handling.
 
 use std::fmt::Write;
 use std::io::IsTerminal;
 use std::path::Path;
-use std::str::FromStr;
 
-use xtask_todo_lib::{
-    InMemoryStore, ListFilter, ListOptions, ListSort, Priority, RepeatRule, TodoError, TodoId,
-    TodoList, TodoPatch,
+use xtask_todo_lib::{InMemoryStore, TodoError, TodoId, TodoList};
+
+use super::super::args::{TodoArgs, TodoSub};
+use super::super::error::{print_json_success, todo_to_json, TodoCliError};
+use super::super::format::{format_duration, format_time_ago, print_todo_list_items};
+use super::super::init_ai::run_init_ai;
+use super::super::io::{
+    load_todos, load_todos_from_path, save_todos, save_todos_to_path_with_format,
 };
-
-use super::args::{TodoArgs, TodoSub};
-use super::error::{print_json_success, todo_to_json, TodoCliError};
-use super::format::{format_duration, format_time_ago, print_todo_list_items};
-use super::init_ai::run_init_ai;
-use super::io::{load_todos, load_todos_from_path, save_todos, save_todos_to_path_with_format};
-
-/// Build `TodoPatch` from add/update CLI optional fields (title set separately for update).
-fn patch_from_add_args(
-    description: Option<&str>,
-    due_date: Option<&str>,
-    priority: Option<&str>,
-    tags: Option<&str>,
-    repeat_rule: Option<&str>,
-    repeat_until: Option<&str>,
-    repeat_count: Option<&str>,
-) -> Result<TodoPatch, TodoCliError> {
-    let priority_parsed = priority
-        .filter(|s| !s.is_empty())
-        .and_then(|s| Priority::from_str(s).ok());
-    let repeat_parsed = repeat_rule
-        .filter(|s| !s.is_empty())
-        .and_then(|s| RepeatRule::from_str(s).ok());
-    let repeat_count_parsed = repeat_count
-        .filter(|s| !s.is_empty())
-        .and_then(|s| s.trim().parse::<u32>().ok());
-    if let Some(c) = repeat_count {
-        if !c.is_empty() && repeat_count_parsed.is_none() {
-            return Err(TodoCliError::Parameter(format!(
-                "invalid repeat_count: {c} (expected positive integer)"
-            )));
-        }
-    }
-    let tags_vec = tags.map(|s| {
-        s.split(',')
-            .map(str::trim)
-            .filter(|x| !x.is_empty())
-            .map(String::from)
-            .collect::<Vec<_>>()
-    });
-    if let Some(p) = priority {
-        if !p.is_empty() && priority_parsed.is_none() {
-            return Err(TodoCliError::Parameter(format!("invalid priority: {p}")));
-        }
-    }
-    if let Some(r) = repeat_rule {
-        if !r.is_empty() && repeat_parsed.is_none() {
-            return Err(TodoCliError::Parameter(format!("invalid repeat_rule: {r}")));
-        }
-    }
-    Ok(TodoPatch {
-        title: None,
-        description: description.map(String::from),
-        due_date: due_date.map(String::from),
-        priority: priority_parsed,
-        tags: tags_vec,
-        repeat_rule: repeat_parsed,
-        repeat_until: repeat_until
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .map(String::from),
-        repeat_count: repeat_count_parsed,
-        repeat_rule_clear: false,
-    })
-}
-
-/// Build `ListOptions` from list CLI optional filter/sort args.
-fn list_options_from_args(
-    status: Option<&str>,
-    priority: Option<&str>,
-    tags: Option<&str>,
-    due_before: Option<&str>,
-    due_after: Option<&str>,
-    sort: Option<&str>,
-) -> Result<ListOptions, TodoCliError> {
-    let status_parsed = match status.filter(|s| !s.is_empty()) {
-        None => None,
-        Some(s) => {
-            let s = s.trim().to_lowercase();
-            match s.as_str() {
-                "completed" | "done" | "true" => Some(true),
-                "incomplete" | "open" | "false" => Some(false),
-                _ => {
-                    return Err(TodoCliError::Parameter(format!(
-                        "invalid status: {s} (use completed or incomplete)"
-                    )))
-                }
-            }
-        }
-    };
-
-    let priority_parsed = priority
-        .filter(|s| !s.is_empty())
-        .and_then(|s| Priority::from_str(s).ok());
-    if let Some(p) = priority {
-        if !p.is_empty() && priority_parsed.is_none() {
-            return Err(TodoCliError::Parameter(format!("invalid priority: {p}")));
-        }
-    }
-
-    let tags_any = tags.map(|s| {
-        s.split(',')
-            .map(str::trim)
-            .filter(|x| !x.is_empty())
-            .map(String::from)
-            .collect::<Vec<_>>()
-    });
-
-    let sort_val = sort
-        .filter(|s| !s.is_empty())
-        .map(|s| match s.trim().to_lowercase().as_str() {
-            "due-date" | "due_date" => ListSort::DueDate,
-            "priority" => ListSort::Priority,
-            "title" => ListSort::Title,
-            _ => ListSort::CreatedAt,
-        })
-        .unwrap_or_default();
-
-    let filter = if status_parsed.is_some()
-        || priority_parsed.is_some()
-        || tags_any.as_ref().is_some_and(|t| !t.is_empty())
-        || due_before.is_some()
-        || due_after.is_some()
-    {
-        Some(ListFilter {
-            status: status_parsed,
-            priority: priority_parsed,
-            tags_any,
-            due_before: due_before.map(String::from),
-            due_after: due_after.map(String::from),
-        })
-    } else {
-        None
-    };
-
-    Ok(ListOptions {
-        filter,
-        sort: sort_val,
-    })
-}
+use super::parse::{list_options_from_args, patch_from_add_args};
 
 /// Handle todo subcommand.
 ///
