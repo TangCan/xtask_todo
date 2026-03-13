@@ -24,5 +24,6 @@ pub use format::{
 pub use init_ai::run_init_ai;
 #[allow(unused_imports)]
 pub use io::{
-    load_todos, load_todos_from_path, save_todos, save_todos_to_path, todo_file, TodoDto,
+    load_todos, load_todos_from_path, save_todos, save_todos_to_path,
+    save_todos_to_path_with_format, todo_file, TodoDto,
 };
