@@ -24,6 +24,36 @@ impl Drop for GitDirGuard {
     }
 }
 
+/// Sets `GIT_DIR` and `GIT_WORK_TREE` so git uses only the given repo; restores both on drop.
+struct GitRepoGuard {
+    prev_dir: Option<std::ffi::OsString>,
+    prev_work_tree: Option<std::ffi::OsString>,
+}
+impl GitRepoGuard {
+    fn new(git_dir: &std::path::Path, work_tree: &std::path::Path) -> Self {
+        let prev_dir = std::env::var_os("GIT_DIR");
+        let prev_work_tree = std::env::var_os("GIT_WORK_TREE");
+        std::env::set_var("GIT_DIR", git_dir);
+        std::env::set_var("GIT_WORK_TREE", work_tree);
+        Self {
+            prev_dir,
+            prev_work_tree,
+        }
+    }
+}
+impl Drop for GitRepoGuard {
+    fn drop(&mut self) {
+        match &self.prev_dir {
+            Some(v) => std::env::set_var("GIT_DIR", v),
+            None => std::env::remove_var("GIT_DIR"),
+        }
+        match &self.prev_work_tree {
+            Some(v) => std::env::set_var("GIT_WORK_TREE", v),
+            None => std::env::remove_var("GIT_WORK_TREE"),
+        }
+    }
+}
+
 #[test]
 fn run_subcommand_git_add() {
     let _guard = cwd_test_lock();
@@ -158,16 +188,18 @@ fn cmd_git_commit_with_nothing_to_commit_returns_err() {
     let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_git_commit_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
+    let dir = std::fs::canonicalize(&dir).unwrap_or(dir);
     let cwd = std::env::current_dir().unwrap();
     let _guard = RestoreCwd::new(&dir, &cwd);
     let _ = std::process::Command::new("git")
         .args(["init", "-b", "main"])
+        .current_dir(&dir)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status();
     let git_dir = dir.join(".git");
-    // Pin git to this repo so CI (where cwd or TMPDIR may be under workspace) still uses our empty repo.
-    let _env_guard = GitDirGuard::new(&git_dir);
+    // Force git to use only this repo (CI may have cwd/TMPDIR under workspace).
+    let _env_guard = GitRepoGuard::new(&git_dir, &dir);
     let cmd = GitArgs {
         sub: GitSub::Commit(GitCommitArgs { message: None }),
     };
