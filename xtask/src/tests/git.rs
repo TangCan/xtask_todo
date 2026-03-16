@@ -3,8 +3,26 @@
 use std::process::Stdio;
 
 use crate::git::{cmd_git, GitAddArgs, GitArgs, GitCommitArgs, GitSub};
-use crate::tests::{cwd_test_lock, dir_outside_cwd, RestoreCwd};
+use crate::tests::{cwd_test_lock, RestoreCwd};
 use crate::{run_with, XtaskCmd, XtaskSub};
+
+/// Sets `GIT_DIR` to the given path for the duration of the guard; restores the previous value on drop.
+struct GitDirGuard(Option<std::ffi::OsString>);
+impl GitDirGuard {
+    fn new(git_dir: &std::path::Path) -> Self {
+        let prev = std::env::var_os("GIT_DIR");
+        std::env::set_var("GIT_DIR", git_dir);
+        Self(prev)
+    }
+}
+impl Drop for GitDirGuard {
+    fn drop(&mut self) {
+        match &self.0 {
+            Some(v) => std::env::set_var("GIT_DIR", v),
+            None => std::env::remove_var("GIT_DIR"),
+        }
+    }
+}
 
 #[test]
 fn run_subcommand_git_add() {
@@ -49,7 +67,8 @@ fn run_subcommand_git_commit() {
 #[test]
 fn cmd_git_add_in_nongit_dir_returns_err() {
     let _guard = cwd_test_lock();
-    let dir = dir_outside_cwd("xtask_nongit");
+    // Use system temp dir so we're definitely outside the workspace (CI may run from xtask/ or target/).
+    let dir = std::env::temp_dir().join(format!("xtask_nongit_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
     let _guard = RestoreCwd::new(&dir, &cwd);
@@ -144,6 +163,9 @@ fn cmd_git_commit_with_nothing_to_commit_returns_err() {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status();
+    let git_dir = dir.join(".git");
+    // Pin git to this repo so CI (where cwd or TMPDIR may be under workspace) still uses our empty repo.
+    let _env_guard = GitDirGuard::new(&git_dir);
     let cmd = GitArgs {
         sub: GitSub::Commit(GitCommitArgs { message: None }),
     };
