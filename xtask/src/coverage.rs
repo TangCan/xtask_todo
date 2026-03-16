@@ -149,7 +149,7 @@ mod tests {
     }
 
     /// Covers `run_tarpaulin` success path and `cmd_coverage` real branch by using a fake CARGO that echoes a coverage line.
-    /// Uses a unique temp dir (pid + nanos) and a mutex so parallel test runs don't clash on CARGO or the same path.
+    /// Uses a dir under target/ (not /tmp) so the script is executable on CI where /tmp may be noexec.
     #[test]
     #[cfg(unix)]
     fn run_tarpaulin_fake_script_returns_pct_and_cmd_coverage_succeeds() {
@@ -161,9 +161,12 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir =
-            std::env::temp_dir().join(format!("xtask_cov_fake_{}_{}", std::process::id(), nanos));
-        let _ = std::fs::create_dir_all(&dir);
+        let dir = std::env::current_dir()
+            .unwrap()
+            .join("target")
+            .join("xtask_coverage_fake")
+            .join(format!("{}_{}", std::process::id(), nanos));
+        std::fs::create_dir_all(&dir).unwrap();
         let script = dir.join("fake_cargo");
         let mut f = std::fs::File::create(&script).unwrap();
         f.write_all(b"#!/bin/sh\necho '|| 100.00% coverage, 61/61 lines covered'\n")
