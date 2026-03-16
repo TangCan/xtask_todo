@@ -1,7 +1,7 @@
 //! Tests for clippy subcommand.
 
 use crate::clippy::{status_to_result, ClippyArgs};
-use crate::tests::{cwd_test_lock, RestoreCwd};
+use crate::tests::{cwd_test_lock, dir_outside_cwd, RestoreCwd};
 use crate::{run_with, XtaskCmd, XtaskSub};
 
 #[test]
@@ -22,9 +22,9 @@ fn run_subcommand_clippy() {
 #[test]
 fn cmd_clippy_fail_returns_err() {
     let _guard = cwd_test_lock();
-    // Use system temp dir so cargo clippy runs in this project only (CI may have cwd inside workspace).
-    let dir = std::env::temp_dir().join(format!("xtask_clippy_fail_{}", std::process::id()));
-    let _ = std::fs::create_dir_all(&dir);
+    // Dir outside workspace so cargo clippy runs only in this project (CI temp_dir may be under workspace).
+    let dir = dir_outside_cwd("xtask_clippy_fail");
+    std::fs::create_dir_all(&dir).unwrap();
     let cwd = std::env::current_dir().unwrap();
     let _guard = RestoreCwd::new(&dir, &cwd);
     std::fs::create_dir_all("src").unwrap();

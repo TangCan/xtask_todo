@@ -3,7 +3,7 @@
 use std::process::Stdio;
 
 use crate::git::{cmd_git, GitAddArgs, GitArgs, GitCommitArgs, GitSub};
-use crate::tests::{cwd_test_lock, RestoreCwd};
+use crate::tests::{cwd_test_lock, dir_outside_cwd, RestoreCwd};
 use crate::{run_with, XtaskCmd, XtaskSub};
 
 /// Sets `GIT_DIR` to the given path for the duration of the guard; restores the previous value on drop.
@@ -97,11 +97,11 @@ fn run_subcommand_git_commit() {
 #[test]
 fn cmd_git_add_in_nongit_dir_returns_err() {
     let _guard = cwd_test_lock();
-    let dir = std::env::temp_dir().join(format!("xtask_nongit_{}", std::process::id()));
-    let _ = std::fs::create_dir_all(&dir);
+    // Dir outside workspace so git cannot find a repo (CI temp_dir may be under workspace).
+    let dir = dir_outside_cwd("xtask_nongit");
+    std::fs::create_dir_all(&dir).unwrap();
     let cwd = std::env::current_dir().unwrap();
     let _guard = RestoreCwd::new(&dir, &cwd);
-    // Force git to see no valid repo (CI temp_dir may be under workspace, so cwd alone isn't enough).
     let bad_git_dir = dir.join(".git_absent");
     let _env_guard = GitDirGuard::new(&bad_git_dir);
     let cmd = GitArgs {
