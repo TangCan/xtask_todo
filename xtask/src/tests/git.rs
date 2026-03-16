@@ -67,11 +67,13 @@ fn run_subcommand_git_commit() {
 #[test]
 fn cmd_git_add_in_nongit_dir_returns_err() {
     let _guard = cwd_test_lock();
-    // Use system temp dir so we're definitely outside the workspace (CI may run from xtask/ or target/).
     let dir = std::env::temp_dir().join(format!("xtask_nongit_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
     let _guard = RestoreCwd::new(&dir, &cwd);
+    // Force git to see no valid repo (CI temp_dir may be under workspace, so cwd alone isn't enough).
+    let bad_git_dir = dir.join(".git_absent");
+    let _env_guard = GitDirGuard::new(&bad_git_dir);
     let cmd = GitArgs {
         sub: GitSub::Add(GitAddArgs {}),
     };

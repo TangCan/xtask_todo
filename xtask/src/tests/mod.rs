@@ -35,6 +35,7 @@ impl Drop for RestoreCwd {
 
 /// Returns a path outside the current directory (and thus outside the workspace when run from repo root).
 /// Use for tests that must run in a non-git or non-workspace dir so CI (where temp may be under workspace) doesn't break.
+#[allow(dead_code)]
 pub fn dir_outside_cwd(prefix: &str) -> PathBuf {
     let cwd = std::env::current_dir().unwrap().canonicalize().unwrap();
     let parent = cwd
