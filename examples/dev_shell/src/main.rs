@@ -24,11 +24,10 @@ fn main() {
                 if args.len() > 1 {
                     let _ = writeln!(io::stderr(), "File not found, starting with empty VFS");
                 }
-                Vfs::new()
             } else {
                 let _ = writeln!(io::stderr(), "Failed to load {}: {}", path.display(), e);
-                Vfs::new()
             }
+            Vfs::new()
         }
     };
     let vfs = Rc::new(RefCell::new(vfs));

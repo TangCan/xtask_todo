@@ -31,7 +31,7 @@ pub struct CompletionContext {
 }
 
 /// Tokenize line[..pos] by spaces and delimiters |, <, >, and "2>" as one token.
-/// Returns list of (token_string, start_index).
+/// Returns list of (`token_string`, `start_index`).
 fn tokenize(line: &str, pos: usize) -> Vec<(String, usize)> {
     let slice = line.get(..pos).unwrap_or("");
     let mut tokens = Vec::new();
@@ -87,11 +87,23 @@ fn tokenize(line: &str, pos: usize) -> Vec<(String, usize)> {
 
 /// Built-in command names for tab completion (must match command.rs).
 const BUILTIN_COMMANDS: &[&str] = &[
-    "pwd", "cd", "ls", "mkdir", "cat", "touch", "echo",
-    "save", "export-readonly", "export_readonly", "exit", "quit", "help",
+    "pwd",
+    "cd",
+    "ls",
+    "mkdir",
+    "cat",
+    "touch",
+    "echo",
+    "save",
+    "export-readonly",
+    "export_readonly",
+    "exit",
+    "quit",
+    "help",
 ];
 
 /// Command completion: case-insensitive prefix match. Returns matching command names.
+#[must_use]
 pub fn complete_commands(prefix: &str) -> Vec<String> {
     let prefix_lower = prefix.to_lowercase();
     BUILTIN_COMMANDS
@@ -103,6 +115,7 @@ pub fn complete_commands(prefix: &str) -> Vec<String> {
 
 /// Path completion: prefix may contain slashes; only the last segment is used for matching.
 /// `parent_names` is the list of names in the parent directory. Empty prefix returns all.
+#[must_use]
 pub fn complete_path(prefix: &str, parent_names: &[String]) -> Vec<String> {
     let last = prefix.rsplit('/').next().unwrap_or(prefix);
     parent_names
@@ -112,19 +125,23 @@ pub fn complete_path(prefix: &str, parent_names: &[String]) -> Vec<String> {
         .collect()
 }
 
+#[allow(dead_code)]
 const PATH_TRIGGER_TOKENS: &[&str] = &[
-    "cd", "ls", "cat", "mkdir", "touch",
-    "export-readonly", "export_readonly",
-    ">", "2>", "<",
+    "cd",
+    "ls",
+    "cat",
+    "mkdir",
+    "touch",
+    "export-readonly",
+    "export_readonly",
+    ">",
+    "2>",
+    "<",
 ];
 
 /// Returns the (prefix, start) for the token that contains the cursor at `pos`.
 /// Prefix is the part of the token from start up to pos (what the user has typed so far).
-fn token_at_cursor(
-    line: &str,
-    tokens: &[(String, usize)],
-    pos: usize,
-) -> Option<(String, usize)> {
+fn token_at_cursor(line: &str, tokens: &[(String, usize)], pos: usize) -> Option<(String, usize)> {
     if pos > line.len() {
         return None;
     }
@@ -147,6 +164,7 @@ fn token_at_cursor(
 }
 
 /// Parse completion context at (line, pos). Returns None if line empty or pos out of bounds.
+#[must_use]
 pub fn completion_context(line: &str, pos: usize) -> Option<CompletionContext> {
     if line.is_empty() {
         return None;
@@ -171,7 +189,13 @@ pub fn completion_context(line: &str, pos: usize) -> Option<CompletionContext> {
     let token_index = tokens
         .iter()
         .position(|(t, s)| *s == start && t.as_str() == prefix.as_str())
-        .or_else(|| if prefix.is_empty() { Some(tokens.len()) } else { None });
+        .or({
+            if prefix.is_empty() {
+                Some(tokens.len())
+            } else {
+                None
+            }
+        });
 
     let idx = token_index.unwrap_or_else(|| tokens.iter().take_while(|(_, s)| *s < start).count());
 
@@ -181,14 +205,16 @@ pub fn completion_context(line: &str, pos: usize) -> Option<CompletionContext> {
         let prev = tokens.get(idx.wrapping_sub(1)).map(|(t, _)| t.as_str());
         if prev == Some("|") {
             CompletionKind::Command
-        } else if prev.map(|p| PATH_TRIGGER_TOKENS.contains(&p)).unwrap_or(false) {
-            CompletionKind::Path
         } else {
             CompletionKind::Path
         }
     };
 
-    Some(CompletionContext { prefix, kind, start })
+    Some(CompletionContext {
+        prefix,
+        kind,
+        start,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -201,16 +227,16 @@ pub struct DevShellHelper {
 }
 
 impl DevShellHelper {
-    pub fn new(vfs: Rc<RefCell<Vfs>>) -> Self {
+    pub const fn new(vfs: Rc<RefCell<Vfs>>) -> Self {
         Self { vfs }
     }
 }
 
-/// Dummy hint type for Hinter; we never return a hint (hint() returns None).
+/// Dummy hint type for Hinter; we never return a hint (`hint()` returns None).
 #[derive(Debug)]
 pub struct NoHint;
 impl Hint for NoHint {
-    fn display(&self) -> &str {
+    fn display(&self) -> &'static str {
         ""
     }
     fn completion(&self) -> Option<&str> {

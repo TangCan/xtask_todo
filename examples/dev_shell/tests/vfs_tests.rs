@@ -41,6 +41,6 @@ fn write_file_creates_file() {
     let n = vfs.resolve_absolute("/foo/f").unwrap();
     match &n {
         Node::File { content, .. } => assert_eq!(content.as_slice(), b"hello"),
-        _ => panic!(),
+        Node::Dir { .. } => panic!("expected File"),
     }
 }

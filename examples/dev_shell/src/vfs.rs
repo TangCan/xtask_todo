@@ -2,29 +2,32 @@ use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Node {
-    Dir { name: String, children: Vec<Node> },
+    Dir { name: String, children: Vec<Self> },
     File { name: String, content: Vec<u8> },
 }
 
 impl Node {
+    #[must_use]
     pub fn name(&self) -> &str {
         match self {
-            Node::Dir { name, .. } => name,
-            Node::File { name, .. } => name,
+            Self::Dir { name, .. } | Self::File { name, .. } => name,
         }
     }
-    pub fn is_dir(&self) -> bool {
-        matches!(self, Node::Dir { .. })
+    #[must_use]
+    pub const fn is_dir(&self) -> bool {
+        matches!(self, Self::Dir { .. })
     }
-    pub fn is_file(&self) -> bool {
-        matches!(self, Node::File { .. })
+    #[must_use]
+    pub const fn is_file(&self) -> bool {
+        matches!(self, Self::File { .. })
     }
 
     /// Returns a reference to the direct child with the given name, if any (Dir only).
-    pub fn child(&self, name: &str) -> Option<&Node> {
+    #[must_use]
+    pub fn child(&self, name: &str) -> Option<&Self> {
         match self {
-            Node::Dir { children, .. } => children.iter().find(|c| c.name() == name),
-            Node::File { .. } => None,
+            Self::Dir { children, .. } => children.iter().find(|c| c.name() == name),
+            Self::File { .. } => None,
         }
     }
 }
@@ -34,11 +37,18 @@ pub struct Vfs {
     cwd: String,
 }
 
+impl Default for Vfs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Vfs {
+    #[must_use]
     pub fn new() -> Self {
-        Vfs {
+        Self {
             root: Node::Dir {
-                name: "".to_string(),
+                name: String::new(),
                 children: vec![],
             },
             cwd: "/".to_string(),
@@ -46,13 +56,16 @@ impl Vfs {
     }
 
     /// Construct VFS from root node and cwd (used by deserialization).
-    pub fn from_parts(root: Node, cwd: String) -> Self {
-        Vfs { root, cwd }
+    #[must_use]
+    pub const fn from_parts(root: Node, cwd: String) -> Self {
+        Self { root, cwd }
     }
+    #[must_use]
     pub fn cwd(&self) -> &str {
         &self.cwd
     }
-    pub fn root(&self) -> &Node {
+    #[must_use]
+    pub const fn root(&self) -> &Node {
         &self.root
     }
 
@@ -72,6 +85,7 @@ impl Vfs {
     }
 
     /// 将任意路径（相对或绝对）归一化并解析为绝对路径字符串
+    #[must_use]
     pub fn resolve_to_absolute(&self, path: &str) -> String {
         let path = normalize_path(path);
         if path.starts_with('/') && path != "/" {
@@ -82,15 +96,15 @@ impl Vfs {
         }
         let base = self.cwd.trim_end_matches('/');
         let p = path.trim_start_matches('/');
-        let result = normalize_path(&format!("{}/{}", base, p));
+        let result = normalize_path(&format!("{base}/{p}"));
         if result.starts_with('/') {
             result
         } else {
-            format!("/{}", result)
+            format!("/{result}")
         }
     }
 
-    /// Create directory at path (mkdir_all style). Creates any missing parent directories.
+    /// Create directory at path (`mkdir_all` style). Creates any missing parent directories.
     /// Returns Err(()) if any path component exists and is not a directory.
     pub fn mkdir(&mut self, path: &str) -> Result<(), ()> {
         let abs = self.resolve_to_absolute(path);
@@ -104,20 +118,17 @@ impl Vfs {
             match current {
                 Node::Dir { children, .. } => {
                     let pos = children.iter().position(|c| c.name() == segment);
-                    match pos {
-                        Some(i) => {
-                            if !children[i].is_dir() {
-                                return Err(());
-                            }
-                            indices.push(i);
+                    if let Some(i) = pos {
+                        if !children[i].is_dir() {
+                            return Err(());
                         }
-                        None => {
-                            children.push(Node::Dir {
-                                name: segment.to_string(),
-                                children: vec![],
-                            });
-                            indices.push(children.len() - 1);
-                        }
+                        indices.push(i);
+                    } else {
+                        children.push(Node::Dir {
+                            name: segment.to_string(),
+                            children: vec![],
+                        });
+                        indices.push(children.len() - 1);
                     }
                 }
                 Node::File { .. } => return Err(()),
@@ -180,7 +191,7 @@ impl Vfs {
         let abs = self.resolve_to_absolute(path);
         let n = self.resolve_absolute(&abs)?;
         match n {
-            Node::File { content, .. } => Ok(content.clone()),
+            Node::File { content, .. } => Ok(content),
             _ => Err(()),
         }
     }
@@ -189,7 +200,9 @@ impl Vfs {
         let abs = self.resolve_to_absolute(path);
         let n = self.resolve_absolute(&abs)?;
         match n {
-            Node::Dir { children, .. } => Ok(children.iter().map(|c| c.name().to_string()).collect()),
+            Node::Dir { children, .. } => {
+                Ok(children.iter().map(|c| c.name().to_string()).collect())
+            }
             _ => Err(()),
         }
     }
@@ -223,18 +236,14 @@ impl Vfs {
     /// Paths are safe: no ".." or other components can escape the export root.
     pub fn copy_tree_to_host(&self, vfs_path: &str, host_dir: &Path) -> Result<(), ()> {
         let abs = self.resolve_to_absolute(vfs_path);
-        let node = self.resolve_absolute(&abs).map_err(|_| ())?;
+        let node = self.resolve_absolute(&abs)?;
         copy_node_to_host(&node, host_dir)
     }
 }
 
 /// Returns true if the name is safe to use as a single path component (no .. or separators).
 fn is_safe_component(name: &str) -> bool {
-    !name.is_empty()
-        && name != "."
-        && name != ".."
-        && !name.contains('/')
-        && !name.contains('\\')
+    !name.is_empty() && name != "." && name != ".." && !name.contains('/') && !name.contains('\\')
 }
 
 /// Recursively copy a VFS node to the host path. Creates dirs and writes file contents.
@@ -268,12 +277,13 @@ fn copy_node_to_host(node: &Node, host_path: &Path) -> Result<(), ()> {
 
 /// Normalize a path to Unix style: backslash -> slash, strip Windows drive,
 /// resolve . and .., preserve absolute vs relative.
+#[must_use]
 pub fn normalize_path(input: &str) -> String {
     let s = input.replace('\\', "/");
 
     // Strip Windows drive letter prefix (e.g. C:) and treat as absolute.
     let (rest, absolute) = if s.len() >= 2
-        && s.chars().next().map(|c| c.is_ascii_alphabetic()).unwrap_or(false)
+        && s.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
         && s.chars().nth(1) == Some(':')
     {
         (&s[2..], true)

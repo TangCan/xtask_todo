@@ -84,7 +84,7 @@ fn split_by_pipe(tokens: Vec<String>) -> Vec<Vec<String>> {
     commands
 }
 
-/// Parse one command's tokens into SimpleCommand (argv + redirects).
+/// Parse one command's tokens into `SimpleCommand` (argv + redirects).
 fn parse_simple_command(tokens: Vec<String>) -> Result<SimpleCommand, ParseError> {
     let mut argv = Vec::new();
     let mut redirects = Vec::new();
@@ -93,18 +93,33 @@ fn parse_simple_command(tokens: Vec<String>) -> Result<SimpleCommand, ParseError
         let t = &tokens[i];
         if t == ">" {
             i += 1;
-            let path = tokens.get(i).ok_or_else(|| ParseError("redirect '>' missing path".to_string()))?;
-            redirects.push(Redirect { fd: 1, path: path.clone() });
+            let path = tokens
+                .get(i)
+                .ok_or_else(|| ParseError("redirect '>' missing path".to_string()))?;
+            redirects.push(Redirect {
+                fd: 1,
+                path: path.clone(),
+            });
             i += 1;
         } else if t == "2>" {
             i += 1;
-            let path = tokens.get(i).ok_or_else(|| ParseError("redirect '2>' missing path".to_string()))?;
-            redirects.push(Redirect { fd: 2, path: path.clone() });
+            let path = tokens
+                .get(i)
+                .ok_or_else(|| ParseError("redirect '2>' missing path".to_string()))?;
+            redirects.push(Redirect {
+                fd: 2,
+                path: path.clone(),
+            });
             i += 1;
         } else if t == "<" {
             i += 1;
-            let path = tokens.get(i).ok_or_else(|| ParseError("redirect '<' missing path".to_string()))?;
-            redirects.push(Redirect { fd: 0, path: path.clone() });
+            let path = tokens
+                .get(i)
+                .ok_or_else(|| ParseError("redirect '<' missing path".to_string()))?;
+            redirects.push(Redirect {
+                fd: 0,
+                path: path.clone(),
+            });
             i += 1;
         } else {
             argv.push(t.clone());

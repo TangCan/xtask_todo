@@ -1,5 +1,6 @@
-//! REPL: read-eval-print loop with parse_line and execute_pipeline; handles exit/quit.
-//! TTY: rustyline Editor with path completion; non-TTY: read_line loop.
+//! REPL: read-eval-print loop with `parse_line` and `execute_pipeline`; handles exit/quit.
+//!
+//! TTY: rustyline Editor with path completion; non-TTY: `read_line` loop.
 //! On exit (exit/quit or EOF), VFS is auto-saved to `bin_path`.
 
 use std::cell::RefCell;
@@ -16,8 +17,9 @@ use crate::serialization;
 use crate::vfs::Vfs;
 
 /// Run the REPL until exit/quit or EOF.
+///
 /// When `is_tty`: uses rustyline Editor with tab completion (command + path).
-/// When not TTY: uses stdin.read_line (pipe/script compatible).
+/// When not TTY: uses `stdin.read_line` (pipe/script compatible).
 /// On exit, the VFS is automatically saved to `bin_path`.
 pub fn run<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
@@ -40,12 +42,12 @@ where
 }
 
 fn save_on_exit<W2: Write>(vfs: &Rc<RefCell<Vfs>>, bin_path: &Path, stderr: &mut W2) {
-    if let Err(e) = serialization::save_to_file(&*vfs.borrow(), bin_path) {
-        let _ = writeln!(stderr, "save on exit failed: {}", e);
+    if let Err(e) = serialization::save_to_file(&vfs.borrow(), bin_path) {
+        let _ = writeln!(stderr, "save on exit failed: {e}");
     }
 }
 
-/// TTY branch: rustyline Editor with DevShellHelper (path completion via vfs).
+/// TTY branch: rustyline Editor with `DevShellHelper` (path completion via vfs).
 fn run_tty<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
     bin_path: &Path,
@@ -71,7 +73,7 @@ where
             }
             Err(rustyline::error::ReadlineError::Interrupted) => continue,
             Err(e) => {
-                let _ = writeln!(stderr, "readline error: {}", e);
+                let _ = writeln!(stderr, "readline error: {e}");
                 continue;
             }
         };
@@ -82,7 +84,7 @@ where
         let pipeline = match parser::parse_line(line) {
             Ok(p) => p,
             Err(e) => {
-                let _ = writeln!(stderr, "parse error: {}", e);
+                let _ = writeln!(stderr, "parse error: {e}");
                 continue;
             }
         };
@@ -96,7 +98,7 @@ where
         }
         let mut vfs_ref = vfs.borrow_mut();
         let mut ctx = ExecContext {
-            vfs: &mut *vfs_ref,
+            vfs: &mut vfs_ref,
             stdin,
             stdout,
             stderr,
@@ -105,7 +107,7 @@ where
             Ok(RunResult::Exit) => break,
             Ok(RunResult::Continue) => {}
             Err(e) => {
-                let _ = writeln!(stderr, "error: {:?}", e);
+                let _ = writeln!(stderr, "error: {e:?}");
             }
         }
     }
@@ -113,7 +115,7 @@ where
     Ok(())
 }
 
-/// Non-TTY branch: read_line loop; borrow_mut once per iteration for prompt and ExecContext.
+/// Non-TTY branch: `read_line` loop; `borrow_mut` once per iteration for prompt and `ExecContext`.
 fn run_readline<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
     bin_path: &Path,
@@ -130,7 +132,7 @@ where
     loop {
         line.clear();
         let cwd = vfs.borrow().cwd().to_string();
-        let _ = write!(stdout, "{} $ ", cwd);
+        let _ = write!(stdout, "{cwd} $ ");
         let _ = stdout.flush();
         let n = stdin.read_line(&mut line).map_err(|_| ())?;
         if n == 0 {
@@ -144,7 +146,7 @@ where
         let pipeline = match parser::parse_line(line_trimmed) {
             Ok(p) => p,
             Err(e) => {
-                let _ = writeln!(stderr, "parse error: {}", e);
+                let _ = writeln!(stderr, "parse error: {e}");
                 continue;
             }
         };
@@ -158,7 +160,7 @@ where
         }
         let mut vfs_ref = vfs.borrow_mut();
         let mut ctx = ExecContext {
-            vfs: &mut *vfs_ref,
+            vfs: &mut vfs_ref,
             stdin,
             stdout,
             stderr,
@@ -167,7 +169,7 @@ where
             Ok(RunResult::Exit) => break,
             Ok(RunResult::Continue) => {}
             Err(e) => {
-                let _ = writeln!(stderr, "error: {:?}", e);
+                let _ = writeln!(stderr, "error: {e:?}");
             }
         }
     }

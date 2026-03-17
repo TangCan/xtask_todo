@@ -1,8 +1,8 @@
 //! Tests for completion context parsing (command vs path), command and path completion.
 
-use dev_shell::completion::completion_context;
 use dev_shell::completion::complete_commands;
 use dev_shell::completion::complete_path;
+use dev_shell::completion::completion_context;
 use dev_shell::completion::CompletionKind;
 
 #[test]

@@ -34,6 +34,7 @@ The prompt shows the current working directory in the virtual FS, e.g. `"/ $ "` 
 | `echo` *args* | Print arguments to stdout |
 | `save` [*path*] | Save VFS to .bin file (default: `.dev_shell.bin`) |
 | `export-readonly` [*path*] | Export subtree to host temp dir; prints path to stdout |
+| `todo` [*subcommand* ...] | Todo list (shares `.todo.json` with `cargo xtask todo` in current directory) |
 | `exit` / `quit` | Exit the shell |
 | `help` | List all supported commands |
 
@@ -68,6 +69,26 @@ Export the current (or given) path to a temporary directory on the host; the com
 ```
 
 Then on the host: open that path (e.g. `ls /tmp/dev_shell_export_12345_...`) to inspect the exported files.
+
+### Todo 待办
+
+The `todo` builtin uses the same `.todo.json` file as `cargo xtask todo` in the **host current working directory** (the directory from which you started the shell). You can add tasks in the shell and see them with `cargo xtask todo list`, and vice versa.
+
+Subcommands: `list`, `add`, `show`, `update`, `complete`, `delete`, `search`, `stats`. Example:
+
+```bash
+/ $ todo add "first task"
+1
+/ $ todo list
+1. first task
+/ $ todo complete 1
+/ $ todo list
+1. first task [done]
+/ $ todo stats
+open: 0  completed: 1  total: 1
+```
+
+For export/import and other advanced features, use `cargo xtask todo` from the project root.
 
 ## License
 

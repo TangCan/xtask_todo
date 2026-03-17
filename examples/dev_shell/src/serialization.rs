@@ -22,11 +22,11 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::InvalidMagic => write!(f, "invalid magic"),
-            Error::InvalidVersion => write!(f, "invalid version"),
-            Error::Truncated => write!(f, "truncated data"),
-            Error::InvalidUtf8(e) => write!(f, "invalid utf-8: {}", e),
-            Error::Io(e) => write!(f, "io error: {}", e),
+            Self::InvalidMagic => write!(f, "invalid magic"),
+            Self::InvalidVersion => write!(f, "invalid version"),
+            Self::Truncated => write!(f, "truncated data"),
+            Self::InvalidUtf8(e) => write!(f, "invalid utf-8: {e}"),
+            Self::Io(e) => write!(f, "io error: {e}"),
         }
     }
 }
@@ -34,8 +34,8 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Error::InvalidUtf8(e) => Some(e),
-            Error::Io(e) => Some(e),
+            Self::InvalidUtf8(e) => Some(e),
+            Self::Io(e) => Some(e),
             _ => None,
         }
     }
@@ -43,7 +43,7 @@ impl std::error::Error for Error {
 
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
-        Error::Io(e)
+        Self::Io(e)
     }
 }
 
@@ -150,8 +150,7 @@ pub fn serialize(vfs: &Vfs) -> Result<Vec<u8>, Error> {
 pub fn deserialize(bytes: &[u8]) -> Result<Vfs, Error> {
     let mut r = Cursor::new(bytes);
     let mut magic = [0u8; 4];
-    r.read_exact(&mut magic)
-        .map_err(|_| Error::Truncated)?;
+    r.read_exact(&mut magic).map_err(|_| Error::Truncated)?;
     if &magic != MAGIC {
         return Err(Error::InvalidMagic);
     }
@@ -170,7 +169,7 @@ pub fn deserialize(bytes: &[u8]) -> Result<Vfs, Error> {
 
 /// Save VFS to a .bin file.
 pub fn save_to_file(vfs: &Vfs, path: &std::path::Path) -> std::io::Result<()> {
-    let bytes = serialize(vfs).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    let bytes = serialize(vfs).map_err(std::io::Error::other)?;
     std::fs::write(path, bytes)
 }
 
