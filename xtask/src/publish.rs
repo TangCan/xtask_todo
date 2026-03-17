@@ -4,6 +4,8 @@ use argh::FromArgs;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+use std::thread;
+use std::time::Duration;
 
 const CRATE_CARGO: &str = "crates/todo/Cargo.toml";
 const DEV_SHELL_CARGO: &str = "examples/dev_shell/Cargo.toml";
@@ -110,6 +112,38 @@ fn run(cmd: &mut Command, step: &str) -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
+/// Wait for the registry index to list the new version so pre-commit (clippy/test) can resolve
+/// `dev_shell`'s dependency. The index may not have the crate yet right after `cargo publish`.
+fn wait_for_registry_version(
+    workspace_root: &Path,
+    package: &str,
+    version: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    const MAX_ATTEMPTS: u32 = 24;
+    const SLEEP_SECS: u64 = 5;
+    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    for attempt in 1..=MAX_ATTEMPTS {
+        let status = Command::new(&cargo)
+            .args(["check", "-p", "dev_shell"])
+            .current_dir(workspace_root)
+            .status()?;
+        if status.success() {
+            return Ok(());
+        }
+        if attempt < MAX_ATTEMPTS {
+            eprintln!(
+                "Waiting for {package} v{version} in registry (attempt {attempt}/{MAX_ATTEMPTS})..."
+            );
+            thread::sleep(Duration::from_secs(SLEEP_SECS));
+        }
+    }
+    Err(format!(
+        "registry did not list {package} v{version} after {}s",
+        MAX_ATTEMPTS * SLEEP_SECS as u32
+    )
+    .into())
+}
+
 /// Publish subcommand: bump version, publish to crates.io, tag, push to GitHub.
 #[derive(FromArgs, Clone)]
 #[argh(subcommand, name = "publish")]
@@ -154,6 +188,8 @@ pub fn cmd_publish(_args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>
     let dev_shell_path = workspace_root.join(DEV_SHELL_CARGO);
     if dev_shell_path.exists() {
         update_dev_shell_dep(&workspace_root, &new_version)?;
+        // Pre-commit runs on the next git commit; it needs the registry index to have the new version.
+        wait_for_registry_version(&workspace_root, PACKAGE, &new_version)?;
         run(
             Command::new("git")
                 .args(["add", DEV_SHELL_CARGO])
