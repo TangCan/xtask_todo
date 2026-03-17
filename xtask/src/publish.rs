@@ -258,10 +258,12 @@ pub fn cmd_publish(_args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>
                 &new_version,
                 Some(&temp_cargo_home),
             )?;
+            // Pass CARGO_HOME to git so the pre-commit hook's cargo uses our temp config (crates.io only).
             run(
                 Command::new("git")
                     .args(["add", DEV_SHELL_CARGO])
-                    .current_dir(&workspace_root),
+                    .current_dir(&workspace_root)
+                    .env("CARGO_HOME", &temp_cargo_home),
                 "git add dev_shell Cargo.toml",
             )?;
             run(
@@ -271,7 +273,8 @@ pub fn cmd_publish(_args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>
                         "-m",
                         &format!("chore(dev_shell): pin xtask-todo-lib to {new_version}"),
                     ])
-                    .current_dir(&workspace_root),
+                    .current_dir(&workspace_root)
+                    .env("CARGO_HOME", &temp_cargo_home),
                 "git commit dev_shell dep",
             )?;
             Ok(())
