@@ -1,6 +1,6 @@
 # 发布说明 (Publishing)
 
-本仓库为 Cargo workspace，仅 **`crates/todo`**（包名 **`xtask-todo-lib`**）适合发布到 [crates.io](https://crates.io)；**xtask** 已设置 `publish = false`，仅作为工作区内部工具使用，不发布。
+本仓库为 Cargo workspace，仅 **`crates/todo`**（包名 **`xtask-todo-lib`**）适合发布到 [crates.io](https://crates.io)。该包**同一 Cargo.toml** 内包含 **库**（`[lib]`）和 **二进制**（`[[bin]] name = "cargo-devshell"`），一次 `cargo publish` 同时发布库与 `cargo devshell` 子命令。**xtask** 已设置 `publish = false`，仅作为工作区内部工具使用，不发布。
 
 ---
 
@@ -84,7 +84,7 @@ cargo publish -p xtask-todo-lib --registry crates-io
 cargo xtask publish
 ```
 
-该命令会依次：将 **patch 版本号 +1**（如 0.1.2 → 0.1.3）、**提交** `crates/todo/Cargo.toml`、**发布到 crates.io**、**自动把 dev_shell 的 path 依赖改为版本依赖**（`xtask-todo-lib = "x.y.z"`）并提交、**打 tag**（`xtask-todo-lib-vX.Y.Z`）、**推送当前分支与 tag** 到 GitHub。推送 tag 后，Release 工作流会自动创建 GitHub Release 并附带 `.crate` 文件。
+该命令会依次：将 **patch 版本号 +1**（如 0.1.2 → 0.1.3）、**提交** `crates/todo/Cargo.toml`、**发布到 crates.io**（同一包含库与 `cargo-devshell` 二进制）、**打 tag**（`xtask-todo-lib-vX.Y.Z`）、**推送当前分支与 tag** 到 GitHub。推送 tag 后，Release 工作流会自动创建 GitHub Release 并附带 `.crate` 文件。
 
 **前置条件**：已执行过 `cargo login`；当前在要推送的分支（如 `main`）且工作区无未提交改动（仅允许为即将提交的版本变更）。
 
@@ -130,34 +130,30 @@ cargo xtask publish
 
 ---
 
-## 六、将 dev_shell 发布为 Cargo 子命令
+## 六、cargo devshell 子命令（与库同一包发布）
 
-**可以**。Cargo 约定：安装的二进制若名为 `cargo-<名字>`，即可通过 `cargo <名字>` 作为子命令调用。
+**`cargo-devshell`** 与 **xtask-todo-lib** 共用**同一 Cargo.toml**（`crates/todo`）：该包内配置了 `[lib]` 与 `[[bin]] name = "cargo-devshell"`，一次 `cargo publish -p xtask-todo-lib` 会同时发布库和该二进制。Cargo 约定：安装的二进制若名为 `cargo-<名字>`，即可通过 `cargo <名字>` 作为子命令调用。
 
 ### 6.1 当前配置
 
-- **examples/dev_shell** 的 `Cargo.toml` 中已配置：
+- **crates/todo/Cargo.toml** 中：
   ```toml
+  [lib]
+  name = "xtask_todo_lib"
+  path = "src/lib.rs"
+
   [[bin]]
   name = "cargo-devshell"
-  path = "src/main.rs"
+  path = "src/bin/cargo_devshell/main.rs"
   ```
-- 发布并安装后，用户执行的是 **`cargo devshell`**（子命令名由二进制名去掉 `cargo-` 前缀得到）。
+- 发布后，用户安装 **xtask-todo-lib** 即可同时获得库（供依赖）和 **`cargo devshell`** 子命令。
 
-### 6.2 发布到 crates.io 的前提
+### 6.2 用户安装与使用
 
-1. **依赖**：dev_shell 依赖 `xtask-todo-lib`。发布到 crates.io 时**不能使用 path 依赖**，需改为版本依赖。  
-   **`cargo xtask publish`** 在成功发布 xtask-todo-lib 后会自动把 `examples/dev_shell/Cargo.toml` 中的  
-   `xtask-todo-lib = { path = "../../crates/todo" }` 改为 `xtask-todo-lib = "x.y.z"`（刚发布的版本），并自动提交该修改。因此若你使用一键发布，无需手动改 dev_shell 依赖；若手动发布 lib，则需自行将 path 改为版本号后再发布 dev_shell。
-
-2. **元数据**：与 1.1 节类似，为 dev_shell 的 `[package]` 补全 `license`、`repository`（推荐）等；若使用 `repository`，发布前请取消注释并替换为实际仓库地址。
-
-### 6.3 用户安装与使用
-
-发布后，用户可：
+发布后，用户执行：
 
 ```bash
-cargo install dev_shell
+cargo install xtask-todo-lib
 ```
 
 安装完成后，在任意目录执行：
@@ -166,12 +162,12 @@ cargo install dev_shell
 cargo devshell [path]
 ```
 
-即可启动 dev_shell（`path` 可选，为持久化 VFS 的文件路径，默认为 `.dev_shell.bin`）。
+即可启动内嵌的 devshell（`path` 可选，为持久化 VFS 的文件路径，默认为 `.dev_shell.bin`）。若仅需库而不需要子命令，在 `Cargo.toml` 中依赖 `xtask-todo-lib = "x.y"` 即可。
 
-### 6.4 小结
+### 6.3 小结
 
 | 项目 | 说明 |
 |------|------|
-| 子命令名 | 安装后为 **`cargo devshell`**（由二进制名 `cargo-devshell` 决定） |
-| 发布顺序 | 先发布 **xtask-todo-lib**，再将 dev_shell 的依赖改为版本号后发布 **dev_shell** |
-| 本地开发 | 仍可用 path 依赖；发布前改为 `xtask-todo-lib = "x.y"` 并做一次 `cargo publish -p dev_shell --dry-run` 校验 |
+| 子命令名 | **`cargo devshell`**（由二进制名 `cargo-devshell` 决定） |
+| 发布方式 | 与库**同一包**发布，一次 `cargo publish -p xtask-todo-lib` 同时发布 lib 与 bin |
+| 安装命令 | `cargo install xtask-todo-lib`（同时得到库与 `cargo devshell`） |

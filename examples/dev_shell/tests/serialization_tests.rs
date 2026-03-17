@@ -1,5 +1,5 @@
-use dev_shell::serialization;
-use dev_shell::vfs::Vfs;
+use xtask_todo_devshell::serialization;
+use xtask_todo_devshell::vfs::Vfs;
 
 #[test]
 fn roundtrip_empty_vfs() {

@@ -1,9 +1,9 @@
 //! Tests for completion context parsing (command vs path), command and path completion.
 
-use dev_shell::completion::complete_commands;
-use dev_shell::completion::complete_path;
-use dev_shell::completion::completion_context;
-use dev_shell::completion::CompletionKind;
+use xtask_todo_devshell::completion::complete_commands;
+use xtask_todo_devshell::completion::complete_path;
+use xtask_todo_devshell::completion::completion_context;
+use xtask_todo_devshell::completion::CompletionKind;
 
 #[test]
 fn context_at_line_start_is_command() {

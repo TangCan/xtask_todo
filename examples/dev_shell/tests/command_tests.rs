@@ -1,11 +1,11 @@
 //! Tests for builtin command execution (pwd, cd, ls, mkdir, cat, touch, echo, export-readonly).
 
-use dev_shell::command::{execute_pipeline, run_builtin, ExecContext, RunResult};
-use dev_shell::parser::{parse_line, SimpleCommand};
-use dev_shell::vfs::Vfs;
 use std::fs;
 use std::io;
 use std::path::Path;
+use xtask_todo_devshell::command::{execute_pipeline, run_builtin, ExecContext, RunResult};
+use xtask_todo_devshell::parser::{parse_line, SimpleCommand};
+use xtask_todo_devshell::vfs::Vfs;
 
 fn run_builtin_with_buffers(
     vfs: &mut Vfs,
@@ -14,14 +14,14 @@ fn run_builtin_with_buffers(
 ) -> (
     Vec<u8>,
     Vec<u8>,
-    Result<(), dev_shell::command::BuiltinError>,
+    Result<(), xtask_todo_devshell::command::BuiltinError>,
 ) {
     let mut stdin = io::empty();
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
     let redirects: Vec<_> = redirects
         .into_iter()
-        .map(|(fd, path)| dev_shell::parser::Redirect { fd, path })
+        .map(|(fd, path)| xtask_todo_devshell::parser::Redirect { fd, path })
         .collect();
     let cmd = SimpleCommand {
         argv: argv.into_iter().map(String::from).collect(),

@@ -1,11 +1,11 @@
 [package]
-name = "dev_shell"
+name = "xtask-todo-devshell"
 version = "0.1.0"
 edition = "2021"
 description = "Minimal in-process shell with VFS and todo integration; install as cargo subcommand"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/TangCan/xtask_todo"
-# Publish to crates.io as a Cargo subcommand: cargo install dev_shell → cargo devshell
+# Publish to crates.io: cargo install xtask-todo-devshell → cargo devshell
 
 [[bin]]
 name = "cargo-devshell"

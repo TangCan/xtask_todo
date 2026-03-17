@@ -1,4 +1,4 @@
-use dev_shell::vfs::{normalize_path, Node, Vfs};
+use xtask_todo_devshell::vfs::{normalize_path, Node, Vfs};
 
 #[test]
 fn normalize_path_unix_style() {

@@ -1,25 +1,14 @@
 //! `publish` subcommand - bump version, publish to crates.io, tag, and push to GitHub.
+//!
+//! One package `xtask-todo-lib` publishes both the library and the `cargo-devshell` binary.
 
 use argh::FromArgs;
-use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
-use std::thread;
-use std::time::Duration;
-
-/// Minimal Cargo config that uses only crates.io (sparse), so pre-commit can resolve the new version
-/// when the global config uses a mirror that may not have it yet.
-const CARGO_HOME_CRATES_IO_ONLY: &str = r#"[source.crates-io]
-registry = "sparse+https://index.crates.io/"
-"#;
 
 const CRATE_CARGO: &str = "crates/todo/Cargo.toml";
-const DEV_SHELL_CARGO: &str = "examples/dev_shell/Cargo.toml";
 const PACKAGE: &str = "xtask-todo-lib";
-
-/// Path dependency line we expect in `dev_shell` (exact match for replacement).
-const DEV_SHELL_PATH_DEPS: &str = r#"xtask-todo-lib = { path = "../../crates/todo" }"#;
 
 /// Bump patch version (e.g. 0.1.2 -> 0.1.3) in crates/todo/Cargo.toml and return the new version.
 fn bump_version_in_cargo_toml(workspace_root: &Path) -> Result<String, Box<dyn std::error::Error>> {
@@ -64,52 +53,6 @@ fn bump_version_in_cargo_toml(workspace_root: &Path) -> Result<String, Box<dyn s
     Err("no version = \"...\" found in crates/todo/Cargo.toml".into())
 }
 
-/// Prefix of the version dependency line in `dev_shell` (we only replace the version value).
-const DEV_SHELL_VERSION_DEP_PREFIX: &str = "xtask-todo-lib = \"";
-
-/// Update xtask-todo-lib dependency in `examples/dev_shell/Cargo.toml`.
-/// First publish: replace path dep with version. Subsequent: replace existing version number only.
-fn update_dev_shell_dep(
-    workspace_root: &Path,
-    new_version: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let path = workspace_root.join(DEV_SHELL_CARGO);
-    let content = fs::read_to_string(&path)?;
-    let version_dep = format!("xtask-todo-lib = \"{new_version}\"");
-
-    let new_content = if content.contains(DEV_SHELL_PATH_DEPS) {
-        // First publish: path dep → version dep
-        content.replace(DEV_SHELL_PATH_DEPS, &version_dep)
-    } else if let Some(start) = content.find(DEV_SHELL_VERSION_DEP_PREFIX) {
-        // Subsequent publish: only replace the version inside the quotes
-        let value_start = start + DEV_SHELL_VERSION_DEP_PREFIX.len();
-        let rest = &content[value_start..];
-        let end_in_rest = rest.find('"').ok_or_else(|| {
-            format!("{DEV_SHELL_CARGO}: no closing quote after xtask-todo-lib = \"")
-        })?;
-        let end = value_start + end_in_rest;
-        format!(
-            "{}{new_version}{}",
-            &content[..value_start],
-            &content[end..]
-        )
-    } else {
-        return Err(format!(
-            "{DEV_SHELL_CARGO}: expected either {DEV_SHELL_PATH_DEPS:?} or xtask-todo-lib = \"x.y.z\""
-        )
-        .into());
-    };
-
-    if new_content == content {
-        return Err(
-            format!("{DEV_SHELL_CARGO}: no change (version already {new_version}?)").into(),
-        );
-    }
-    fs::write(&path, &new_content)?;
-    println!("Updated {DEV_SHELL_CARGO}: xtask-todo-lib = \"{new_version}\"");
-    Ok(())
-}
-
 fn run(cmd: &mut Command, step: &str) -> Result<(), Box<dyn std::error::Error>> {
     let status = cmd.status()?;
     if !status.success() {
@@ -119,95 +62,10 @@ fn run(cmd: &mut Command, step: &str) -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
-/// Create a temp `CARGO_HOME` with only crates.io (sparse). Returns (`temp_dir`, `old_cargo_home` to restore).
-/// Use so that `wait_for_registry_version` and pre-commit see the real index, not a mirror.
-fn temp_cargo_home_crates_io_only() -> Result<(PathBuf, Option<PathBuf>), Box<dyn std::error::Error>>
-{
-    let temp = env::temp_dir().join(format!("xtask_publish_cargo_home_{}", std::process::id()));
-    fs::create_dir_all(&temp)?;
-    fs::write(temp.join("config.toml"), CARGO_HOME_CRATES_IO_ONLY)?;
-    let old = env::var_os("CARGO_HOME").map(PathBuf::from);
-    env::set_var("CARGO_HOME", &temp);
-    Ok((temp, old))
-}
-
-/// Restore `CARGO_HOME` after `dev_shell` commit (or on error).
-fn restore_cargo_home(old: Option<PathBuf>) {
-    match old {
-        Some(p) => env::set_var("CARGO_HOME", p),
-        None => env::remove_var("CARGO_HOME"),
-    }
-}
-
-/// Wait for the registry index to list the new version. When `cargo_home_crates_io_only` is `Some`,
-/// runs `cargo check` in a minimal temp workspace with that `CARGO_HOME` so only crates.io is used
-/// (avoids workspace/parent .cargo/config that may use a mirror). Otherwise runs in workspace.
-fn wait_for_registry_version(
-    workspace_root: &Path,
-    package: &str,
-    version: &str,
-    cargo_home_crates_io_only: Option<&Path>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    const MAX_ATTEMPTS: u32 = 24;
-    const SLEEP_SECS: u64 = 5;
-    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-
-    let check_dir = match cargo_home_crates_io_only {
-        Some(_) => {
-            let probe_dir =
-                env::temp_dir().join(format!("xtask_publish_probe_{}", std::process::id()));
-            fs::create_dir_all(probe_dir.join("src"))?;
-            let cargo_toml = format!(
-                r#"[package]
-name = "probe"
-version = "0.0.0"
-edition = "2021"
-
-[dependencies]
-{package} = "{version}"
-"#
-            );
-            fs::write(probe_dir.join("Cargo.toml"), cargo_toml)?;
-            fs::write(probe_dir.join("src/main.rs"), "fn main() {}")?;
-            probe_dir
-        }
-        None => workspace_root.to_path_buf(),
-    };
-
-    for attempt in 1..=MAX_ATTEMPTS {
-        let mut cmd = Command::new(&cargo);
-        cmd.arg("check").current_dir(&check_dir);
-        if let Some(cargo_home) = cargo_home_crates_io_only {
-            cmd.env("CARGO_HOME", cargo_home);
-        }
-        let status = cmd.status()?;
-        if status.success() {
-            if cargo_home_crates_io_only.is_some() {
-                let _ = fs::remove_dir_all(&check_dir);
-            }
-            return Ok(());
-        }
-        if attempt < MAX_ATTEMPTS {
-            eprintln!(
-                "Waiting for {package} v{version} in registry (attempt {attempt}/{MAX_ATTEMPTS})..."
-            );
-            thread::sleep(Duration::from_secs(SLEEP_SECS));
-        }
-    }
-    if cargo_home_crates_io_only.is_some() {
-        let _ = fs::remove_dir_all(&check_dir);
-    }
-    Err(format!(
-        "registry did not list {package} v{version} after {}s",
-        u64::from(MAX_ATTEMPTS) * SLEEP_SECS
-    )
-    .into())
-}
-
 /// Publish subcommand: bump version, publish to crates.io, tag, push to GitHub.
 #[derive(FromArgs, Clone)]
 #[argh(subcommand, name = "publish")]
-/// Bump patch version, publish xtask-todo-lib to crates.io, create tag, push branch and tag to GitHub.
+/// Bump patch version, publish xtask-todo-lib (lib + cargo-devshell bin) to crates.io, create tag, push.
 pub struct PublishArgs {}
 
 /// Run publish: bump version -> commit -> cargo publish -> tag -> push branch and tag.
@@ -243,45 +101,6 @@ pub fn cmd_publish(_args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>
             .current_dir(&workspace_root),
         "cargo publish",
     )?;
-
-    // After publish success: pin dev_shell to the new version so it can be published or installed from crates.io.
-    let dev_shell_path = workspace_root.join(DEV_SHELL_CARGO);
-    if dev_shell_path.exists() {
-        // Use a temp CARGO_HOME with only crates.io (sparse), and run the "wait" check in a temp
-        // workspace so no project/parent .cargo/config (e.g. mirror) is used.
-        let (temp_cargo_home, old_cargo_home) = temp_cargo_home_crates_io_only()?;
-        let result = (|| -> Result<(), Box<dyn std::error::Error>> {
-            update_dev_shell_dep(&workspace_root, &new_version)?;
-            wait_for_registry_version(
-                &workspace_root,
-                PACKAGE,
-                &new_version,
-                Some(&temp_cargo_home),
-            )?;
-            // Pass CARGO_HOME to git so the pre-commit hook's cargo uses our temp config (crates.io only).
-            run(
-                Command::new("git")
-                    .args(["add", DEV_SHELL_CARGO])
-                    .current_dir(&workspace_root)
-                    .env("CARGO_HOME", &temp_cargo_home),
-                "git add dev_shell Cargo.toml",
-            )?;
-            run(
-                Command::new("git")
-                    .args([
-                        "commit",
-                        "-m",
-                        &format!("chore(dev_shell): pin xtask-todo-lib to {new_version}"),
-                    ])
-                    .current_dir(&workspace_root)
-                    .env("CARGO_HOME", &temp_cargo_home),
-                "git commit dev_shell dep",
-            )?;
-            Ok(())
-        })();
-        restore_cargo_home(old_cargo_home);
-        result?;
-    }
 
     run(
         Command::new("git")
@@ -349,32 +168,6 @@ edition = "2021"
         std::fs::write(dir.join("crates/todo/Cargo.toml"), "version = '1.0.0'\n").unwrap();
         let new_ver = bump_version_in_cargo_toml(&dir).unwrap();
         assert_eq!(new_ver, "1.0.1");
-        let _ = std::fs::remove_dir_all(dir);
-    }
-
-    #[test]
-    fn update_dev_shell_dep_first_publish_path_to_version() {
-        let dir = std::env::temp_dir().join(format!("xtask_devshell_path_{}", std::process::id()));
-        let _ = std::fs::create_dir_all(dir.join("examples/dev_shell"));
-        let cargo = r#"xtask-todo-lib = { path = "../../crates/todo" }
-"#;
-        std::fs::write(dir.join(DEV_SHELL_CARGO), cargo).unwrap();
-        update_dev_shell_dep(&dir, "0.1.5").unwrap();
-        let content = std::fs::read_to_string(dir.join(DEV_SHELL_CARGO)).unwrap();
-        assert_eq!(content.trim(), r#"xtask-todo-lib = "0.1.5""#);
-        let _ = std::fs::remove_dir_all(dir);
-    }
-
-    #[test]
-    fn update_dev_shell_dep_subsequent_publish_version_only() {
-        let dir = std::env::temp_dir().join(format!("xtask_devshell_ver_{}", std::process::id()));
-        let _ = std::fs::create_dir_all(dir.join("examples/dev_shell"));
-        let cargo = r#"xtask-todo-lib = "0.1.4"
-"#;
-        std::fs::write(dir.join(DEV_SHELL_CARGO), cargo).unwrap();
-        update_dev_shell_dep(&dir, "0.1.5").unwrap();
-        let content = std::fs::read_to_string(dir.join(DEV_SHELL_CARGO)).unwrap();
-        assert_eq!(content.trim(), r#"xtask-todo-lib = "0.1.5""#);
         let _ = std::fs::remove_dir_all(dir);
     }
 

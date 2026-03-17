@@ -1,4 +1,4 @@
-use dev_shell::parser::parse_line;
+use xtask_todo_devshell::parser::parse_line;
 
 #[test]
 fn parse_simple() {

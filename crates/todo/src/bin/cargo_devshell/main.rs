@@ -1,10 +1,31 @@
+//! Binary for `cargo devshell`: same package as the lib, one Cargo.toml publishes both.
+#![allow(
+    dead_code,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::too_long_first_doc_paragraph,
+    clippy::too_many_lines,
+    clippy::result_unit_err,
+    clippy::cast_possible_truncation,
+    clippy::branches_sharing_code,
+    clippy::needless_pass_by_value,
+    clippy::match_wildcard_for_single_variants,
+    clippy::map_identity
+)]
+
+mod command;
+mod completion;
+mod parser;
+mod repl;
+mod serialization;
+mod todo_io;
+mod vfs;
+
 use std::cell::RefCell;
 use std::io::{self, BufReader, IsTerminal, Write};
 use std::rc::Rc;
 
-use xtask_todo_devshell::repl;
-use xtask_todo_devshell::serialization;
-use xtask_todo_devshell::vfs::Vfs;
+use crate::vfs::Vfs;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

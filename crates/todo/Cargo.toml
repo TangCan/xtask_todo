@@ -2,14 +2,26 @@
 name = "xtask-todo-lib"
 version = "0.1.10"
 edition = "2021"
-description = "Todo workspace library"
+description = "Todo workspace library and cargo devshell subcommand"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/TangCan/xtask_todo"
 documentation = "https://docs.rs/xtask-todo-lib"
 
+[lib]
+name = "xtask_todo_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cargo-devshell"
+path = "src/bin/cargo_devshell/main.rs"
+
 [dependencies]
 chrono = { version = "0.4", default-features = false }
+# For cargo-devshell binary only (lib does not use these)
+rustyline = "17"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [lints.clippy]
 all = "warn"
