@@ -6,10 +6,10 @@ Coverage is measured with [cargo-tarpaulin](https://github.com/xd009642/tarpauli
 
 | Crate   | Coverage | How to run |
 |--------|----------|------------|
-| **todo** | 100%   | `cargo tarpaulin -p todo` |
+| **xtask-todo-lib** | — | `cargo xtask coverage` or `cargo tarpaulin -p xtask-todo-lib` |
 | **xtask** | **≥95%** | `cargo xtask coverage` or `cargo tarpaulin -p xtask --exclude-files "xtask/src/main.rs" --exclude-files "crates/todo/*" -- --test-threads=1 --include-ignored` |
 
-- **todo**: All library and store code is covered by unit tests.
+- **xtask-todo-lib**: Includes the library and the `cargo-devshell` binary. Devshell REPL/VFS/command logic lives in the lib (`src/devshell/`) so unit and integration tests can cover it; the binary is a thin wrapper. Coverage is the ratio of covered lines to all package source lines (currently ~83%; goal ≥95% would require more tests for TTY/completion paths).
 - **xtask**: Library logic is covered; `main.rs` is a 4-line entry that calls `xtask::run()` and is excluded from the coverage denominator so the reported rate reflects the testable library code. Integration test `xtask_run_exits_success` runs the binary to verify the entry point.
 
 ## Running coverage
@@ -21,8 +21,8 @@ cargo install cargo-tarpaulin
 # Per-crate summary (recommended)
 cargo xtask coverage
 
-# Todo crate only
-cargo tarpaulin -p todo
+# Todo package (lib + cargo-devshell binary)
+cargo tarpaulin -p xtask-todo-lib
 
 # Xtask crate (lib only, single-threaded tests for stable cwd)
 cargo tarpaulin -p xtask --exclude-files "xtask/src/main.rs" -- --test-threads=1

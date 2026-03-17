@@ -12,7 +12,7 @@ use rustyline::validate::{ValidationContext, ValidationResult, Validator};
 use rustyline::Context;
 use rustyline::Helper;
 
-use crate::vfs::Vfs;
+use super::vfs::Vfs;
 
 /// 当前输入位置是命令名还是路径（用于选择补全源）
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -302,3 +302,50 @@ impl Validator for DevShellHelper {
 }
 
 impl Helper for DevShellHelper {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn complete_commands_prefix() {
+        let c = complete_commands("pw");
+        assert_eq!(c, vec!["pwd"]);
+        let c = complete_commands("ex");
+        assert!(c.iter().any(|s| s == "exit"));
+        let c = complete_commands("");
+        assert!(c.len() > 5);
+    }
+
+    #[test]
+    fn complete_path_empty_prefix() {
+        let names = vec!["a".into(), "b".into()];
+        assert_eq!(complete_path("", &names), vec!["a", "b"]);
+    }
+
+    #[test]
+    fn completion_context_first_token() {
+        let ctx = completion_context("pwd", 3).unwrap();
+        assert_eq!(ctx.prefix, "pwd");
+        assert_eq!(ctx.kind, CompletionKind::Command);
+    }
+
+    #[test]
+    fn completion_context_after_pipe_is_command() {
+        let ctx = completion_context("echo x | pw", 10).unwrap();
+        assert_eq!(ctx.kind, CompletionKind::Command);
+    }
+
+    #[test]
+    fn completion_context_path_token() {
+        let ctx = completion_context("cat /a/b", 8).unwrap();
+        assert_eq!(ctx.kind, CompletionKind::Path);
+    }
+
+    #[test]
+    fn complete_path_with_prefix() {
+        let names = vec!["foo".into(), "bar".into(), "food".into()];
+        let c = complete_path("fo", &names);
+        assert_eq!(c, vec!["foo", "food"]);
+    }
+}

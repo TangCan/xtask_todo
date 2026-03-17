@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::{Duration, UNIX_EPOCH};
 
-use xtask_todo_lib::{InMemoryStore, Priority, RepeatRule, Todo, TodoId, TodoList};
+use crate::{InMemoryStore, Priority, RepeatRule, Todo, TodoId, TodoList};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct TodoDto {

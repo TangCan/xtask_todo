@@ -2,7 +2,7 @@
 
 use std::io::{Cursor, Read, Write};
 
-use crate::vfs::{Node, Vfs};
+use super::vfs::{Node, Vfs};
 
 const MAGIC: &[u8; 4] = b"DEVS";
 const VERSION: u8 = 1;
@@ -177,4 +177,53 @@ pub fn save_to_file(vfs: &Vfs, path: &std::path::Path) -> std::io::Result<()> {
 pub fn load_from_file(path: &std::path::Path) -> std::io::Result<Vfs> {
     let bytes = std::fs::read(path)?;
     deserialize(&bytes).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn roundtrip_empty_vfs() {
+        let vfs = Vfs::new();
+        let bytes = serialize(&vfs).unwrap();
+        let vfs2 = deserialize(&bytes).unwrap();
+        assert_eq!(vfs.cwd(), vfs2.cwd());
+    }
+
+    #[test]
+    fn roundtrip_with_dir_and_file() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/foo").unwrap();
+        vfs.write_file("/foo/bar", b"content").unwrap();
+        let bytes = serialize(&vfs).unwrap();
+        let vfs2 = deserialize(&bytes).unwrap();
+        assert_eq!(vfs2.read_file("/foo/bar").unwrap(), b"content");
+    }
+
+    #[test]
+    fn invalid_magic() {
+        let bytes = b"XXXX\x01\x00\x00\x00\x01/\x00\x00\x00\x00";
+        assert!(matches!(deserialize(bytes), Err(Error::InvalidMagic)));
+    }
+
+    #[test]
+    fn error_display() {
+        assert_eq!(Error::InvalidMagic.to_string(), "invalid magic");
+        assert_eq!(Error::InvalidVersion.to_string(), "invalid version");
+        assert_eq!(Error::Truncated.to_string(), "truncated data");
+        assert!(Error::Io(std::io::Error::other("e"))
+            .to_string()
+            .contains("io error"));
+        let utf8_err = Vec::<u8>::from([0xff, 0xfe]);
+        let e = String::from_utf8(utf8_err).unwrap_err();
+        assert!(Error::InvalidUtf8(e).to_string().contains("utf-8"));
+    }
+
+    #[test]
+    fn invalid_version() {
+        let mut bytes = vec![b'D', b'E', b'V', b'S', 99, 0, 0, 0, 1, b'/'];
+        bytes.extend_from_slice(&0u32.to_le_bytes());
+        assert!(matches!(deserialize(&bytes), Err(Error::InvalidVersion)));
+    }
 }

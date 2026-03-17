@@ -1,7 +1,9 @@
 //! todo - workspace library
 //!
 //! Todo domain: create, list, complete, delete items with in-memory or pluggable storage.
+//! Also includes the devshell REPL/VFS logic used by the `cargo-devshell` binary (for test coverage).
 
+pub mod devshell;
 mod error;
 mod id;
 mod list;

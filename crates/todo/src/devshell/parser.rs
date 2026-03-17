@@ -1,16 +1,19 @@
 use std::fmt;
 
 /// Redirect: fd 0=stdin, 1=stdout, 2=stderr
+#[derive(Debug)]
 pub struct Redirect {
     pub fd: u8,
     pub path: String,
 }
 
+#[derive(Debug)]
 pub struct SimpleCommand {
     pub argv: Vec<String>,
     pub redirects: Vec<Redirect>,
 }
 
+#[derive(Debug)]
 pub struct Pipeline {
     pub commands: Vec<SimpleCommand>,
 }
@@ -137,4 +140,66 @@ pub fn parse_line(line: &str) -> Result<Pipeline, ParseError> {
         commands.push(parse_simple_command(ct)?);
     }
     Ok(Pipeline { commands })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_simple_pwd() {
+        let p = parse_line("pwd").unwrap();
+        assert_eq!(p.commands.len(), 1);
+        assert_eq!(p.commands[0].argv, vec!["pwd"]);
+    }
+
+    #[test]
+    fn parse_exit_quit() {
+        parse_line("exit").unwrap();
+        parse_line("quit").unwrap();
+    }
+
+    #[test]
+    fn parse_redirect_stdout() {
+        let p = parse_line("echo hello > out").unwrap();
+        assert_eq!(p.commands[0].argv, vec!["echo", "hello"]);
+        assert_eq!(p.commands[0].redirects.len(), 1);
+        assert_eq!(p.commands[0].redirects[0].fd, 1);
+        assert_eq!(p.commands[0].redirects[0].path, "out");
+    }
+
+    #[test]
+    fn parse_redirect_stderr() {
+        let p = parse_line("cmd 2> err").unwrap();
+        assert_eq!(p.commands[0].redirects[0].fd, 2);
+        assert_eq!(p.commands[0].redirects[0].path, "err");
+    }
+
+    #[test]
+    fn parse_redirect_stdin() {
+        let p = parse_line("cat < in").unwrap();
+        assert_eq!(p.commands[0].redirects[0].fd, 0);
+        assert_eq!(p.commands[0].redirects[0].path, "in");
+    }
+
+    #[test]
+    fn parse_redirect_missing_path_err() {
+        assert!(parse_line("echo >").is_err());
+        assert!(parse_line("echo 2>").is_err());
+        assert!(parse_line("cat <").is_err());
+    }
+
+    #[test]
+    fn parse_error_display() {
+        let e = parse_line("echo >").unwrap_err();
+        assert!(e.to_string().contains("redirect") || e.0.contains("path"));
+    }
+
+    #[test]
+    fn parse_pipeline() {
+        let p = parse_line("a | b").unwrap();
+        assert_eq!(p.commands.len(), 2);
+        assert_eq!(p.commands[0].argv, vec!["a"]);
+        assert_eq!(p.commands[1].argv, vec!["b"]);
+    }
 }

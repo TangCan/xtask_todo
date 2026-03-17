@@ -5,11 +5,11 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::path::PathBuf;
 
-use crate::parser::{Pipeline, SimpleCommand};
-use crate::serialization;
-use crate::todo_io::{list_from_todos, load_todos, save_todos};
-use crate::vfs::Vfs;
-use xtask_todo_lib::TodoId;
+use super::parser::{Pipeline, SimpleCommand};
+use super::serialization;
+use super::todo_io::{list_from_todos, load_todos, save_todos};
+use super::vfs::Vfs;
+use crate::TodoId;
 
 /// Result of running a pipeline: continue the REPL loop or exit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

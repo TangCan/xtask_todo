@@ -311,3 +311,69 @@ pub fn normalize_path(input: &str) -> String {
         out.join("/")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn vfs_new_cwd_root() {
+        let vfs = Vfs::new();
+        assert_eq!(vfs.cwd(), "/");
+    }
+
+    #[test]
+    fn vfs_mkdir_and_list() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/foo").unwrap();
+        vfs.mkdir("/foo/bar").unwrap();
+        assert_eq!(vfs.list_dir("/").unwrap(), vec!["foo"]);
+        assert_eq!(vfs.list_dir("/foo").unwrap(), vec!["bar"]);
+    }
+
+    #[test]
+    fn vfs_write_and_read_file() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/dir").unwrap();
+        vfs.write_file("/dir/f", b"hello").unwrap();
+        assert_eq!(vfs.read_file("/dir/f").unwrap(), b"hello");
+    }
+
+    #[test]
+    fn vfs_set_cwd() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/a").unwrap();
+        vfs.set_cwd("/a").unwrap();
+        assert_eq!(vfs.cwd(), "/a");
+    }
+
+    #[test]
+    fn vfs_touch() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/d").unwrap();
+        vfs.touch("/d/empty").unwrap();
+        assert_eq!(vfs.read_file("/d/empty").unwrap(), b"");
+    }
+
+    #[test]
+    fn normalize_path_dot_dot() {
+        assert_eq!(normalize_path("/a/b/.."), "/a");
+        assert_eq!(normalize_path("a/../b"), "b");
+    }
+
+    #[test]
+    fn vfs_copy_tree_to_host() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/sub").unwrap();
+        vfs.write_file("/sub/f.txt", b"data").unwrap();
+        let dir = std::env::temp_dir().join(format!("vfs_export_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        vfs.copy_tree_to_host("/sub", &dir).unwrap();
+        let sub_dir = dir.join("sub");
+        let content = std::fs::read(sub_dir.join("f.txt")).unwrap();
+        assert_eq!(content, b"data");
+        let _ = std::fs::remove_file(sub_dir.join("f.txt"));
+        let _ = std::fs::remove_dir(sub_dir);
+        let _ = std::fs::remove_dir(dir);
+    }
+}

@@ -10,11 +10,11 @@ use std::rc::Rc;
 
 use rustyline::Editor;
 
-use crate::command::{execute_pipeline, ExecContext, RunResult};
-use crate::completion::DevShellHelper;
-use crate::parser;
-use crate::serialization;
-use crate::vfs::Vfs;
+use super::command::{execute_pipeline, ExecContext, RunResult};
+use super::completion::DevShellHelper;
+use super::parser;
+use super::serialization;
+use super::vfs::Vfs;
 
 /// Run the REPL until exit/quit or EOF.
 ///

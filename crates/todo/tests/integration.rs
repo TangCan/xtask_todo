@@ -1,5 +1,7 @@
 //! Integration tests: public API and `InMemoryStore::from_todos` flow (no JSON; DTO round-trip lives in xtask).
+//! Also runs the cargo-devshell binary to cover its usage error path.
 
+use std::process::Command;
 use std::time::SystemTime;
 
 use xtask_todo_lib::{InMemoryStore, Todo, TodoId, TodoList};
@@ -61,4 +63,17 @@ fn from_todos_then_create_list_complete_delete() {
     assert_eq!(items.len(), 2);
     assert_eq!(items[0].id, id1);
     assert_eq!(items[1].id, id3);
+}
+
+#[test]
+fn cargo_devshell_usage_error_exits_nonzero() {
+    let bin = std::env::var_os("CARGO_BIN_EXE_cargo-devshell")
+        .or_else(|| std::env::var_os("CARGO_BIN_EXE_cargo_devshell"));
+    let Some(bin) = bin else {
+        return; // skip when not set (e.g. under tarpaulin)
+    };
+    let out = Command::new(bin).args(["a", "b", "c"]).output().unwrap();
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("usage") || stderr.contains("dev_shell"));
 }
