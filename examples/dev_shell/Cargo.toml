@@ -2,6 +2,14 @@
 name = "dev_shell"
 version = "0.1.0"
 edition = "2021"
+description = "Minimal in-process shell with VFS and todo integration; install as cargo subcommand"
+license = "MIT OR Apache-2.0"
+# repository = "https://github.com/你的用户名/xtask_todo"  # 发布前取消注释并替换
+# Publish to crates.io as a Cargo subcommand: cargo install dev_shell → cargo devshell
+
+[[bin]]
+name = "cargo-devshell"
+path = "src/main.rs"
 
 [dependencies]
 rustyline = "17"

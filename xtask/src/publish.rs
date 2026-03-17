@@ -6,7 +6,11 @@ use std::path::Path;
 use std::process::Command;
 
 const CRATE_CARGO: &str = "crates/todo/Cargo.toml";
+const DEV_SHELL_CARGO: &str = "examples/dev_shell/Cargo.toml";
 const PACKAGE: &str = "xtask-todo-lib";
+
+/// Path dependency line we expect in `dev_shell` (exact match for replacement).
+const DEV_SHELL_PATH_DEPS: &str = r#"xtask-todo-lib = { path = "../../crates/todo" }"#;
 
 /// Bump patch version (e.g. 0.1.2 -> 0.1.3) in crates/todo/Cargo.toml and return the new version.
 fn bump_version_in_cargo_toml(workspace_root: &Path) -> Result<String, Box<dyn std::error::Error>> {
@@ -49,6 +53,52 @@ fn bump_version_in_cargo_toml(workspace_root: &Path) -> Result<String, Box<dyn s
         }
     }
     Err("no version = \"...\" found in crates/todo/Cargo.toml".into())
+}
+
+/// Prefix of the version dependency line in `dev_shell` (we only replace the version value).
+const DEV_SHELL_VERSION_DEP_PREFIX: &str = "xtask-todo-lib = \"";
+
+/// Update xtask-todo-lib dependency in `examples/dev_shell/Cargo.toml`.
+/// First publish: replace path dep with version. Subsequent: replace existing version number only.
+fn update_dev_shell_dep(
+    workspace_root: &Path,
+    new_version: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let path = workspace_root.join(DEV_SHELL_CARGO);
+    let content = fs::read_to_string(&path)?;
+    let version_dep = format!("xtask-todo-lib = \"{new_version}\"");
+
+    let new_content = if content.contains(DEV_SHELL_PATH_DEPS) {
+        // First publish: path dep → version dep
+        content.replace(DEV_SHELL_PATH_DEPS, &version_dep)
+    } else if let Some(start) = content.find(DEV_SHELL_VERSION_DEP_PREFIX) {
+        // Subsequent publish: only replace the version inside the quotes
+        let value_start = start + DEV_SHELL_VERSION_DEP_PREFIX.len();
+        let rest = &content[value_start..];
+        let end_in_rest = rest.find('"').ok_or_else(|| {
+            format!("{DEV_SHELL_CARGO}: no closing quote after xtask-todo-lib = \"")
+        })?;
+        let end = value_start + end_in_rest;
+        format!(
+            "{}{new_version}{}",
+            &content[..value_start],
+            &content[end..]
+        )
+    } else {
+        return Err(format!(
+            "{DEV_SHELL_CARGO}: expected either {DEV_SHELL_PATH_DEPS:?} or xtask-todo-lib = \"x.y.z\""
+        )
+        .into());
+    };
+
+    if new_content == content {
+        return Err(
+            format!("{DEV_SHELL_CARGO}: no change (version already {new_version}?)").into(),
+        );
+    }
+    fs::write(&path, &new_content)?;
+    println!("Updated {DEV_SHELL_CARGO}: xtask-todo-lib = \"{new_version}\"");
+    Ok(())
 }
 
 fn run(cmd: &mut Command, step: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -99,6 +149,29 @@ pub fn cmd_publish(_args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>
             .current_dir(&workspace_root),
         "cargo publish",
     )?;
+
+    // After publish success: pin dev_shell to the new version so it can be published or installed from crates.io.
+    let dev_shell_path = workspace_root.join(DEV_SHELL_CARGO);
+    if dev_shell_path.exists() {
+        update_dev_shell_dep(&workspace_root, &new_version)?;
+        run(
+            Command::new("git")
+                .args(["add", DEV_SHELL_CARGO])
+                .current_dir(&workspace_root),
+            "git add dev_shell Cargo.toml",
+        )?;
+        run(
+            Command::new("git")
+                .args([
+                    "commit",
+                    "-m",
+                    &format!("chore(dev_shell): pin xtask-todo-lib to {new_version}"),
+                ])
+                .current_dir(&workspace_root),
+            "git commit dev_shell dep",
+        )?;
+    }
+
     run(
         Command::new("git")
             .args(["tag", &tag])
@@ -165,6 +238,32 @@ edition = "2021"
         std::fs::write(dir.join("crates/todo/Cargo.toml"), "version = '1.0.0'\n").unwrap();
         let new_ver = bump_version_in_cargo_toml(&dir).unwrap();
         assert_eq!(new_ver, "1.0.1");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn update_dev_shell_dep_first_publish_path_to_version() {
+        let dir = std::env::temp_dir().join(format!("xtask_devshell_path_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(dir.join("examples/dev_shell"));
+        let cargo = r#"xtask-todo-lib = { path = "../../crates/todo" }
+"#;
+        std::fs::write(dir.join(DEV_SHELL_CARGO), cargo).unwrap();
+        update_dev_shell_dep(&dir, "0.1.5").unwrap();
+        let content = std::fs::read_to_string(dir.join(DEV_SHELL_CARGO)).unwrap();
+        assert_eq!(content.trim(), r#"xtask-todo-lib = "0.1.5""#);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn update_dev_shell_dep_subsequent_publish_version_only() {
+        let dir = std::env::temp_dir().join(format!("xtask_devshell_ver_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(dir.join("examples/dev_shell"));
+        let cargo = r#"xtask-todo-lib = "0.1.4"
+"#;
+        std::fs::write(dir.join(DEV_SHELL_CARGO), cargo).unwrap();
+        update_dev_shell_dep(&dir, "0.1.5").unwrap();
+        let content = std::fs::read_to_string(dir.join(DEV_SHELL_CARGO)).unwrap();
+        assert_eq!(content.trim(), r#"xtask-todo-lib = "0.1.5""#);
         let _ = std::fs::remove_dir_all(dir);
     }
 
