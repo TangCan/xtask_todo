@@ -1,11 +1,18 @@
 //! `publish` subcommand - bump version, publish to crates.io, tag, and push to GitHub.
 
 use argh::FromArgs;
+use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread;
 use std::time::Duration;
+
+/// Minimal Cargo config that uses only crates.io (sparse), so pre-commit can resolve the new version
+/// when the global config uses a mirror that may not have it yet.
+const CARGO_HOME_CRATES_IO_ONLY: &str = r#"[source.crates-io]
+registry = "sparse+https://index.crates.io/"
+"#;
 
 const CRATE_CARGO: &str = "crates/todo/Cargo.toml";
 const DEV_SHELL_CARGO: &str = "examples/dev_shell/Cargo.toml";
@@ -112,6 +119,26 @@ fn run(cmd: &mut Command, step: &str) -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
+/// Create a temp `CARGO_HOME` with only crates.io (sparse). Returns (`temp_dir`, `old_cargo_home` to restore).
+/// Use so that `wait_for_registry_version` and pre-commit see the real index, not a mirror.
+fn temp_cargo_home_crates_io_only() -> Result<(PathBuf, Option<PathBuf>), Box<dyn std::error::Error>>
+{
+    let temp = env::temp_dir().join(format!("xtask_publish_cargo_home_{}", std::process::id()));
+    fs::create_dir_all(&temp)?;
+    fs::write(temp.join("config.toml"), CARGO_HOME_CRATES_IO_ONLY)?;
+    let old = env::var_os("CARGO_HOME").map(PathBuf::from);
+    env::set_var("CARGO_HOME", &temp);
+    Ok((temp, old))
+}
+
+/// Restore `CARGO_HOME` after `dev_shell` commit (or on error).
+fn restore_cargo_home(old: Option<PathBuf>) {
+    match old {
+        Some(p) => env::set_var("CARGO_HOME", p),
+        None => env::remove_var("CARGO_HOME"),
+    }
+}
+
 /// Wait for the registry index to list the new version so pre-commit (clippy/test) can resolve
 /// `dev_shell`'s dependency. The index may not have the crate yet right after `cargo publish`.
 fn wait_for_registry_version(
@@ -187,25 +214,32 @@ pub fn cmd_publish(_args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>
     // After publish success: pin dev_shell to the new version so it can be published or installed from crates.io.
     let dev_shell_path = workspace_root.join(DEV_SHELL_CARGO);
     if dev_shell_path.exists() {
-        update_dev_shell_dep(&workspace_root, &new_version)?;
-        // Pre-commit runs on the next git commit; it needs the registry index to have the new version.
-        wait_for_registry_version(&workspace_root, PACKAGE, &new_version)?;
-        run(
-            Command::new("git")
-                .args(["add", DEV_SHELL_CARGO])
-                .current_dir(&workspace_root),
-            "git add dev_shell Cargo.toml",
-        )?;
-        run(
-            Command::new("git")
-                .args([
-                    "commit",
-                    "-m",
-                    &format!("chore(dev_shell): pin xtask-todo-lib to {new_version}"),
-                ])
-                .current_dir(&workspace_root),
-            "git commit dev_shell dep",
-        )?;
+        // Use a temp CARGO_HOME with only crates.io (sparse) so resolution and pre-commit see the new version
+        // even when the user's global config uses a mirror that may not have it yet.
+        let (_temp_cargo_home, old_cargo_home) = temp_cargo_home_crates_io_only()?;
+        let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+            update_dev_shell_dep(&workspace_root, &new_version)?;
+            wait_for_registry_version(&workspace_root, PACKAGE, &new_version)?;
+            run(
+                Command::new("git")
+                    .args(["add", DEV_SHELL_CARGO])
+                    .current_dir(&workspace_root),
+                "git add dev_shell Cargo.toml",
+            )?;
+            run(
+                Command::new("git")
+                    .args([
+                        "commit",
+                        "-m",
+                        &format!("chore(dev_shell): pin xtask-todo-lib to {new_version}"),
+                    ])
+                    .current_dir(&workspace_root),
+                "git commit dev_shell dep",
+            )?;
+            Ok(())
+        })();
+        restore_cargo_home(old_cargo_home);
+        result?;
     }
 
     run(
