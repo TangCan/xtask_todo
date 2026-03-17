@@ -139,22 +139,52 @@ fn restore_cargo_home(old: Option<PathBuf>) {
     }
 }
 
-/// Wait for the registry index to list the new version so pre-commit (clippy/test) can resolve
-/// `dev_shell`'s dependency. The index may not have the crate yet right after `cargo publish`.
+/// Wait for the registry index to list the new version. When `cargo_home_crates_io_only` is `Some`,
+/// runs `cargo check` in a minimal temp workspace with that `CARGO_HOME` so only crates.io is used
+/// (avoids workspace/parent .cargo/config that may use a mirror). Otherwise runs in workspace.
 fn wait_for_registry_version(
     workspace_root: &Path,
     package: &str,
     version: &str,
+    cargo_home_crates_io_only: Option<&Path>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     const MAX_ATTEMPTS: u32 = 24;
     const SLEEP_SECS: u64 = 5;
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+
+    let check_dir = match cargo_home_crates_io_only {
+        Some(_) => {
+            let probe_dir =
+                env::temp_dir().join(format!("xtask_publish_probe_{}", std::process::id()));
+            fs::create_dir_all(probe_dir.join("src"))?;
+            let cargo_toml = format!(
+                r#"[package]
+name = "probe"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+{package} = "{version}"
+"#
+            );
+            fs::write(probe_dir.join("Cargo.toml"), cargo_toml)?;
+            fs::write(probe_dir.join("src/main.rs"), "fn main() {}")?;
+            probe_dir
+        }
+        None => workspace_root.to_path_buf(),
+    };
+
     for attempt in 1..=MAX_ATTEMPTS {
-        let status = Command::new(&cargo)
-            .args(["check", "-p", "dev_shell"])
-            .current_dir(workspace_root)
-            .status()?;
+        let mut cmd = Command::new(&cargo);
+        cmd.arg("check").current_dir(&check_dir);
+        if let Some(cargo_home) = cargo_home_crates_io_only {
+            cmd.env("CARGO_HOME", cargo_home);
+        }
+        let status = cmd.status()?;
         if status.success() {
+            if cargo_home_crates_io_only.is_some() {
+                let _ = fs::remove_dir_all(&check_dir);
+            }
             return Ok(());
         }
         if attempt < MAX_ATTEMPTS {
@@ -163,6 +193,9 @@ fn wait_for_registry_version(
             );
             thread::sleep(Duration::from_secs(SLEEP_SECS));
         }
+    }
+    if cargo_home_crates_io_only.is_some() {
+        let _ = fs::remove_dir_all(&check_dir);
     }
     Err(format!(
         "registry did not list {package} v{version} after {}s",
@@ -214,12 +247,17 @@ pub fn cmd_publish(_args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>
     // After publish success: pin dev_shell to the new version so it can be published or installed from crates.io.
     let dev_shell_path = workspace_root.join(DEV_SHELL_CARGO);
     if dev_shell_path.exists() {
-        // Use a temp CARGO_HOME with only crates.io (sparse) so resolution and pre-commit see the new version
-        // even when the user's global config uses a mirror that may not have it yet.
-        let (_temp_cargo_home, old_cargo_home) = temp_cargo_home_crates_io_only()?;
+        // Use a temp CARGO_HOME with only crates.io (sparse), and run the "wait" check in a temp
+        // workspace so no project/parent .cargo/config (e.g. mirror) is used.
+        let (temp_cargo_home, old_cargo_home) = temp_cargo_home_crates_io_only()?;
         let result = (|| -> Result<(), Box<dyn std::error::Error>> {
             update_dev_shell_dep(&workspace_root, &new_version)?;
-            wait_for_registry_version(&workspace_root, PACKAGE, &new_version)?;
+            wait_for_registry_version(
+                &workspace_root,
+                PACKAGE,
+                &new_version,
+                Some(&temp_cargo_home),
+            )?;
             run(
                 Command::new("git")
                     .args(["add", DEV_SHELL_CARGO])
