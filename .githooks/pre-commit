@@ -24,6 +24,6 @@ echo "Running cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nurse
 cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings
 
 echo "Running cargo test..."
-cargo test
+cargo test -- --test-threads=1
 
 echo "Pre-commit checks passed."

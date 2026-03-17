@@ -150,10 +150,12 @@ mod tests {
 
     /// Covers `run_tarpaulin` success path and `cmd_coverage` real branch by using a fake CARGO that echoes a coverage line.
     /// Uses a dir under target/ (not /tmp) so the script is executable on CI where /tmp may be noexec.
+    /// Holds `cwd_test_lock` so `current_dir()` is workspace root (not changed by parallel git/clippy tests).
     #[test]
     #[cfg(unix)]
     fn run_tarpaulin_fake_script_returns_pct_and_cmd_coverage_succeeds() {
         use std::os::unix::fs::PermissionsExt;
+        let _cwd_guard = crate::tests::cwd_test_lock();
         let _guard = CARGO_TEST_MUTEX
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -167,6 +169,7 @@ mod tests {
             .join("xtask_coverage_fake")
             .join(format!("{}_{}", std::process::id(), nanos));
         std::fs::create_dir_all(&dir).unwrap();
+        let dir = std::fs::canonicalize(&dir).unwrap_or(dir);
         let script = dir.join("fake_cargo");
         let mut f = std::fs::File::create(&script).unwrap();
         f.write_all(b"#!/bin/sh\necho '|| 100.00% coverage, 61/61 lines covered'\n")

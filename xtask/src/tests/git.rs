@@ -7,8 +7,10 @@ use crate::tests::{cwd_test_lock, dir_outside_cwd, RestoreCwd};
 use crate::{run_with, XtaskCmd, XtaskSub};
 
 /// Sets `GIT_DIR` to the given path for the duration of the guard; restores the previous value on drop.
+#[allow(dead_code)]
 struct GitDirGuard(Option<std::ffi::OsString>);
 impl GitDirGuard {
+    #[allow(dead_code)]
     fn new(git_dir: &std::path::Path) -> Self {
         let prev = std::env::var_os("GIT_DIR");
         std::env::set_var("GIT_DIR", git_dir);
@@ -97,13 +99,14 @@ fn run_subcommand_git_commit() {
 #[test]
 fn cmd_git_add_in_nongit_dir_returns_err() {
     let _guard = cwd_test_lock();
-    // Dir outside workspace so git cannot find a repo (CI temp_dir may be under workspace).
+    // Dir outside workspace; pin GIT_DIR and GIT_WORK_TREE so git cannot use main repo (CI).
     let dir = dir_outside_cwd("xtask_nongit");
     std::fs::create_dir_all(&dir).unwrap();
+    let dir = std::fs::canonicalize(&dir).unwrap_or(dir);
     let cwd = std::env::current_dir().unwrap();
     let _guard = RestoreCwd::new(&dir, &cwd);
     let bad_git_dir = dir.join(".git_absent");
-    let _env_guard = GitDirGuard::new(&bad_git_dir);
+    let _env_guard = GitRepoGuard::new(&bad_git_dir, &dir);
     let cmd = GitArgs {
         sub: GitSub::Add(GitAddArgs {}),
     };
@@ -186,8 +189,9 @@ fn cmd_git_pre_commit_in_repo_with_hook_succeeds() {
 #[test]
 fn cmd_git_commit_with_nothing_to_commit_returns_err() {
     let _guard = cwd_test_lock();
-    let dir = std::env::temp_dir().join(format!("xtask_git_commit_{}", std::process::id()));
-    let _ = std::fs::create_dir_all(&dir);
+    // Dir outside workspace so git only sees this empty repo (CI temp_dir may be under workspace).
+    let dir = dir_outside_cwd("xtask_git_commit");
+    std::fs::create_dir_all(&dir).unwrap();
     let dir = std::fs::canonicalize(&dir).unwrap_or(dir);
     let cwd = std::env::current_dir().unwrap();
     let _guard = RestoreCwd::new(&dir, &cwd);
@@ -198,7 +202,6 @@ fn cmd_git_commit_with_nothing_to_commit_returns_err() {
         .stderr(Stdio::null())
         .status();
     let git_dir = dir.join(".git");
-    // Force git to use only this repo (CI may have cwd/TMPDIR under workspace).
     let _env_guard = GitRepoGuard::new(&git_dir, &dir);
     let cmd = GitArgs {
         sub: GitSub::Commit(GitCommitArgs { message: None }),
