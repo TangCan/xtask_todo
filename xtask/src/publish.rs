@@ -139,7 +139,7 @@ fn wait_for_registry_version(
     }
     Err(format!(
         "registry did not list {package} v{version} after {}s",
-        MAX_ATTEMPTS * SLEEP_SECS as u32
+        u64::from(MAX_ATTEMPTS) * SLEEP_SECS
     )
     .into())
 }
