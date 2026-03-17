@@ -26,4 +26,15 @@
 3. 为 parser、vfs、serialization、command、repl 增加单元测试（含错误分支）；用 mock  stdin/stdout 测试 REPL 与命令执行路径。
 4. 运行 `cargo tarpaulin -p xtask-todo-lib` 验证整体覆盖率。
 
-**当前结果**：已将覆盖率从 21.77% 提升到 **82.94%**（devshell 逻辑迁入 lib 后由 83 个单元/集成测试覆盖）。剩余未覆盖主要集中在：repl 的 TTY 分支（依赖 rustyline 交互）、completion 的 Completer 实现、main 的 usage 错误路径等，若要冲 95% 需再补大量分支测试或对部分难以测试的代码做结构化/ mock。
+**当前结果**：已将覆盖率从 21.77% 提升到 **~90%**（devshell 逻辑迁入 lib，并做可测性重构）。
+
+### 可测性重构（便于继续提覆盖率）
+
+1. **REPL 循环体抽成 `process_line()`**  
+   `repl.rs` 中“读一行 → 解析 → 执行 → 判断是否 exit”的公共逻辑抽到 `process_line(vfs, line, stdin, stdout, stderr) -> Result<StepResult, ()>`，TTY 与非 TTY 分支都调用它。这样无需 PTY 即可对“解析 + 执行 + exit/quit”做单元测试（空行、exit/quit、解析错误、pwd、未知命令等）。
+2. **`run_main_from_args(args, is_tty, stdin, stdout, stderr)`**  
+   所有“参数解析、加载 VFS、跑 REPL”的逻辑都放在此函数，`run_main()` 仅负责收集 `env::args()` 和 stdin 并调用它，便于用 mock 流覆盖用法错误、文件不存在、加载失败等路径。
+3. **`save_on_exit` 失败路径**  
+   测试中把 VFS 保存路径设为目录（如 `std::env::temp_dir()`），触发“save on exit failed”的 stderr 分支。
+
+剩余未覆盖：repl 的 TTY 分支（`Editor::readline`）、binary `main.rs` 与 `run_main()` 在真实进程中的调用、以及 command/completion/list/vfs 的少量分支。要达到 ≥95% 需 PTY 测试或接受排除 binary/TTY 专用路径。

@@ -376,4 +376,74 @@ mod tests {
         let _ = std::fs::remove_dir(sub_dir);
         let _ = std::fs::remove_dir(dir);
     }
+
+    #[test]
+    fn node_methods() {
+        let dir = Node::Dir {
+            name: "d".into(),
+            children: vec![Node::File {
+                name: "f".into(),
+                content: vec![1, 2, 3],
+            }],
+        };
+        assert_eq!(dir.name(), "d");
+        assert!(dir.is_dir());
+        assert!(!dir.is_file());
+        let f = dir.child("f").unwrap();
+        assert_eq!(f.name(), "f");
+        assert!(f.is_file());
+        assert!(!f.is_dir());
+        assert!(dir.child("x").is_none());
+        assert!(f.child("x").is_none());
+    }
+
+    #[test]
+    fn resolve_to_absolute_relative() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/a").unwrap();
+        vfs.set_cwd("/a").unwrap();
+        let abs = vfs.resolve_to_absolute("b");
+        assert!(abs.contains('a'));
+        assert!(abs.ends_with('b') || abs.contains('b'));
+    }
+
+    #[test]
+    fn normalize_path_windows_drive() {
+        let out = normalize_path("C:\\foo\\bar");
+        assert!(out.contains("foo"));
+        assert!(out.contains("bar"));
+        assert!(out.starts_with('/') || out == "foo/bar");
+    }
+
+    #[test]
+    fn write_file_overwrite_existing() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/d").unwrap();
+        vfs.write_file("/d/f", b"first").unwrap();
+        vfs.write_file("/d/f", b"second").unwrap();
+        assert_eq!(vfs.read_file("/d/f").unwrap(), b"second");
+    }
+
+    #[test]
+    fn read_file_on_dir_errors() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/d").unwrap();
+        assert!(vfs.read_file("/d").is_err());
+    }
+
+    #[test]
+    fn list_dir_on_file_errors() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/d").unwrap();
+        vfs.write_file("/d/f", b"x").unwrap();
+        assert!(vfs.list_dir("/d/f").is_err());
+    }
+
+    #[test]
+    fn set_cwd_to_file_errors() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/d").unwrap();
+        vfs.write_file("/d/f", b"x").unwrap();
+        assert!(vfs.set_cwd("/d/f").is_err());
+    }
 }

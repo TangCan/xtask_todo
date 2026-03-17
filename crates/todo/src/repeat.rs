@@ -94,3 +94,14 @@ impl FromStr for RepeatRule {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::RepeatRule;
+
+    #[test]
+    fn from_str_2d_and_3w() {
+        assert_eq!("2d".parse::<RepeatRule>().unwrap(), RepeatRule::Custom(2));
+        assert_eq!("3w".parse::<RepeatRule>().unwrap(), RepeatRule::Custom(21));
+    }
+}

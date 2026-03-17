@@ -202,4 +202,18 @@ mod tests {
         assert_eq!(p.commands[0].argv, vec!["a"]);
         assert_eq!(p.commands[1].argv, vec!["b"]);
     }
+
+    #[test]
+    fn parse_pipe_only_empty_command() {
+        let p = parse_line("|").unwrap();
+        assert_eq!(p.commands.len(), 1);
+        assert!(p.commands[0].argv.is_empty());
+    }
+
+    #[test]
+    fn parse_stdout_redirect_token() {
+        let p = parse_line("echo x > out").unwrap();
+        assert_eq!(p.commands[0].redirects[0].fd, 1);
+        assert_eq!(p.commands[0].redirects[0].path, "out");
+    }
 }

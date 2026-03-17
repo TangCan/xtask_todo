@@ -306,6 +306,7 @@ impl Helper for DevShellHelper {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::devshell::vfs::Vfs;
 
     #[test]
     fn complete_commands_prefix() {
@@ -347,5 +348,36 @@ mod tests {
         let names = vec!["foo".into(), "bar".into(), "food".into()];
         let c = complete_path("fo", &names);
         assert_eq!(c, vec!["foo", "food"]);
+    }
+
+    #[test]
+    fn completer_complete_command() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let helper = DevShellHelper::new(vfs);
+        let hist = rustyline::history::MemHistory::new();
+        let ctx = Context::new(&hist);
+        let (start, candidates) = helper.complete("pw", 2, &ctx).unwrap();
+        assert_eq!(start, 0);
+        assert_eq!(candidates, vec!["pwd"]);
+    }
+
+    #[test]
+    fn completer_complete_path() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        let vfs = Rc::new(RefCell::new(Vfs::new()));
+        vfs.borrow_mut().mkdir("/a").unwrap();
+        vfs.borrow_mut().mkdir("/b").unwrap();
+        let helper = DevShellHelper::new(vfs);
+        let hist = rustyline::history::MemHistory::new();
+        let ctx = Context::new(&hist);
+        let (start, candidates) = helper.complete("ls /", 4, &ctx).unwrap();
+        assert!(start <= 4);
+        assert!(candidates.contains(&"a".to_string()));
+        assert!(candidates.contains(&"b".to_string()));
     }
 }

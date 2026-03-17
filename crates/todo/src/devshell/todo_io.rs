@@ -116,3 +116,21 @@ pub fn save_todos(list: &TodoList<InMemoryStore>) -> Result<(), Box<dyn std::err
     std::fs::write(path, s)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn load_todos_when_file_missing_returns_empty() {
+        let dir = std::env::temp_dir().join(format!("todo_io_nojson_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let cwd = std::env::current_dir().unwrap();
+        let _ = std::env::set_current_dir(&dir);
+        let result = load_todos();
+        let _ = std::env::set_current_dir(&cwd);
+        let _ = std::fs::remove_dir(&dir);
+        let todos = result.unwrap();
+        assert!(todos.is_empty());
+    }
+}

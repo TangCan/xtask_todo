@@ -221,9 +221,41 @@ mod tests {
     }
 
     #[test]
+    fn error_source() {
+        use std::error::Error as _;
+        let utf8_err = Vec::<u8>::from([0xff, 0xfe]);
+        let e = Error::InvalidUtf8(String::from_utf8(utf8_err).unwrap_err());
+        assert!(e.source().is_some());
+        let e = Error::Io(std::io::Error::other("test"));
+        assert!(e.source().is_some());
+        assert!(Error::InvalidMagic.source().is_none());
+    }
+
+    #[test]
+    fn deserialize_invalid_tag() {
+        let mut bytes = serialize(&Vfs::new()).unwrap();
+        let root_tag_offset = 4 + 1 + 4 + 1; // MAGIC + VERSION + cwd_len + cwd
+        bytes[root_tag_offset] = 0xff; // invalid node tag
+        assert!(matches!(deserialize(&bytes), Err(Error::Truncated)));
+    }
+
+    #[test]
     fn invalid_version() {
         let mut bytes = vec![b'D', b'E', b'V', b'S', 99, 0, 0, 0, 1, b'/'];
         bytes.extend_from_slice(&0u32.to_le_bytes());
         assert!(matches!(deserialize(&bytes), Err(Error::InvalidVersion)));
+    }
+
+    #[test]
+    fn load_from_file_nonexistent() {
+        let path = std::path::Path::new("/nonexistent_devshell_path_12345");
+        let r = load_from_file(path);
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn error_from_io() {
+        let e: Error = std::io::Error::other("test").into();
+        assert!(matches!(e, Error::Io(_)));
     }
 }
