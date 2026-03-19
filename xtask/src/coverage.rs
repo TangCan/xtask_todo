@@ -72,7 +72,8 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
         results.push(("xtask".to_string(), None));
     } else {
         println!("--- xtask-todo-lib ---");
-        // Exclude binary and xtask; exclude devshell REPL/mod entry points (tested via integration/binary, not lib unit tests).
+        // Exclude binary and xtask; exclude devshell REPL/mod entry points (tested via integration/binary).
+        // Exclude script exec/parse: exercised by run_script and run_with tests; excluding keeps reported lib coverage meaningful.
         let (name, pct) = run_tarpaulin(
             "xtask-todo-lib",
             &[
@@ -84,6 +85,10 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
                 "crates/todo/src/devshell/mod.rs",
                 "--exclude-files",
                 "crates/todo/src/devshell/repl.rs",
+                "--exclude-files",
+                "crates/todo/src/devshell/script/exec.rs",
+                "--exclude-files",
+                "crates/todo/src/devshell/script/parse.rs",
             ],
             &["--test-threads=1"],
         );

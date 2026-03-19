@@ -1,6 +1,32 @@
 //! Unit tests for VFS and path normalization.
 
 use super::*;
+use std::error::Error;
+
+#[test]
+fn vfs_error_invalid_path_display_and_source() {
+    let mut vfs = Vfs::new();
+    vfs.write_file("/f", b"").unwrap();
+    let e = vfs.mkdir("/f/sub").unwrap_err();
+    assert!(e.to_string().contains("invalid"));
+    assert!(e.source().is_none());
+}
+
+#[test]
+fn vfs_error_io_display_and_source() {
+    let mut vfs = Vfs::new();
+    vfs.mkdir("/sub").unwrap();
+    vfs.write_file("/sub/f", b"x").unwrap();
+    let dir = std::env::temp_dir().join(format!("vfs_io_err_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file_as_host = dir.join("file");
+    std::fs::write(&file_as_host, b"").unwrap();
+    let e = vfs.copy_tree_to_host("/sub", &file_as_host).unwrap_err();
+    assert!(e.to_string().contains("io:") || e.to_string().contains("io error"));
+    assert!(e.source().is_some());
+    let _ = std::fs::remove_file(&file_as_host);
+    let _ = std::fs::remove_dir(&dir);
+}
 
 #[test]
 fn vfs_new_cwd_root() {

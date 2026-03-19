@@ -397,4 +397,51 @@ mod tests {
         assert!(candidates.contains(&"a".to_string()));
         assert!(candidates.contains(&"b".to_string()));
     }
+
+    #[test]
+    fn completer_complete_when_context_none_returns_empty() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let helper = DevShellHelper::new(vfs);
+        let hist = rustyline::history::MemHistory::new();
+        let ctx = Context::new(&hist);
+        let (pos, candidates) = helper.complete("pwd", 10, &ctx).unwrap();
+        assert_eq!(pos, 10);
+        assert!(candidates.is_empty());
+    }
+
+    #[test]
+    fn no_hint_display_and_completion() {
+        let h = NoHint;
+        assert_eq!(h.display(), "");
+        assert!(h.completion().is_none());
+    }
+
+    #[test]
+    fn hinter_returns_none_or_no_hint() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let helper = DevShellHelper::new(vfs);
+        let history = rustyline::history::MemHistory::new();
+        let ctx = Context::new(&history);
+        let hint = helper.hint("pwd", 4, &ctx);
+        if let Some(h) = hint {
+            assert_eq!(h.display(), "");
+        }
+    }
+
+    #[test]
+    fn highlighter_returns_borrowed() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let helper = DevShellHelper::new(vfs);
+        let out = helper.highlight("echo x", 6);
+        assert_eq!(out.as_ref(), "echo x");
+    }
 }

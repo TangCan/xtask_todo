@@ -2,7 +2,10 @@
 
 use std::io::Cursor;
 
+use super::super::command::{execute_pipeline, run_builtin, ExecContext, RunResult};
+use super::super::parser::{Pipeline, SimpleCommand};
 use super::super::run_with;
+use super::super::vfs::Vfs;
 
 #[test]
 fn run_with_pwd_mkdir_ls_exit() {
@@ -130,6 +133,66 @@ fn run_with_todo_add_and_list() {
     r.unwrap();
     let out = String::from_utf8(stdout).unwrap();
     assert!(out.contains("buy milk") || out.contains("1.") || out.contains(" $ "));
+}
+
+#[test]
+fn execute_pipeline_empty_returns_continue() {
+    let mut vfs = Vfs::new();
+    let mut stdin = Cursor::new(vec![]);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let mut ctx = ExecContext {
+        vfs: &mut vfs,
+        stdin: &mut stdin,
+        stdout: &mut stdout,
+        stderr: &mut stderr,
+    };
+    let pipeline = Pipeline { commands: vec![] };
+    let r = execute_pipeline(&mut ctx, &pipeline).unwrap();
+    assert_eq!(r, RunResult::Continue);
+}
+
+#[test]
+fn execute_pipeline_exit_returns_exit() {
+    let mut vfs = Vfs::new();
+    let mut stdin = Cursor::new(vec![]);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let mut ctx = ExecContext {
+        vfs: &mut vfs,
+        stdin: &mut stdin,
+        stdout: &mut stdout,
+        stderr: &mut stderr,
+    };
+    let pipeline = Pipeline {
+        commands: vec![SimpleCommand {
+            argv: vec!["exit".to_string()],
+            redirects: vec![],
+        }],
+    };
+    let r = execute_pipeline(&mut ctx, &pipeline).unwrap();
+    assert_eq!(r, RunResult::Exit);
+}
+
+#[test]
+fn run_builtin_pwd_covers_wrapper() {
+    let mut vfs = Vfs::new();
+    let mut stdin = Cursor::new(vec![]);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let mut ctx = ExecContext {
+        vfs: &mut vfs,
+        stdin: &mut stdin,
+        stdout: &mut stdout,
+        stderr: &mut stderr,
+    };
+    let cmd = SimpleCommand {
+        argv: vec!["pwd".to_string()],
+        redirects: vec![],
+    };
+    run_builtin(&mut ctx, &cmd).unwrap();
+    let out = String::from_utf8(stdout).unwrap();
+    assert!(out.contains('/'));
 }
 
 #[test]

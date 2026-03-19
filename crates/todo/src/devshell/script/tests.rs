@@ -8,9 +8,16 @@ use std::rc::Rc;
 
 use crate::devshell::vfs::Vfs;
 
-use super::ast::ScriptStmt;
+use super::ast::{ParseError, ScriptStmt};
 use super::exec::{expand_vars, logical_lines, run_script};
 use super::parse::parse_script;
+
+#[test]
+fn parse_error_display_and_error_trait() {
+    let e = ParseError("bad syntax".to_string());
+    assert!(e.to_string().contains("bad syntax"));
+    assert!(std::error::Error::source(&e).is_none());
+}
 
 #[test]
 fn expand_vars_empty_map() {
@@ -67,6 +74,25 @@ fn logical_lines_continuation_then_comment() {
     let got = logical_lines(src);
     assert_eq!(got.len(), 1);
     assert_eq!(got[0], "echo hello");
+}
+
+#[test]
+fn run_script_empty_command_line_succeeds() {
+    let vfs = Rc::new(RefCell::new(Vfs::new()));
+    let script = "   \n"; // logical line "  " -> Command("  ") -> after trim empty, returns Success
+    let mut stdin = Cursor::new(b"");
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_script(
+        &vfs,
+        script,
+        Path::new(""),
+        false,
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    );
+    assert!(r.is_ok());
 }
 
 #[test]
@@ -283,6 +309,31 @@ fn run_script_if_then_else() {
 }
 
 #[test]
+fn run_script_if_else_branch_runs_when_cond_fails() {
+    let vfs = Rc::new(RefCell::new(Vfs::new()));
+    let script = "if nosuchcommand_xy; then\necho then\nelse\necho else\nfi\n";
+    let mut stdin = Cursor::new(b"");
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_script(
+        &vfs,
+        script,
+        Path::new(""),
+        false,
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    );
+    assert!(r.is_ok(), "stderr: {}", String::from_utf8_lossy(&stderr));
+    let out = String::from_utf8(stdout).unwrap();
+    assert!(out.contains("else"), "stdout should contain 'else': {out}");
+    assert!(
+        !out.contains("then"),
+        "stdout should not contain 'then': {out}"
+    );
+}
+
+#[test]
 fn run_script_set_e_fail_exits() {
     let vfs = Rc::new(RefCell::new(Vfs::new()));
     // unknown command fails; with set_e script should return Err
@@ -335,6 +386,69 @@ fn run_script_set_e_script_inner() {
     let out = String::from_utf8(stdout).unwrap();
     assert!(out.contains("first") && out.contains("second"));
     assert!(!out.contains("third"));
+}
+
+#[test]
+fn run_script_command_parse_error_returns_failed() {
+    let vfs = Rc::new(RefCell::new(Vfs::new()));
+    let script = "echo >\n"; // redirect missing path -> parse error in run_command_line
+    let mut stdin = Cursor::new(b"");
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_script(
+        &vfs,
+        script,
+        Path::new(""),
+        false,
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    );
+    assert!(r.is_ok()); // script runs, the command fails but we don't have set -e
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(err.contains("parse") || err.contains("redirect") || !err.is_empty());
+}
+
+#[test]
+fn run_script_parse_error_returns_err() {
+    let vfs = Rc::new(RefCell::new(Vfs::new()));
+    let script = "if true; then\n  echo x\n"; // missing fi
+    let mut stdin = Cursor::new(b"");
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_script(
+        &vfs,
+        script,
+        Path::new(""),
+        false,
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    );
+    assert!(r.is_err());
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(err.contains("parse") || err.contains("fi") || !err.is_empty());
+}
+
+#[test]
+fn run_script_source_nonexistent_returns_err() {
+    let vfs = Rc::new(RefCell::new(Vfs::new()));
+    let script = "source /nonexistent_devshell_path_xyz_123\necho ok\n";
+    let mut stdin = Cursor::new(b"");
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_script(
+        &vfs,
+        script,
+        Path::new(""),
+        false,
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    );
+    assert!(r.is_err());
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(err.contains("source") || err.contains("cannot read") || !err.is_empty());
 }
 
 #[test]

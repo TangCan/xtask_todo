@@ -112,4 +112,11 @@ mod tests {
             RepeatRule::Weekdays
         );
     }
+
+    #[test]
+    fn from_str_invalid_returns_err() {
+        assert!("invalid".parse::<RepeatRule>().is_err());
+        assert!("".parse::<RepeatRule>().is_err());
+        assert!("custom:".parse::<RepeatRule>().is_err());
+    }
 }

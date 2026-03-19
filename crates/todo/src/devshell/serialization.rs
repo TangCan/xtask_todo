@@ -289,4 +289,15 @@ mod tests {
         let r = deserialize(&bytes);
         assert!(r.is_err(), "expected Err (Truncated or Io)");
     }
+
+    /// Truncated inside `deserialize_node`: root node tag and `name_len` read, then `child_count` read fails (Truncated or Io).
+    #[test]
+    fn deserialize_truncated_inside_node() {
+        // MAGIC + VERSION + cwd_len=0 + NODE_DIR=0 + name_len=0 (2 bytes) -> then read_u32_le needs 4 bytes, we have none
+        let bytes: Vec<u8> = [b'D', b'E', b'V', b'S', 1, 0, 0, 0, 0, 0, 0, 0]
+            .into_iter()
+            .collect();
+        let r = deserialize(&bytes);
+        assert!(r.is_err(), "expected Err (Truncated or Io)");
+    }
 }

@@ -39,6 +39,96 @@ fn run_with_todo_unknown_subcommand() {
 }
 
 #[test]
+fn run_with_todo_show_invalid_id_errors() {
+    let dir = std::env::temp_dir().join(format!("devshell_show_err_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let json_path = dir.join(".todo.json");
+    std::fs::write(&json_path, "[]").unwrap();
+    let cwd = std::env::current_dir().unwrap();
+    let _ = std::env::set_current_dir(&dir);
+    let input = "todo show 0\ntodo show x\nexit\n";
+    let mut stdin = Cursor::new(input);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    run_with(
+        &["dev_shell".to_string()],
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+    let _ = std::env::set_current_dir(&cwd);
+    let _ = std::fs::remove_file(&json_path);
+    let _ = std::fs::remove_dir(&dir);
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(err.contains("todo") || err.contains("show") || !err.is_empty());
+}
+
+#[test]
+fn run_with_todo_list_json_in_temp_dir() {
+    let dir = std::env::temp_dir().join(format!("devshell_list_json_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let json_path = dir.join(".todo.json");
+    let json = r#"[{"id":1,"title":"task","completed":false,"created_at_secs":0,"tags":[]}]"#;
+    std::fs::write(&json_path, json).unwrap();
+    let cwd = std::env::current_dir().unwrap();
+    let _ = std::env::set_current_dir(&dir);
+    let input = "todo list --json\nexit\n";
+    let mut stdin = Cursor::new(input);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    run_with(
+        &["dev_shell".to_string()],
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+    let _ = std::env::set_current_dir(&cwd);
+    let _ = std::fs::remove_file(&json_path);
+    let _ = std::fs::remove_dir(&dir);
+    let out = String::from_utf8(stdout).unwrap();
+    assert!(
+        out.contains("\"id\": 1") || out.contains("\"title\": \"task\"") || out.contains("task")
+    );
+}
+
+#[test]
+fn run_with_todo_complete_delete_nonexistent_in_temp_dir() {
+    let dir = std::env::temp_dir().join(format!("devshell_cd_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let json_path = dir.join(".todo.json");
+    std::fs::write(
+        &json_path,
+        r#"[{"id":1,"title":"only","completed":false,"created_at_secs":0,"tags":[]}]"#,
+    )
+    .unwrap();
+    let cwd = std::env::current_dir().unwrap();
+    let _ = std::env::set_current_dir(&dir);
+    let input = "todo complete 999\ntodo delete 999\nexit\n";
+    let mut stdin = Cursor::new(input);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    run_with(
+        &["dev_shell".to_string()],
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+    let _ = std::env::set_current_dir(&cwd);
+    let _ = std::fs::remove_file(&json_path);
+    let _ = std::fs::remove_dir(&dir);
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(
+        err.contains("complete")
+            || err.contains("delete")
+            || err.contains("not found")
+            || !err.is_empty()
+    );
+}
+
+#[test]
 fn run_with_todo_show_description_due() {
     let dir = std::env::temp_dir().join(format!("devshell_show_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);

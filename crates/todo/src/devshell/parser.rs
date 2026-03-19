@@ -185,6 +185,15 @@ mod tests {
         assert_eq!(p.commands[0].redirects[0].path, "out");
     }
 
+    /// Tokenize ">" with preceding token (no space) to cover tokenize single-char branch.
+    #[test]
+    fn parse_redirect_gt_after_token() {
+        let p = parse_line("a> out").unwrap();
+        assert_eq!(p.commands[0].argv, vec!["a"]);
+        assert_eq!(p.commands[0].redirects[0].fd, 1);
+        assert_eq!(p.commands[0].redirects[0].path, "out");
+    }
+
     #[test]
     fn parse_redirect_stdin() {
         let p = parse_line("cat < in").unwrap();
