@@ -2,10 +2,10 @@
 
 use std::time::{Duration, SystemTime};
 
-use crate::todo::{
-    format_duration, format_time_ago, is_old_open, load_todos, print_todo_list_items, todo_file,
-    AGE_THRESHOLD_DAYS,
+use crate::todo::format::{
+    format_duration, format_time_ago, is_old_open, print_todo_list_items, AGE_THRESHOLD_DAYS,
 };
+use crate::todo::io::{load_todos, todo_file};
 use xtask_todo_lib::{Todo, TodoId};
 
 #[test]

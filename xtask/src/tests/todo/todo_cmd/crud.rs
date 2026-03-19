@@ -1,10 +1,12 @@
 //! Basic CRUD and id-zero error tests for `cmd_todo`.
 
 use crate::tests::{cwd_test_lock, RestoreCwd};
-use crate::todo::{
-    cmd_todo, load_todos, todo_args, TodoAddArgs, TodoCompleteArgs, TodoDeleteArgs, TodoDto,
-    TodoListArgs, TodoShowArgs, TodoSub, TodoUpdateArgs,
+use crate::todo::args::{
+    todo_args, TodoAddArgs, TodoCompleteArgs, TodoDeleteArgs, TodoListArgs, TodoShowArgs, TodoSub,
+    TodoUpdateArgs,
 };
+use crate::todo::cmd_todo;
+use crate::todo::io::{load_todos, TodoDto};
 
 #[test]
 fn cmd_todo_add_list_save_load() {

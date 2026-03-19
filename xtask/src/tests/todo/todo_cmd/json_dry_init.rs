@@ -1,10 +1,12 @@
 //! JSON output, dry-run, and init-ai tests for `cmd_todo`.
 
 use crate::tests::{cwd_test_lock, RestoreCwd};
-use crate::todo::{
-    cmd_todo, load_todos, todo_args, TodoAddArgs, TodoArgs, TodoInitAiArgs, TodoListArgs,
-    TodoShowArgs, TodoSub,
+use crate::todo::args::{
+    todo_args, TodoAddArgs, TodoArgs, TodoInitAiArgs, TodoListArgs, TodoShowArgs, TodoStatsArgs,
+    TodoSub,
 };
+use crate::todo::cmd_todo;
+use crate::todo::io::load_todos;
 
 #[test]
 fn cmd_todo_add_and_list_with_json() {
@@ -127,7 +129,7 @@ fn cmd_todo_show_and_stats_with_json() {
     cmd_todo(show_cmd).unwrap();
 
     let stats_cmd = TodoArgs {
-        sub: TodoSub::Stats(crate::todo::TodoStatsArgs {}),
+        sub: TodoSub::Stats(TodoStatsArgs {}),
         json: true,
         dry_run: false,
     };

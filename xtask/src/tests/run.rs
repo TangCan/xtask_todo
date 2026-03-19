@@ -5,7 +5,9 @@ use crate::fmt::{cmd_fmt, FmtArgs};
 use crate::publish::PublishArgs;
 use crate::run::RunArgs;
 use crate::tests::{cwd_test_lock, RestoreCwd};
-use crate::todo::{todo_args, TodoArgs, TodoCompleteArgs, TodoListArgs, TodoSub};
+use crate::todo::args::{
+    todo_args, TodoArgs, TodoCompleteArgs, TodoListArgs, TodoShowArgs, TodoSub,
+};
 use crate::{run_with, XtaskCmd, XtaskSub};
 use xtask_todo_lib::{InMemoryStore, TodoId, TodoList};
 
@@ -96,7 +98,7 @@ fn run_with_todo_data_error_returns_run_failure_exit_code_3() {
     let _ = std::fs::remove_file(".todo.json");
     let cmd = XtaskCmd {
         sub: XtaskSub::Todo(TodoArgs {
-            sub: TodoSub::Show(crate::todo::TodoShowArgs { id: 99 }),
+            sub: TodoSub::Show(TodoShowArgs { id: 99 }),
             json: false,
             dry_run: false,
         }),

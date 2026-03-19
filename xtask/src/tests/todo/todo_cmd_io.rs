@@ -1,10 +1,13 @@
 //! Tests for `cmd_todo` search, stats, export/import, and save/load path.
 
 use crate::tests::{cwd_test_lock, RestoreCwd};
-use crate::todo::{
-    cmd_todo, load_todos, load_todos_from_path, save_todos_to_path, save_todos_to_path_with_format,
-    todo_args, TodoAddArgs, TodoArgs, TodoDto, TodoExportArgs, TodoImportArgs, TodoSearchArgs,
+use crate::todo::args::{
+    todo_args, TodoAddArgs, TodoArgs, TodoExportArgs, TodoImportArgs, TodoSearchArgs,
     TodoStatsArgs, TodoSub,
+};
+use crate::todo::cmd_todo;
+use crate::todo::io::{
+    load_todos, load_todos_from_path, save_todos_to_path, save_todos_to_path_with_format, TodoDto,
 };
 
 #[test]

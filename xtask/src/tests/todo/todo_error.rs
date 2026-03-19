@@ -1,6 +1,6 @@
 //! Tests for todo CLI error types.
 
-use crate::todo::{TodoCliError, EXIT_DATA, EXIT_GENERAL, EXIT_PARAMETER};
+use crate::todo::error::{TodoCliError, EXIT_DATA, EXIT_GENERAL, EXIT_PARAMETER};
 
 #[test]
 fn todo_cli_error_exit_code() {

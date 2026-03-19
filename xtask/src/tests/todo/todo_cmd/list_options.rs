@@ -1,10 +1,12 @@
 //! List filters/sort, dry-run update/complete/delete, and show-with-fields tests.
 
 use crate::tests::{cwd_test_lock, RestoreCwd};
-use crate::todo::{
-    cmd_todo, load_todos, todo_args, TodoAddArgs, TodoArgs, TodoCompleteArgs, TodoDeleteArgs,
-    TodoListArgs, TodoShowArgs, TodoSub, TodoUpdateArgs,
+use crate::todo::args::{
+    todo_args, TodoAddArgs, TodoArgs, TodoCompleteArgs, TodoDeleteArgs, TodoListArgs, TodoShowArgs,
+    TodoSub, TodoUpdateArgs,
 };
+use crate::todo::cmd_todo;
+use crate::todo::io::load_todos;
 
 #[test]
 fn cmd_todo_list_with_filters_and_sort() {
@@ -143,7 +145,7 @@ fn cmd_todo_dry_run_update_and_complete_and_delete() {
     .unwrap();
 
     let dry_update_json = TodoArgs {
-        sub: TodoSub::Update(crate::todo::TodoUpdateArgs {
+        sub: TodoSub::Update(TodoUpdateArgs {
             id: 1,
             title: "updated".to_string(),
             description: None,
@@ -161,7 +163,7 @@ fn cmd_todo_dry_run_update_and_complete_and_delete() {
     cmd_todo(dry_update_json).unwrap();
 
     let dry_update_plain = TodoArgs {
-        sub: TodoSub::Update(crate::todo::TodoUpdateArgs {
+        sub: TodoSub::Update(TodoUpdateArgs {
             id: 1,
             title: "would update".to_string(),
             description: None,
