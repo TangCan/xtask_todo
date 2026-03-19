@@ -108,6 +108,29 @@ fn run_with_todo_data_error_returns_run_failure_exit_code_3() {
 }
 
 #[test]
+fn run_with_todo_parameter_error_with_json_returns_run_failure_and_prints_json() {
+    let _guard = cwd_test_lock();
+    let dir = std::env::temp_dir().join(format!("xtask_run_todo_json_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let cwd = std::env::current_dir().unwrap();
+    let _restore = RestoreCwd::new(&dir, &cwd);
+    let _ = std::fs::remove_file(".todo.json");
+    let cmd = XtaskCmd {
+        sub: XtaskSub::Todo(TodoArgs {
+            sub: TodoSub::Complete(TodoCompleteArgs {
+                id: 0,
+                no_next: false,
+            }),
+            json: true,
+            dry_run: false,
+        }),
+    };
+    let out = run_with(cmd);
+    let err = out.unwrap_err();
+    assert_eq!(err.code, 2);
+}
+
+#[test]
 fn run_subcommand_publish_returns_err_outside_workspace() {
     let _guard = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_publish_run_{}", std::process::id()));

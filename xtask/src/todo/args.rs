@@ -18,9 +18,9 @@ pub struct TodoArgs {
 }
 
 /// Builds `TodoArgs` with `json: false`, `dry_run: false` (for tests).
+#[cfg(test)]
 #[must_use]
-#[allow(dead_code, clippy::missing_const_for_fn)]
-pub fn todo_args(sub: TodoSub) -> TodoArgs {
+pub const fn todo_args(sub: TodoSub) -> TodoArgs {
     TodoArgs {
         sub,
         json: false,

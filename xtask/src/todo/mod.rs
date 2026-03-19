@@ -7,11 +7,13 @@ mod format;
 mod init_ai;
 mod io;
 
+#[cfg(test)]
+pub use args::todo_args;
 #[allow(unused_imports)]
 pub use args::{
-    todo_args, TodoAddArgs, TodoArgs, TodoCompleteArgs, TodoDeleteArgs, TodoExportArgs,
-    TodoImportArgs, TodoInitAiArgs, TodoListArgs, TodoSearchArgs, TodoShowArgs, TodoStatsArgs,
-    TodoSub, TodoUpdateArgs,
+    TodoAddArgs, TodoArgs, TodoCompleteArgs, TodoDeleteArgs, TodoExportArgs, TodoImportArgs,
+    TodoInitAiArgs, TodoListArgs, TodoSearchArgs, TodoShowArgs, TodoStatsArgs, TodoSub,
+    TodoUpdateArgs,
 };
 pub use cmd::cmd_todo;
 #[allow(unused_imports)]
@@ -32,3 +34,13 @@ pub use io::{
     load_todos, load_todos_from_path, save_todos, save_todos_to_path,
     save_todos_to_path_with_format, todo_file, TodoDto,
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn print_json_error_wrapper_prints_valid_json() {
+        print_json_error(2, "title must be non-empty");
+    }
+}

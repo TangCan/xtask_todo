@@ -21,7 +21,6 @@ pub fn parse_coverage_percentage(line: &str) -> Option<f64> {
 }
 
 /// Run coverage for a single package, streaming stdout to the terminal and returning parsed percentage.
-#[cfg_attr(test, allow(dead_code))]
 fn run_tarpaulin(package: &str, extra_args: &[&str], test_args: &[&str]) -> (String, Option<f64>) {
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
     let mut cmd = Command::new(cargo);
