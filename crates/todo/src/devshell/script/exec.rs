@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt;
 use std::io::{BufRead, Read, Write};
 use std::path::Path;
 use std::rc::Rc;
@@ -14,55 +15,74 @@ use crate::devshell::vfs::Vfs;
 
 const MAX_SOURCE_DEPTH: u32 = 64;
 
-/// Execute a single `source` statement: read file, parse, run. Returns Ok(false) if exit requested.
-#[allow(clippy::too_many_arguments)]
-fn exec_source<R, W1, W2>(
-    vfs: &Rc<RefCell<Vfs>>,
-    path: &str,
-    vars: &mut HashMap<String, String>,
-    set_e: &mut bool,
+/// Error from script execution (parse, command failure with `set_e`, or source failure).
+#[derive(Debug)]
+pub enum RunScriptError {
+    Parse,
+    CommandFailed,
+    Source,
+}
+
+impl fmt::Display for RunScriptError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Parse => f.write_str("script parse error"),
+            Self::CommandFailed => f.write_str("script command failed"),
+            Self::Source => f.write_str("script source error"),
+        }
+    }
+}
+
+impl std::error::Error for RunScriptError {}
+
+/// Execution context for script interpretation: VFS, variables, streams, and source depth.
+struct ExecScriptContext<'a, R, W1, W2> {
+    vfs: &'a Rc<RefCell<Vfs>>,
+    vars: &'a mut HashMap<String, String>,
+    set_e: &'a mut bool,
     source_depth: u32,
-    stdin: &mut R,
-    stdout: &mut W1,
-    stderr: &mut W2,
-) -> Result<bool, ()>
+    stdin: &'a mut R,
+    stdout: &'a mut W1,
+    stderr: &'a mut W2,
+}
+
+/// Execute a single `source` statement: read file, parse, run. Returns Ok(false) if exit requested.
+fn exec_source<R, W1, W2>(
+    ctx: &mut ExecScriptContext<'_, R, W1, W2>,
+    path: &str,
+) -> Result<bool, RunScriptError>
 where
     R: BufRead + Read,
     W1: Write,
     W2: Write,
 {
-    if source_depth >= MAX_SOURCE_DEPTH {
-        let _ = writeln!(stderr, "source: max depth {MAX_SOURCE_DEPTH} exceeded");
-        return Err(());
+    if ctx.source_depth >= MAX_SOURCE_DEPTH {
+        let _ = writeln!(ctx.stderr, "source: max depth {MAX_SOURCE_DEPTH} exceeded");
+        return Err(RunScriptError::Source);
     }
-    let content = vfs
+    let content = ctx
+        .vfs
         .borrow()
         .read_file(path)
         .ok()
         .and_then(|b| String::from_utf8(b).ok())
         .or_else(|| std::fs::read_to_string(path).ok());
     let Some(content) = content else {
-        let _ = writeln!(stderr, "source: cannot read {path}");
-        return Err(());
+        let _ = writeln!(ctx.stderr, "source: cannot read {path}");
+        return Err(RunScriptError::Source);
     };
     let lines = logical_lines(&content);
     let sub = match parse_script(&lines) {
         Ok(s) => s,
         Err(e) => {
-            let _ = writeln!(stderr, "source {path}: {e}");
-            return Err(());
+            let _ = writeln!(ctx.stderr, "source {path}: {e}");
+            return Err(RunScriptError::Source);
         }
     };
-    exec_stmts(
-        vfs,
-        &sub,
-        vars,
-        set_e,
-        source_depth + 1,
-        stdin,
-        stdout,
-        stderr,
-    )
+    ctx.source_depth += 1;
+    let result = exec_stmts(ctx, &sub);
+    ctx.source_depth -= 1;
+    result
 }
 
 /// Result of running one command line: success (exit 0), failed (non-zero), or exit requested.
@@ -74,20 +94,13 @@ pub enum CmdOutcome {
 }
 
 /// Run one expanded command line; returns Success / Failed / Exit.
-fn run_command_line<R, W1, W2>(
-    vfs: &Rc<RefCell<Vfs>>,
-    line: &str,
-    vars: &HashMap<String, String>,
-    stdin: &mut R,
-    stdout: &mut W1,
-    stderr: &mut W2,
-) -> CmdOutcome
+fn run_command_line<R, W1, W2>(ctx: &mut ExecScriptContext<'_, R, W1, W2>, line: &str) -> CmdOutcome
 where
     R: BufRead + Read,
     W1: Write,
     W2: Write,
 {
-    let line = expand_vars(line, vars);
+    let line = expand_vars(line, ctx.vars);
     let line = line.trim();
     if line.is_empty() {
         return CmdOutcome::Success;
@@ -95,7 +108,7 @@ where
     let pipeline = match parser::parse_line(line) {
         Ok(p) => p,
         Err(e) => {
-            let _ = writeln!(stderr, "parse error: {e}");
+            let _ = writeln!(ctx.stderr, "parse error: {e}");
             return CmdOutcome::Failed;
         }
     };
@@ -107,35 +120,28 @@ where
     if first_argv0 == Some("exit") || first_argv0 == Some("quit") {
         return CmdOutcome::Exit;
     }
-    let mut vfs_ref = vfs.borrow_mut();
-    let mut ctx = ExecContext {
+    let mut vfs_ref = ctx.vfs.borrow_mut();
+    let mut exec_ctx = ExecContext {
         vfs: &mut vfs_ref,
-        stdin,
-        stdout,
-        stderr,
+        stdin: ctx.stdin,
+        stdout: ctx.stdout,
+        stderr: ctx.stderr,
     };
-    match execute_pipeline(&mut ctx, &pipeline) {
+    match execute_pipeline(&mut exec_ctx, &pipeline) {
         Ok(RunResult::Continue) => CmdOutcome::Success,
         Ok(RunResult::Exit) => CmdOutcome::Exit,
         Err(e) => {
-            let _ = writeln!(stderr, "error: {e:?}");
+            let _ = writeln!(ctx.stderr, "error: {e:?}");
             CmdOutcome::Failed
         }
     }
 }
 
-/// Execute a list of statements; returns Ok(false) if exit was requested, Ok(true) if done, Err(()) on `set_e` failure or source error.
-#[allow(clippy::too_many_arguments)]
+/// Execute a list of statements; returns Ok(false) if exit was requested, Ok(true) if done, Err on `set_e` failure or source error.
 fn exec_stmts<R, W1, W2>(
-    vfs: &Rc<RefCell<Vfs>>,
+    ctx: &mut ExecScriptContext<'_, R, W1, W2>,
     stmts: &[ScriptStmt],
-    vars: &mut HashMap<String, String>,
-    set_e: &mut bool,
-    source_depth: u32,
-    stdin: &mut R,
-    stdout: &mut W1,
-    stderr: &mut W2,
-) -> Result<bool, ()>
+) -> Result<bool, RunScriptError>
 where
     R: BufRead + Read,
     W1: Write,
@@ -144,14 +150,14 @@ where
     for stmt in stmts {
         match stmt {
             ScriptStmt::Assign(n, v) => {
-                vars.insert(n.clone(), v.clone());
+                ctx.vars.insert(n.clone(), v.clone());
             }
-            ScriptStmt::SetE => *set_e = true,
+            ScriptStmt::SetE => *ctx.set_e = true,
             ScriptStmt::Command(line) => {
-                let out = run_command_line(vfs, line, vars, stdin, stdout, stderr);
+                let out = run_command_line(ctx, line);
                 match out {
                     CmdOutcome::Exit => return Ok(false),
-                    CmdOutcome::Failed if *set_e => return Err(()),
+                    CmdOutcome::Failed if *ctx.set_e => return Err(RunScriptError::CommandFailed),
                     _ => {}
                 }
             }
@@ -160,23 +166,14 @@ where
                 then_body,
                 else_body,
             } => {
-                let out = run_command_line(vfs, cond, vars, stdin, stdout, stderr);
+                let out = run_command_line(ctx, cond);
                 let run_body = if out == CmdOutcome::Success {
                     then_body
                 } else {
                     else_body.as_deref().unwrap_or(&[])
                 };
                 if !run_body.is_empty() {
-                    let cont = exec_stmts(
-                        vfs,
-                        run_body,
-                        vars,
-                        set_e,
-                        source_depth,
-                        stdin,
-                        stdout,
-                        stderr,
-                    )?;
+                    let cont = exec_stmts(ctx, run_body)?;
                     if !cont {
                         return Ok(false);
                     }
@@ -184,28 +181,26 @@ where
             }
             ScriptStmt::For { var, words, body } => {
                 for w in words {
-                    let w_expanded = expand_vars(w, vars);
-                    vars.insert(var.clone(), w_expanded);
-                    let cont =
-                        exec_stmts(vfs, body, vars, set_e, source_depth, stdin, stdout, stderr)?;
+                    let w_expanded = expand_vars(w, ctx.vars);
+                    ctx.vars.insert(var.clone(), w_expanded);
+                    let cont = exec_stmts(ctx, body)?;
                     if !cont {
                         return Ok(false);
                     }
                 }
             }
             ScriptStmt::While { cond, body } => loop {
-                let out = run_command_line(vfs, cond, vars, stdin, stdout, stderr);
+                let out = run_command_line(ctx, cond);
                 if out != CmdOutcome::Success {
                     break;
                 }
-                let cont = exec_stmts(vfs, body, vars, set_e, source_depth, stdin, stdout, stderr)?;
+                let cont = exec_stmts(ctx, body)?;
                 if !cont {
                     return Ok(false);
                 }
             },
             ScriptStmt::Source(path) => {
-                let cont =
-                    exec_source(vfs, path, vars, set_e, source_depth, stdin, stdout, stderr)?;
+                let cont = exec_source(ctx, path)?;
                 if !cont {
                     return Ok(false);
                 }
@@ -297,8 +292,7 @@ pub fn logical_lines(source: &str) -> Vec<String> {
 /// Run script source: logical lines → parse to AST → interpret.
 ///
 /// # Errors
-/// Returns `Err(())` on parse error (message to stderr) or when `set_e` is true and a command fails.
-#[allow(clippy::result_unit_err)]
+/// Returns `Err(RunScriptError)` on parse error (message to stderr), when `set_e` is true and a command fails, or on source failure.
 pub fn run_script<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
     script_src: &str,
@@ -307,7 +301,7 @@ pub fn run_script<R, W1, W2>(
     stdin: &mut R,
     stdout: &mut W1,
     stderr: &mut W2,
-) -> Result<(), ()>
+) -> Result<(), RunScriptError>
 where
     R: BufRead + Read,
     W1: Write,
@@ -318,20 +312,20 @@ where
         Ok(s) => s,
         Err(e) => {
             let _ = writeln!(stderr, "script parse error: {e}");
-            return Err(());
+            return Err(RunScriptError::Parse);
         }
     };
     let mut vars = HashMap::new();
     let mut set_e_flag = set_e;
-    let _ = exec_stmts(
+    let mut ctx = ExecScriptContext {
         vfs,
-        &stmts,
-        &mut vars,
-        &mut set_e_flag,
-        0,
+        vars: &mut vars,
+        set_e: &mut set_e_flag,
+        source_depth: 0,
         stdin,
         stdout,
         stderr,
-    )?;
+    };
+    let _ = exec_stmts(&mut ctx, &stmts)?;
     Ok(())
 }

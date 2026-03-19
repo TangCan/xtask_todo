@@ -46,7 +46,9 @@ pub fn is_old_open(t: &Todo, now: SystemTime) -> bool {
 }
 
 /// Prints todo list items to stdout. Used by list subcommand and tests.
-#[allow(clippy::missing_panics_doc)]
+///
+/// # Panics
+/// May panic if writing to stdout fails (e.g. broken pipe).
 pub fn print_todo_list_items(items: &[Todo], use_color: bool) {
     let now = SystemTime::now();
     if items.is_empty() {

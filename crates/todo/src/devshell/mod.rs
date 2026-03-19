@@ -97,9 +97,9 @@ where
             }
         };
         let vfs = Rc::new(RefCell::new(vfs));
-        script::run_script(&vfs, &script_src, bin_path, set_e, stdin, stdout, stderr).map_err(
-            |()| Box::new(std::io::Error::other("script error")) as Box<dyn std::error::Error>,
-        )
+        script::run_script(&vfs, &script_src, bin_path, set_e, stdin, stdout, stderr).map_err(|e| {
+            Box::new(std::io::Error::other(e.to_string())) as Box<dyn std::error::Error>
+        })
     } else {
         let path = match positionals.as_slice() {
             [] => Path::new(".dev_shell.bin"),
