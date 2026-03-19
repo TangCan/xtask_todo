@@ -120,6 +120,18 @@ fn resolve_to_absolute_relative() {
 }
 
 #[test]
+fn resolve_to_absolute_dot_dot_from_subdir() {
+    let mut vfs = Vfs::new();
+    vfs.mkdir("/aaa").unwrap();
+    vfs.set_cwd("/aaa").unwrap();
+    assert_eq!(vfs.cwd(), "/aaa");
+    // cd .. from /aaa must resolve to /
+    assert_eq!(vfs.resolve_to_absolute(".."), "/");
+    vfs.set_cwd("..").unwrap();
+    assert_eq!(vfs.cwd(), "/");
+}
+
+#[test]
 fn normalize_path_windows_drive() {
     let out = normalize_path("C:\\foo\\bar");
     assert!(out.contains("foo"));

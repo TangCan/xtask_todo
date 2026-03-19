@@ -113,20 +113,31 @@ impl Vfs {
         Ok(current.clone())
     }
 
-    /// 将任意路径（相对或绝对）归一化并解析为绝对路径字符串
+    /// 将任意路径（相对或绝对）归一化并解析为绝对路径字符串。
+    /// 相对路径先与 cwd 拼接再归一化，这样 ".." 能正确退到上级目录。
     #[must_use]
     pub fn resolve_to_absolute(&self, path: &str) -> String {
-        let path = normalize_path(path);
-        if path.starts_with('/') && path != "/" {
-            return path;
+        let path = path.trim();
+        let path_normalized = normalize_path(path);
+        // 绝对路径：直接归一化后返回
+        if path_normalized.starts_with('/') {
+            return path_normalized;
         }
-        if path == "/" {
+        if path_normalized == "/" {
             return self.cwd.clone();
         }
+        // 相对路径：先与 cwd 拼接再归一化，避免单独 ".." 被归一成 "." 导致无法退回根目录
         let base = self.cwd.trim_end_matches('/');
         let p = path.trim_start_matches('/');
-        let result = normalize_path(&format!("{base}/{p}"));
-        if result.starts_with('/') {
+        let combined = if base.is_empty() {
+            format!("/{p}")
+        } else {
+            format!("{base}/{p}")
+        };
+        let result = normalize_path(&combined);
+        if result.is_empty() || result == "." {
+            "/".to_string()
+        } else if result.starts_with('/') {
             result
         } else {
             format!("/{result}")
