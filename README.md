@@ -29,6 +29,44 @@ cargo xtask todo delete <id>
 | `cargo xtask git pre-commit` | Run the same checks as the pre-commit hook (fmt, clippy, .rs line limit, test) without committing |
 | `cargo xtask git commit` | Commit with message "Sync" by default; use `-m "message"` for a custom message (runs pre-commit checks) |
 
+### Dev shell and scripting
+
+The **xtask-todo-lib** crate provides a small dev shell (VFS, builtins: `pwd`, `cd`, `ls`, `mkdir`, `cat`, `touch`, `echo`, `save`, `export-readonly`, `todo`, `exit`). Run the REPL:
+
+```bash
+cargo run -p xtask-todo-lib --bin cargo-devshell [path]
+```
+
+Run a **script file** (same builtins and VFS, no external commands):
+
+```bash
+cargo run -p xtask-todo-lib --bin cargo-devshell -f script.dsh
+cargo run -p xtask-todo-lib --bin cargo-devshell -e -f script.dsh   # exit on first command failure
+```
+
+In the **REPL**, you can run a script with **`source path`** or **`. path`** (file is read from VFS or host). Variables and control flow in that script are independent of the next REPL line (no shared session variables).
+
+- **`-f script.dsh`** — run the given script instead of the REPL.
+- **`-e`** — enable “exit on error” (like `set -e` from the start).
+
+**Script syntax** (logical lines; continuation with `\`; `#` comments):
+
+- **Variables**: `NAME=value` and `$VAR` / `${VAR}` expansion.
+- **Control flow**: `if command; then ... else ... fi`, `for VAR in a b c; do ... done`, `while command; do ... done`.
+- **`set -e`** — subsequent failed commands abort the script.
+- **`source path`** or **`. path`** — run another script (from VFS or host); max depth 64.
+
+Example script:
+
+```bash
+X=hello
+echo $X
+for x in one two; do echo $x; done
+if pwd; then echo ok; fi
+```
+
+Scripts only run built-in commands and use the same virtual filesystem as the REPL; they do not invoke the host shell or external programs.
+
 ## Tests
 
 ```bash

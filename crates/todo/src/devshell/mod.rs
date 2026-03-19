@@ -3,6 +3,7 @@
 pub mod command;
 pub mod completion;
 pub mod parser;
+pub mod script;
 pub mod serialization;
 pub mod todo_io;
 pub mod vfs;
@@ -63,32 +64,70 @@ where
     W1: std::io::Write,
     W2: std::io::Write,
 {
-    let path = match args {
-        [] | [_] => Path::new(".dev_shell.bin"),
-        [_, path] => Path::new(path),
-        _ => {
-            writeln!(stderr, "usage: dev_shell [path]")?;
+    let positionals: Vec<&str> = args
+        .iter()
+        .skip(1)
+        .filter(|a| *a != "-e" && *a != "-f")
+        .map(String::as_str)
+        .collect();
+    let set_e = args.iter().skip(1).any(|a| a == "-e");
+    let run_script = args.iter().skip(1).any(|a| a == "-f");
+
+    if run_script {
+        if positionals.len() != 1 {
+            writeln!(stderr, "usage: dev_shell [-e] -f script.dsh")?;
             return Err(Box::new(std::io::Error::other("usage")));
         }
-    };
-    let vfs = match serialization::load_from_file(path) {
-        Ok(v) => v,
-        Err(e) => {
-            if e.kind() == io::ErrorKind::NotFound {
-                if args.len() > 1 {
-                    let _ = writeln!(stderr, "File not found, starting with empty VFS");
-                }
-            } else {
-                let _ = writeln!(stderr, "Failed to load {}: {}", path.display(), e);
+        let script_path = positionals[0];
+        let script_src = match std::fs::read_to_string(script_path) {
+            Ok(s) => s,
+            Err(e) => {
+                writeln!(stderr, "dev_shell: {script_path}: {e}")?;
+                return Err(e.into());
             }
-            Vfs::new()
-        }
-    };
-    let vfs = Rc::new(RefCell::new(vfs));
-    repl::run(&vfs, is_tty, path, stdin, stdout, stderr).map_err(|()| {
-        Box::new(std::io::Error::other("repl error")) as Box<dyn std::error::Error>
-    })?;
-    Ok(())
+        };
+        let bin_path = Path::new(".dev_shell.bin");
+        let vfs = match serialization::load_from_file(bin_path) {
+            Ok(v) => v,
+            Err(e) => {
+                if e.kind() != io::ErrorKind::NotFound {
+                    let _ = writeln!(stderr, "Failed to load {}: {}", bin_path.display(), e);
+                }
+                Vfs::new()
+            }
+        };
+        let vfs = Rc::new(RefCell::new(vfs));
+        script::run_script(&vfs, &script_src, bin_path, set_e, stdin, stdout, stderr).map_err(
+            |()| Box::new(std::io::Error::other("script error")) as Box<dyn std::error::Error>,
+        )
+    } else {
+        let path = match positionals.as_slice() {
+            [] => Path::new(".dev_shell.bin"),
+            [p] => Path::new(p),
+            _ => {
+                writeln!(stderr, "usage: dev_shell [options] [path]")?;
+                return Err(Box::new(std::io::Error::other("usage")));
+            }
+        };
+        let vfs = match serialization::load_from_file(path) {
+            Ok(v) => v,
+            Err(e) => {
+                if e.kind() == io::ErrorKind::NotFound {
+                    if positionals.len() > 1 {
+                        let _ = writeln!(stderr, "File not found, starting with empty VFS");
+                    }
+                } else {
+                    let _ = writeln!(stderr, "Failed to load {}: {}", path.display(), e);
+                }
+                Vfs::new()
+            }
+        };
+        let vfs = Rc::new(RefCell::new(vfs));
+        repl::run(&vfs, is_tty, path, stdin, stdout, stderr).map_err(|()| {
+            Box::new(std::io::Error::other("repl error")) as Box<dyn std::error::Error>
+        })?;
+        Ok(())
+    }
 }
 
 /// Run the devshell with given args and streams (for tests).

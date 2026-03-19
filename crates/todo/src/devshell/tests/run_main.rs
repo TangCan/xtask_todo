@@ -1,4 +1,4 @@
-//! Tests for `run_main_from_args`: usage error, file not found, failed to load.
+//! Tests for `run_main_from_args`: usage error, file not found, failed to load, script mode.
 
 use std::io::Cursor;
 
@@ -44,5 +44,82 @@ fn run_main_from_args_failed_to_load() {
     let err = String::from_utf8(stderr).unwrap();
     assert!(err.contains("Failed to load"));
     let _ = std::fs::remove_file(&bad);
+    let _ = std::fs::remove_dir(&dir);
+}
+
+#[test]
+fn run_main_from_args_script_mode() {
+    let dir = std::env::temp_dir().join(format!("devshell_script_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let script = dir.join("s.dsh");
+    std::fs::write(&script, "echo hello\npwd\nexit\n").unwrap();
+    let args = vec![
+        "dev_shell".to_string(),
+        "-f".to_string(),
+        script.display().to_string(),
+    ];
+    let mut stdin = Cursor::new("");
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_main_from_args(&args, false, &mut stdin, &mut stdout, &mut stderr);
+    r.unwrap();
+    let out = String::from_utf8(stdout).unwrap();
+    assert!(
+        out.contains("hello"),
+        "stdout should contain 'hello': {out}"
+    );
+    assert!(out.contains('/'), "stdout should contain pwd output");
+    let _ = std::fs::remove_file(&script);
+    let _ = std::fs::remove_dir(&dir);
+}
+
+#[test]
+fn run_main_from_args_script_mode_set_e() {
+    let dir = std::env::temp_dir().join(format!("devshell_script_e_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let script = dir.join("s.dsh");
+    std::fs::write(&script, "echo ok\nnosuchcommand_xy\necho after\n").unwrap();
+    let args = vec![
+        "dev_shell".to_string(),
+        "-e".to_string(),
+        "-f".to_string(),
+        script.display().to_string(),
+    ];
+    let mut stdin = Cursor::new("");
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_main_from_args(&args, false, &mut stdin, &mut stdout, &mut stderr);
+    assert!(
+        r.is_err(),
+        "with -e, script should return error when command fails"
+    );
+    let out = String::from_utf8(stdout).unwrap();
+    assert!(out.contains("ok"));
+    assert!(!out.contains("after"));
+    let _ = std::fs::remove_file(&script);
+    let _ = std::fs::remove_dir(&dir);
+}
+
+#[test]
+fn run_main_from_args_repl_source() {
+    let dir = std::env::temp_dir().join(format!("devshell_repl_src_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let to_source = dir.join("repl_src.dsh");
+    std::fs::write(&to_source, "echo from_sourced\n").unwrap();
+    let bin_path = dir.join("vfs.bin");
+    let args = vec!["dev_shell".to_string(), bin_path.display().to_string()];
+    let stdin_content = format!("source {}\npwd\nexit\n", to_source.display());
+    let mut stdin = Cursor::new(stdin_content);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_main_from_args(&args, false, &mut stdin, &mut stdout, &mut stderr);
+    r.unwrap();
+    let out = String::from_utf8(stdout).unwrap();
+    assert!(
+        out.contains("from_sourced"),
+        "REPL source should run script: {out}"
+    );
+    assert!(out.contains('/'), "pwd after source");
+    let _ = std::fs::remove_file(&to_source);
     let _ = std::fs::remove_dir(&dir);
 }

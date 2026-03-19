@@ -14,6 +14,7 @@ use rustyline::Editor;
 use super::command::{execute_pipeline, ExecContext, RunResult};
 use super::completion::DevShellHelper;
 use super::parser;
+use super::script;
 use super::serialization;
 use super::vfs::Vfs;
 
@@ -25,6 +26,7 @@ pub enum StepResult {
 }
 
 /// Process one input line: parse, optionally run pipeline, return whether to exit.
+/// Handles `source path` and `. path` by reading the file (VFS or host) and running it as a script.
 /// Used by both TTY and non-TTY loops; exposed for tests.
 pub fn process_line<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
@@ -42,6 +44,53 @@ where
     if line_trimmed.is_empty() {
         return StepResult::Continue;
     }
+
+    // REPL source: "source path" or ". path" — run file as script (VFS or host)
+    if let Some(path) = line_trimmed.strip_prefix("source ") {
+        let path = path.trim();
+        if path.is_empty() {
+            let _ = writeln!(stderr, "source: missing path");
+            return StepResult::Continue;
+        }
+        let content = vfs
+            .borrow()
+            .read_file(path)
+            .ok()
+            .and_then(|b| String::from_utf8(b).ok())
+            .or_else(|| std::fs::read_to_string(path).ok());
+        match content {
+            Some(c) => {
+                let _ = script::run_script(vfs, &c, Path::new(""), false, stdin, stdout, stderr);
+            }
+            None => {
+                let _ = writeln!(stderr, "source: cannot read {path}");
+            }
+        }
+        return StepResult::Continue;
+    }
+    if let Some(path) = line_trimmed.strip_prefix(". ") {
+        let path = path.trim();
+        if path.is_empty() {
+            let _ = writeln!(stderr, ".: missing path");
+            return StepResult::Continue;
+        }
+        let content = vfs
+            .borrow()
+            .read_file(path)
+            .ok()
+            .and_then(|b| String::from_utf8(b).ok())
+            .or_else(|| std::fs::read_to_string(path).ok());
+        match content {
+            Some(c) => {
+                let _ = script::run_script(vfs, &c, Path::new(""), false, stdin, stdout, stderr);
+            }
+            None => {
+                let _ = writeln!(stderr, ".: cannot read {path}");
+            }
+        }
+        return StepResult::Continue;
+    }
+
     let pipeline = match parser::parse_line(line_trimmed) {
         Ok(p) => p,
         Err(e) => {
@@ -248,5 +297,43 @@ mod tests {
         assert_eq!(r, StepResult::Continue);
         let err = String::from_utf8(stderr).unwrap();
         assert!(err.contains("unknown command"));
+    }
+
+    #[test]
+    fn process_line_source_runs_script_from_host() {
+        let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let dir = std::env::temp_dir().join(format!("devshell_repl_source_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let script_path = dir.join("repl_sourced.dsh");
+        std::fs::write(&script_path, "echo repl_sourced\n").unwrap();
+        let line = format!("source {}", script_path.display());
+        let mut stdin = Cursor::new(b"");
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let r = process_line(&vfs, &line, &mut stdin, &mut stdout, &mut stderr);
+        assert_eq!(r, StepResult::Continue);
+        let out = String::from_utf8(stdout).unwrap();
+        assert!(out.contains("repl_sourced"), "stdout: {out}");
+        let _ = std::fs::remove_file(&script_path);
+        let _ = std::fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn process_line_dot_path_runs_script() {
+        let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let dir = std::env::temp_dir().join(format!("devshell_repl_dot_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let script_path = dir.join("dot_sourced.dsh");
+        std::fs::write(&script_path, "echo dot_ok\n").unwrap();
+        let line = format!(". {}", script_path.display());
+        let mut stdin = Cursor::new(b"");
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let r = process_line(&vfs, &line, &mut stdin, &mut stdout, &mut stderr);
+        assert_eq!(r, StepResult::Continue);
+        let out = String::from_utf8(stdout).unwrap();
+        assert!(out.contains("dot_ok"), "stdout: {out}");
+        let _ = std::fs::remove_file(&script_path);
+        let _ = std::fs::remove_dir(&dir);
     }
 }
