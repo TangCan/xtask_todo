@@ -1,4 +1,31 @@
+//! Virtual filesystem for the devshell.
+
 use std::path::Path;
+
+/// Error from VFS operations (path not found, not a directory/file, or I/O).
+#[derive(Debug)]
+pub enum VfsError {
+    InvalidPath,
+    Io(std::io::Error),
+}
+
+impl std::fmt::Display for VfsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidPath => f.write_str("invalid path"),
+            Self::Io(e) => write!(f, "io: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for VfsError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Io(e) => Some(e),
+            Self::InvalidPath => None,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Node {
@@ -70,8 +97,10 @@ impl Vfs {
     }
 
     /// Resolve an absolute path to a node. Path must be absolute (normalized). Trailing '/' is trimmed.
-    /// Returns the root for "" or "/", otherwise walks segments; Err(()) if any segment is missing.
-    pub fn resolve_absolute(&self, path: &str) -> Result<Node, ()> {
+    ///
+    /// # Errors
+    /// Returns `VfsError::InvalidPath` if any segment is missing.
+    pub fn resolve_absolute(&self, path: &str) -> Result<Node, VfsError> {
         let path = path.trim_end_matches('/');
         if path.is_empty() || path == "/" {
             return Ok(self.root.clone());
@@ -79,7 +108,7 @@ impl Vfs {
         let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
         let mut current = &self.root;
         for segment in segments {
-            current = current.child(segment).ok_or(())?;
+            current = current.child(segment).ok_or(VfsError::InvalidPath)?;
         }
         Ok(current.clone())
     }
@@ -105,8 +134,10 @@ impl Vfs {
     }
 
     /// Create directory at path (`mkdir_all` style). Creates any missing parent directories.
-    /// Returns Err(()) if any path component exists and is not a directory.
-    pub fn mkdir(&mut self, path: &str) -> Result<(), ()> {
+    ///
+    /// # Errors
+    /// Returns `VfsError::InvalidPath` if any path component exists and is not a directory.
+    pub fn mkdir(&mut self, path: &str) -> Result<(), VfsError> {
         let abs = self.resolve_to_absolute(path);
         let segments: Vec<&str> = abs.split('/').filter(|s| !s.is_empty()).collect();
         if segments.is_empty() {
@@ -120,7 +151,7 @@ impl Vfs {
                     let pos = children.iter().position(|c| c.name() == segment);
                     if let Some(i) = pos {
                         if !children[i].is_dir() {
-                            return Err(());
+                            return Err(VfsError::InvalidPath);
                         }
                         indices.push(i);
                     } else {
@@ -131,19 +162,22 @@ impl Vfs {
                         indices.push(children.len() - 1);
                     }
                 }
-                Node::File { .. } => return Err(()),
+                Node::File { .. } => return Err(VfsError::InvalidPath),
             }
         }
         Ok(())
     }
 
     /// Create or overwrite a file at path. Parent directory must exist and be a directory.
-    pub fn write_file(&mut self, path: &str, content: &[u8]) -> Result<(), ()> {
+    ///
+    /// # Errors
+    /// Returns `VfsError::InvalidPath` if parent path does not exist or a component is not a directory.
+    pub fn write_file(&mut self, path: &str, content: &[u8]) -> Result<(), VfsError> {
         let abs = self.resolve_to_absolute(path);
         let segments: Vec<&str> = abs.split('/').filter(|s| !s.is_empty()).collect();
         let (parent_segments, file_name) = match segments.split_last() {
             Some((last, rest)) => (rest, *last),
-            None => return Err(()), // path is "/" or empty
+            None => return Err(VfsError::InvalidPath), // path is "/" or empty
         };
         let mut indices: Vec<usize> = vec![];
         for segment in parent_segments {
@@ -154,14 +188,14 @@ impl Vfs {
                     match pos {
                         Some(i) => {
                             if !children[i].is_dir() {
-                                return Err(());
+                                return Err(VfsError::InvalidPath);
                             }
                             indices.push(i);
                         }
-                        None => return Err(()), // parent path does not exist
+                        None => return Err(VfsError::InvalidPath), // parent path does not exist
                     }
                 }
-                Node::File { .. } => return Err(()),
+                Node::File { .. } => return Err(VfsError::InvalidPath),
             }
         }
         let parent = Self::get_mut_at(&mut self.root, &indices);
@@ -178,40 +212,55 @@ impl Vfs {
                 }
                 Ok(())
             }
-            Node::File { .. } => Err(()),
+            Node::File { .. } => Err(VfsError::InvalidPath),
         }
     }
 
     /// Create an empty file at path (touch). Parent directory must exist.
-    pub fn touch(&mut self, path: &str) -> Result<(), ()> {
+    ///
+    /// # Errors
+    /// Same as `write_file`.
+    pub fn touch(&mut self, path: &str) -> Result<(), VfsError> {
         self.write_file(path, &[])
     }
 
-    pub fn read_file(&self, path: &str) -> Result<Vec<u8>, ()> {
+    /// Read file content at path.
+    ///
+    /// # Errors
+    /// Returns `VfsError::InvalidPath` if path does not exist or is not a file.
+    pub fn read_file(&self, path: &str) -> Result<Vec<u8>, VfsError> {
         let abs = self.resolve_to_absolute(path);
         let n = self.resolve_absolute(&abs)?;
         match n {
             Node::File { content, .. } => Ok(content),
-            Node::Dir { .. } => Err(()),
+            Node::Dir { .. } => Err(VfsError::InvalidPath),
         }
     }
 
-    pub fn list_dir(&self, path: &str) -> Result<Vec<String>, ()> {
+    /// List directory entries at path.
+    ///
+    /// # Errors
+    /// Returns `VfsError::InvalidPath` if path does not exist or is not a directory.
+    pub fn list_dir(&self, path: &str) -> Result<Vec<String>, VfsError> {
         let abs = self.resolve_to_absolute(path);
         let n = self.resolve_absolute(&abs)?;
         match n {
             Node::Dir { children, .. } => {
                 Ok(children.iter().map(|c| c.name().to_string()).collect())
             }
-            Node::File { .. } => Err(()),
+            Node::File { .. } => Err(VfsError::InvalidPath),
         }
     }
 
-    pub fn set_cwd(&mut self, path: &str) -> Result<(), ()> {
+    /// Set current working directory to path.
+    ///
+    /// # Errors
+    /// Returns `VfsError::InvalidPath` if path does not exist or is not a directory.
+    pub fn set_cwd(&mut self, path: &str) -> Result<(), VfsError> {
         let abs = self.resolve_to_absolute(path);
         let n = self.resolve_absolute(&abs)?;
         if !n.is_dir() {
-            return Err(());
+            return Err(VfsError::InvalidPath);
         }
         self.cwd = if abs == "/" { "/".to_string() } else { abs };
         Ok(())
@@ -233,8 +282,10 @@ impl Vfs {
 
     /// Recursively copy the VFS subtree at `vfs_path` to the host directory `host_dir`.
     /// For each Dir creates a directory; for each File writes file content.
-    /// Paths are safe: no ".." or other components can escape the export root.
-    pub fn copy_tree_to_host(&self, vfs_path: &str, host_dir: &Path) -> Result<(), ()> {
+    ///
+    /// # Errors
+    /// Returns `VfsError::InvalidPath` if path does not exist; `VfsError::Io` on host I/O failure.
+    pub fn copy_tree_to_host(&self, vfs_path: &str, host_dir: &Path) -> Result<(), VfsError> {
         let abs = self.resolve_to_absolute(vfs_path);
         let node = self.resolve_absolute(&abs)?;
         copy_node_to_host(&node, host_dir)
@@ -247,18 +298,18 @@ fn is_safe_component(name: &str) -> bool {
 }
 
 /// Recursively copy a VFS node to the host path. Creates dirs and writes file contents.
-fn copy_node_to_host(node: &Node, host_path: &Path) -> Result<(), ()> {
+fn copy_node_to_host(node: &Node, host_path: &Path) -> Result<(), VfsError> {
     match node {
         Node::Dir { name, children } => {
             let dir_path = if name.is_empty() {
                 host_path.to_path_buf()
             } else {
                 if !is_safe_component(name) {
-                    return Err(());
+                    return Err(VfsError::InvalidPath);
                 }
                 host_path.join(name)
             };
-            std::fs::create_dir_all(&dir_path).map_err(|_| ())?;
+            std::fs::create_dir_all(&dir_path).map_err(VfsError::Io)?;
             for child in children {
                 copy_node_to_host(child, &dir_path)?;
             }
@@ -266,10 +317,10 @@ fn copy_node_to_host(node: &Node, host_path: &Path) -> Result<(), ()> {
         }
         Node::File { name, content } => {
             if !is_safe_component(name) {
-                return Err(());
+                return Err(VfsError::InvalidPath);
             }
             let file_path = host_path.join(name);
-            std::fs::write(&file_path, content).map_err(|_| ())?;
+            std::fs::write(&file_path, content).map_err(VfsError::Io)?;
             Ok(())
         }
     }
@@ -313,158 +364,4 @@ pub fn normalize_path(input: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn vfs_new_cwd_root() {
-        let vfs = Vfs::new();
-        assert_eq!(vfs.cwd(), "/");
-    }
-
-    #[test]
-    fn vfs_mkdir_and_list() {
-        let mut vfs = Vfs::new();
-        vfs.mkdir("/foo").unwrap();
-        vfs.mkdir("/foo/bar").unwrap();
-        assert_eq!(vfs.list_dir("/").unwrap(), vec!["foo"]);
-        assert_eq!(vfs.list_dir("/foo").unwrap(), vec!["bar"]);
-    }
-
-    #[test]
-    fn vfs_write_and_read_file() {
-        let mut vfs = Vfs::new();
-        vfs.mkdir("/dir").unwrap();
-        vfs.write_file("/dir/f", b"hello").unwrap();
-        assert_eq!(vfs.read_file("/dir/f").unwrap(), b"hello");
-    }
-
-    #[test]
-    fn vfs_set_cwd() {
-        let mut vfs = Vfs::new();
-        vfs.mkdir("/a").unwrap();
-        vfs.set_cwd("/a").unwrap();
-        assert_eq!(vfs.cwd(), "/a");
-    }
-
-    #[test]
-    fn vfs_touch() {
-        let mut vfs = Vfs::new();
-        vfs.mkdir("/d").unwrap();
-        vfs.touch("/d/empty").unwrap();
-        assert_eq!(vfs.read_file("/d/empty").unwrap(), b"");
-    }
-
-    #[test]
-    fn normalize_path_dot_dot() {
-        assert_eq!(normalize_path("/a/b/.."), "/a");
-        assert_eq!(normalize_path("a/../b"), "b");
-    }
-
-    #[test]
-    fn vfs_copy_tree_to_host() {
-        let mut vfs = Vfs::new();
-        vfs.mkdir("/sub").unwrap();
-        vfs.write_file("/sub/f.txt", b"data").unwrap();
-        let dir = std::env::temp_dir().join(format!("vfs_export_{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        vfs.copy_tree_to_host("/sub", &dir).unwrap();
-        let sub_dir = dir.join("sub");
-        let content = std::fs::read(sub_dir.join("f.txt")).unwrap();
-        assert_eq!(content, b"data");
-        let _ = std::fs::remove_file(sub_dir.join("f.txt"));
-        let _ = std::fs::remove_dir(sub_dir);
-        let _ = std::fs::remove_dir(dir);
-    }
-
-    #[test]
-    fn node_methods() {
-        let dir = Node::Dir {
-            name: "d".into(),
-            children: vec![Node::File {
-                name: "f".into(),
-                content: vec![1, 2, 3],
-            }],
-        };
-        assert_eq!(dir.name(), "d");
-        assert!(dir.is_dir());
-        assert!(!dir.is_file());
-        let f = dir.child("f").unwrap();
-        assert_eq!(f.name(), "f");
-        assert!(f.is_file());
-        assert!(!f.is_dir());
-        assert!(dir.child("x").is_none());
-        assert!(f.child("x").is_none());
-    }
-
-    #[test]
-    fn resolve_to_absolute_relative() {
-        let mut vfs = Vfs::new();
-        vfs.mkdir("/a").unwrap();
-        vfs.set_cwd("/a").unwrap();
-        let abs = vfs.resolve_to_absolute("b");
-        assert!(abs.contains('a'));
-        assert!(abs.ends_with('b') || abs.contains('b'));
-    }
-
-    #[test]
-    fn normalize_path_windows_drive() {
-        let out = normalize_path("C:\\foo\\bar");
-        assert!(out.contains("foo"));
-        assert!(out.contains("bar"));
-        assert!(out.starts_with('/') || out == "foo/bar");
-    }
-
-    #[test]
-    fn mkdir_when_component_is_file_returns_err() {
-        let mut vfs = Vfs::new();
-        vfs.write_file("/f", b"").unwrap();
-        assert!(vfs.mkdir("/f/sub").is_err());
-    }
-
-    #[test]
-    fn write_file_when_parent_is_file_returns_err() {
-        let mut vfs = Vfs::new();
-        vfs.write_file("/f", b"").unwrap();
-        assert!(vfs.write_file("/f/child", b"x").is_err());
-    }
-
-    #[test]
-    fn write_file_when_parent_does_not_exist_returns_err() {
-        let mut vfs = Vfs::new();
-        vfs.mkdir("/d").unwrap();
-        assert!(vfs.write_file("/d/nonexistent/sub", b"x").is_err());
-    }
-
-    #[test]
-    fn write_file_overwrite_existing() {
-        let mut vfs = Vfs::new();
-        vfs.mkdir("/d").unwrap();
-        vfs.write_file("/d/f", b"first").unwrap();
-        vfs.write_file("/d/f", b"second").unwrap();
-        assert_eq!(vfs.read_file("/d/f").unwrap(), b"second");
-    }
-
-    #[test]
-    fn read_file_on_dir_errors() {
-        let mut vfs = Vfs::new();
-        vfs.mkdir("/d").unwrap();
-        assert!(vfs.read_file("/d").is_err());
-    }
-
-    #[test]
-    fn list_dir_on_file_errors() {
-        let mut vfs = Vfs::new();
-        vfs.mkdir("/d").unwrap();
-        vfs.write_file("/d/f", b"x").unwrap();
-        assert!(vfs.list_dir("/d/f").is_err());
-    }
-
-    #[test]
-    fn set_cwd_to_file_errors() {
-        let mut vfs = Vfs::new();
-        vfs.mkdir("/d").unwrap();
-        vfs.write_file("/d/f", b"x").unwrap();
-        assert!(vfs.set_cwd("/d/f").is_err());
-    }
-}
+mod tests;

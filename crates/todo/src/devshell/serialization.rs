@@ -82,9 +82,13 @@ fn serialize_node(w: &mut impl Write, node: &Node) -> std::io::Result<()> {
         Node::Dir { name, children } => {
             w.write_all(&[NODE_DIR])?;
             let name_bytes = name.as_bytes();
-            write_u16_le(w, name_bytes.len() as u16)?;
+            let len_u16 = u16::try_from(name_bytes.len())
+                .map_err(|_| std::io::Error::other("name len overflow"))?;
+            write_u16_le(w, len_u16)?;
             w.write_all(name_bytes)?;
-            write_u32_le(w, children.len() as u32)?;
+            let len_u32 = u32::try_from(children.len())
+                .map_err(|_| std::io::Error::other("children len overflow"))?;
+            write_u32_le(w, len_u32)?;
             for child in children {
                 serialize_node(w, child)?;
             }
@@ -92,7 +96,9 @@ fn serialize_node(w: &mut impl Write, node: &Node) -> std::io::Result<()> {
         Node::File { name, content } => {
             w.write_all(&[NODE_FILE])?;
             let name_bytes = name.as_bytes();
-            write_u16_le(w, name_bytes.len() as u16)?;
+            let len_u16 = u16::try_from(name_bytes.len())
+                .map_err(|_| std::io::Error::other("name len overflow"))?;
+            write_u16_le(w, len_u16)?;
             w.write_all(name_bytes)?;
             write_u64_le(w, content.len() as u64)?;
             w.write_all(content)?;
@@ -118,7 +124,8 @@ fn deserialize_node(r: &mut impl Read) -> Result<Node, Error> {
     match tag[0] {
         NODE_DIR => {
             let child_count = read_u32_le(r)?;
-            let mut children = Vec::with_capacity(child_count as usize);
+            let n = usize::try_from(child_count).map_err(|_| Error::Truncated)?;
+            let mut children = Vec::with_capacity(n);
             for _ in 0..child_count {
                 children.push(deserialize_node(r)?);
             }
@@ -126,7 +133,8 @@ fn deserialize_node(r: &mut impl Read) -> Result<Node, Error> {
         }
         NODE_FILE => {
             let content_len = read_u64_le(r)?;
-            let mut content = vec![0u8; content_len as usize];
+            let n = usize::try_from(content_len).map_err(|_| Error::Truncated)?;
+            let mut content = vec![0u8; n];
             r.read_exact(&mut content)?;
             Ok(Node::File { name, content })
         }
@@ -135,18 +143,26 @@ fn deserialize_node(r: &mut impl Read) -> Result<Node, Error> {
 }
 
 /// Serialize VFS to .bin format: DEVS magic + version 1 + cwd + root node tree.
+///
+/// # Errors
+/// Returns `Error::Io` on write failure or if cwd/name/children length overflows the wire format.
 pub fn serialize(vfs: &Vfs) -> Result<Vec<u8>, Error> {
     let mut out = Vec::new();
     out.write_all(MAGIC)?;
     out.write_all(&[VERSION])?;
     let cwd = vfs.cwd().as_bytes();
-    write_u32_le(&mut out, cwd.len() as u32)?;
+    let cwd_len = u32::try_from(cwd.len())
+        .map_err(|_| Error::Io(std::io::Error::other("cwd len overflow")))?;
+    write_u32_le(&mut out, cwd_len)?;
     out.write_all(cwd)?;
     serialize_node(&mut out, vfs.root())?;
     Ok(out)
 }
 
 /// Deserialize VFS from .bin format.
+///
+/// # Errors
+/// Returns `Error` on invalid magic/version, truncated data, or invalid UTF-8.
 pub fn deserialize(bytes: &[u8]) -> Result<Vfs, Error> {
     let mut r = Cursor::new(bytes);
     let mut magic = [0u8; 4];
@@ -160,7 +176,8 @@ pub fn deserialize(bytes: &[u8]) -> Result<Vfs, Error> {
         return Err(Error::InvalidVersion);
     }
     let cwd_len = read_u32_le(&mut r)?;
-    let mut cwd_buf = vec![0u8; cwd_len as usize];
+    let cwd_len_usize = usize::try_from(cwd_len).map_err(|_| Error::Truncated)?;
+    let mut cwd_buf = vec![0u8; cwd_len_usize];
     r.read_exact(&mut cwd_buf)?;
     let cwd = String::from_utf8(cwd_buf).map_err(Error::InvalidUtf8)?;
     let root = deserialize_node(&mut r)?;
@@ -168,12 +185,18 @@ pub fn deserialize(bytes: &[u8]) -> Result<Vfs, Error> {
 }
 
 /// Save VFS to a .bin file.
+///
+/// # Errors
+/// Returns I/O error on serialize or write failure.
 pub fn save_to_file(vfs: &Vfs, path: &std::path::Path) -> std::io::Result<()> {
     let bytes = serialize(vfs).map_err(std::io::Error::other)?;
     std::fs::write(path, bytes)
 }
 
 /// Load VFS from a .bin file.
+///
+/// # Errors
+/// Returns I/O error on read failure or invalid/corrupt .bin data.
 pub fn load_from_file(path: &std::path::Path) -> std::io::Result<Vfs> {
     let bytes = std::fs::read(path)?;
     deserialize(&bytes).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))

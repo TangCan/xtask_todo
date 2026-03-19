@@ -31,6 +31,9 @@ pub struct TodoDto {
 }
 
 /// Path to `.todo.json` in the current directory.
+///
+/// # Errors
+/// Returns error if `current_dir()` fails.
 pub fn todo_file() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let cwd = std::env::current_dir()?;
     Ok(cwd.join(".todo.json"))
@@ -68,6 +71,9 @@ fn dto_to_todo(d: TodoDto) -> Option<Todo> {
 }
 
 /// Load todos from `.todo.json` in the current directory.
+///
+/// # Errors
+/// Returns error on I/O or invalid JSON (invalid entries are skipped).
 pub fn load_todos() -> Result<Vec<Todo>, Box<dyn std::error::Error>> {
     let path = todo_file()?;
     if !path.exists() {
@@ -86,6 +92,9 @@ pub fn list_from_todos(todos: Vec<Todo>) -> TodoList<InMemoryStore> {
 }
 
 /// Save todos to `.todo.json` in the current directory.
+///
+/// # Errors
+/// Returns error on I/O or serialization failure.
 pub fn save_todos(list: &TodoList<InMemoryStore>) -> Result<(), Box<dyn std::error::Error>> {
     let path = todo_file()?;
     let dtos: Vec<TodoDto> = list

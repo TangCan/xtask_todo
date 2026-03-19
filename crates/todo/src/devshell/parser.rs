@@ -88,7 +88,7 @@ fn split_by_pipe(tokens: Vec<String>) -> Vec<Vec<String>> {
 }
 
 /// Parse one command's tokens into `SimpleCommand` (argv + redirects).
-fn parse_simple_command(tokens: Vec<String>) -> Result<SimpleCommand, ParseError> {
+fn parse_simple_command(tokens: &[String]) -> Result<SimpleCommand, ParseError> {
     let mut argv = Vec::new();
     let mut redirects = Vec::new();
     let mut i = 0;
@@ -103,7 +103,6 @@ fn parse_simple_command(tokens: Vec<String>) -> Result<SimpleCommand, ParseError
                 fd: 1,
                 path: path.clone(),
             });
-            i += 1;
         } else if t == "2>" {
             i += 1;
             let path = tokens
@@ -113,7 +112,6 @@ fn parse_simple_command(tokens: Vec<String>) -> Result<SimpleCommand, ParseError
                 fd: 2,
                 path: path.clone(),
             });
-            i += 1;
         } else if t == "<" {
             i += 1;
             let path = tokens
@@ -123,21 +121,24 @@ fn parse_simple_command(tokens: Vec<String>) -> Result<SimpleCommand, ParseError
                 fd: 0,
                 path: path.clone(),
             });
-            i += 1;
         } else {
             argv.push(t.clone());
-            i += 1;
         }
+        i += 1;
     }
     Ok(SimpleCommand { argv, redirects })
 }
 
+/// Parse a single line into a pipeline of commands (split by `|`) with redirects.
+///
+/// # Errors
+/// Returns `ParseError` if a redirect is missing its path.
 pub fn parse_line(line: &str) -> Result<Pipeline, ParseError> {
     let tokens = tokenize(line.trim());
     let command_tokens_list = split_by_pipe(tokens);
     let mut commands = Vec::new();
     for ct in command_tokens_list {
-        commands.push(parse_simple_command(ct)?);
+        commands.push(parse_simple_command(&ct)?);
     }
     Ok(Pipeline { commands })
 }

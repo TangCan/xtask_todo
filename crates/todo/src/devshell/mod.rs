@@ -1,17 +1,4 @@
 //! Devshell REPL and VFS: same logic as the `cargo-devshell` binary, exposed so tests can cover it.
-#![allow(
-    dead_code,
-    clippy::missing_errors_doc,
-    clippy::missing_panics_doc,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_lines,
-    clippy::result_unit_err,
-    clippy::cast_possible_truncation,
-    clippy::branches_sharing_code,
-    clippy::needless_pass_by_value,
-    clippy::match_wildcard_for_single_variants,
-    clippy::map_identity
-)]
 
 pub mod command;
 pub mod completion;
@@ -28,6 +15,24 @@ use std::path::Path;
 use std::rc::Rc;
 
 use vfs::Vfs;
+
+/// Error from `run_with` (usage or REPL failure).
+#[derive(Debug)]
+pub enum RunWithError {
+    Usage,
+    ReplFailed,
+}
+
+impl std::fmt::Display for RunWithError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Usage => f.write_str("usage error"),
+            Self::ReplFailed => f.write_str("repl failed"),
+        }
+    }
+}
+
+impl std::error::Error for RunWithError {}
 
 /// Run the devshell using process args and standard I/O (for the binary).
 ///
@@ -87,12 +92,15 @@ where
 }
 
 /// Run the devshell with given args and streams (for tests).
+///
+/// # Errors
+/// Returns `RunWithError::Usage` on invalid args; `RunWithError::ReplFailed` if the REPL exits with error.
 pub fn run_with<R, W1, W2>(
     args: &[String],
     stdin: &mut R,
     stdout: &mut W1,
     stderr: &mut W2,
-) -> Result<(), ()>
+) -> Result<(), RunWithError>
 where
     R: std::io::BufRead + std::io::Read,
     W1: std::io::Write,
@@ -103,12 +111,12 @@ where
         [_, path] => Path::new(path),
         _ => {
             let _ = writeln!(stderr, "usage: dev_shell [path]");
-            return Err(());
+            return Err(RunWithError::Usage);
         }
     };
     let vfs = serialization::load_from_file(path).unwrap_or_default();
     let vfs = Rc::new(RefCell::new(vfs));
-    repl::run(&vfs, false, path, stdin, stdout, stderr)
+    repl::run(&vfs, false, path, stdin, stdout, stderr).map_err(|()| RunWithError::ReplFailed)
 }
 
 #[cfg(test)]
