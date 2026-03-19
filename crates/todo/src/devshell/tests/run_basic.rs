@@ -110,17 +110,24 @@ fn run_with_todo_list_and_stats() {
 
 #[test]
 fn run_with_todo_add_and_list() {
+    let dir = std::env::temp_dir().join(format!("devshell_todo_add_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _ = std::env::set_current_dir(&dir);
     let input = "todo add buy milk\ntodo list\nexit\n";
     let mut stdin = Cursor::new(input);
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
-    run_with(
+    let r = run_with(
         &["dev_shell".to_string()],
         &mut stdin,
         &mut stdout,
         &mut stderr,
-    )
-    .unwrap();
+    );
+    let _ = std::env::set_current_dir(&cwd);
+    let _ = std::fs::remove_file(dir.join(".todo.json"));
+    let _ = std::fs::remove_dir(&dir);
+    r.unwrap();
     let out = String::from_utf8(stdout).unwrap();
     assert!(out.contains("buy milk") || out.contains("1.") || out.contains(" $ "));
 }
