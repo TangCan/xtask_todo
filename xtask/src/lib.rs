@@ -4,6 +4,7 @@ mod clean;
 mod clippy;
 mod coverage;
 mod fmt;
+mod gh;
 mod git;
 mod publish;
 mod run;
@@ -19,6 +20,7 @@ use clean::CleanArgs;
 use clippy::ClippyArgs;
 use coverage::CoverageArgs;
 use fmt::FmtArgs;
+use gh::GhArgs;
 use git::GitArgs;
 use publish::PublishArgs;
 use run::RunArgs;
@@ -53,6 +55,7 @@ pub fn run_with(cmd: XtaskCmd) -> Result<(), RunFailure> {
         XtaskSub::Clippy(args) => clippy::cmd_clippy(args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Coverage(args) => coverage::cmd_coverage(args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Fmt(args) => fmt::cmd_fmt(args).map_err(|e| to_run_failure(&*e)),
+        XtaskSub::Gh(args) => gh::cmd_gh(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Git(args) => git::cmd_git(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Publish(args) => publish::cmd_publish(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Todo(args) => todo::cmd_todo(args).map_err(|e| RunFailure {
@@ -84,6 +87,7 @@ pub enum XtaskSub {
     Clippy(ClippyArgs),
     Coverage(CoverageArgs),
     Fmt(FmtArgs),
+    Gh(GhArgs),
     Git(GitArgs),
     Publish(PublishArgs),
     Todo(TodoArgs),
