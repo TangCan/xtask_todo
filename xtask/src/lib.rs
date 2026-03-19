@@ -1,5 +1,6 @@
 //! xtask library - logic for custom cargo tasks (testable).
 
+mod clean;
 mod clippy;
 mod coverage;
 mod fmt;
@@ -14,6 +15,7 @@ mod tests;
 use argh::FromArgs;
 
 use crate::todo::TodoArgs;
+use clean::CleanArgs;
 use clippy::ClippyArgs;
 use coverage::CoverageArgs;
 use fmt::FmtArgs;
@@ -47,6 +49,7 @@ pub fn run_with(cmd: XtaskCmd) -> Result<(), RunFailure> {
             run::cmd_run(args);
             Ok(())
         }
+        XtaskSub::Clean(args) => clean::cmd_clean(args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Clippy(args) => clippy::cmd_clippy(args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Coverage(args) => coverage::cmd_coverage(args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Fmt(args) => fmt::cmd_fmt(args).map_err(|e| to_run_failure(&*e)),
@@ -77,6 +80,7 @@ pub struct XtaskCmd {
 #[argh(subcommand)]
 pub enum XtaskSub {
     Run(RunArgs),
+    Clean(CleanArgs),
     Clippy(ClippyArgs),
     Coverage(CoverageArgs),
     Fmt(FmtArgs),
