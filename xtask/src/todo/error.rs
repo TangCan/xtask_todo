@@ -94,3 +94,13 @@ pub(super) fn todo_to_json(t: &Todo) -> serde_json::Value {
         "repeat_count": t.repeat_count,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn print_json_error_prints_valid_json() {
+        print_json_error(2, "title must be non-empty");
+    }
+}

@@ -343,3 +343,30 @@ pub fn save_todos(list: &TodoList<InMemoryStore>) -> Result<(), Box<dyn std::err
     std::fs::write(path, s)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Covers id 0 skip and valid id 1 row in `load_todos_from_csv` (12 columns: ... `repeat_rule`, `repeat_until`, `repeat_count`).
+    #[test]
+    fn load_todos_from_csv_id_zero_skipped_and_valid_row() {
+        let csv = "id,title,completed,created_at_secs,completed_at_secs,description,due_date,priority,tags,repeat_rule,repeat_until,repeat_count\n\
+0,skip,false,0,0,,,low,,,,0\n\
+1,ok,false,0,0,,,low,,,,0\n";
+        let todos = load_todos_from_csv(csv);
+        assert_eq!(todos.len(), 1, "expected 1 todo");
+        assert_eq!(todos[0].title, "ok");
+    }
+
+    /// Covers `unwrap_or_else`: a row that fails to deserialize (non-numeric id) yields default `CsvRow` (id 0) and is skipped.
+    #[test]
+    fn load_todos_from_csv_deserialize_error_skipped() {
+        let csv = "id,title,completed,created_at_secs,completed_at_secs,description,due_date,priority,tags,repeat_rule,repeat_until,repeat_count\n\
+x,bad,false,0,0,,,low,,,,0\n\
+1,ok,false,0,0,,,low,,,,0\n";
+        let todos = load_todos_from_csv(csv);
+        assert_eq!(todos.len(), 1);
+        assert_eq!(todos[0].title, "ok");
+    }
+}

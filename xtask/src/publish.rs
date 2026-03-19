@@ -197,6 +197,23 @@ edition = "2021"
         let _ = std::fs::remove_dir_all(dir);
     }
 
+    /// Replacement fails when the version value has inner spaces so the exact replace string isn't in the file.
+    #[test]
+    fn bump_version_in_cargo_toml_replacement_failed_err() {
+        let dir =
+            std::env::temp_dir().join(format!("xtask_publish_test_norepl_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(dir.join("crates/todo"));
+        // Parser yields version "0.1.2" from rest[..end].trim(), so we replace "version = \"0.1.2\"" which isn't in the file.
+        std::fs::write(
+            dir.join("crates/todo/Cargo.toml"),
+            "[package]\nname = \"x\"\nversion = \"  0.1.2  \"\n",
+        )
+        .unwrap();
+        let err = bump_version_in_cargo_toml(&dir).unwrap_err();
+        assert!(err.to_string().contains("version replacement failed"));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
     #[test]
     fn cmd_publish_fails_when_crate_cargo_missing() {
         let dir = std::env::temp_dir().join(format!("xtask_publish_cmd_{}", std::process::id()));

@@ -1,6 +1,8 @@
 //! Unit tests for xtask commands.
 
+mod clean;
 mod clippy;
+mod gh;
 mod git;
 mod run;
 mod todo;

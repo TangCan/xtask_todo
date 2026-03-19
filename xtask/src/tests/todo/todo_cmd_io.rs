@@ -258,3 +258,21 @@ fn save_todos_to_path_with_format_csv() {
     assert_eq!(loaded[0].title, "one");
     assert_eq!(loaded[1].title, "two");
 }
+
+#[test]
+fn load_todos_from_path_csv_id_zero_skipped() {
+    let _lock = cwd_test_lock();
+    let dir = std::env::temp_dir().join(format!("xtask_todo_csv_bad_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let cwd = std::env::current_dir().unwrap();
+    let _restore = RestoreCwd::new(&dir, &cwd);
+    let path = dir.join("data.csv");
+    // 12 columns; id 0 row skipped, id 1 row kept (covers load_todos_from_path -> load_todos_from_csv path).
+    let csv = "id,title,completed,created_at_secs,completed_at_secs,description,due_date,priority,tags,repeat_rule,repeat_until,repeat_count\n\
+0,skip,false,0,0,,,low,,,,0\n\
+1,ok,false,0,0,,,low,,,,0\n";
+    std::fs::write(&path, csv).unwrap();
+    let loaded = load_todos_from_path(&path).unwrap();
+    assert_eq!(loaded.len(), 1);
+    assert_eq!(loaded[0].title, "ok");
+}
