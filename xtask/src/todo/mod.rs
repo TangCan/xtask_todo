@@ -16,6 +16,11 @@ pub use args::{
 pub use cmd::cmd_todo;
 #[allow(unused_imports)]
 pub use error::{TodoCliError, EXIT_DATA, EXIT_GENERAL, EXIT_PARAMETER};
+
+/// Prints JSON error to stdout (for `--json` when `cmd_todo` fails). Used by the xtask runner.
+pub fn print_json_error(code: i32, message: &str) {
+    error::print_json_error(code, message);
+}
 #[allow(unused_imports)]
 pub use format::{
     format_duration, format_time_ago, is_old_open, print_todo_list_items, AGE_THRESHOLD_DAYS,

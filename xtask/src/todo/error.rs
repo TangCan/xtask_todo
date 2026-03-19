@@ -3,7 +3,6 @@
 use xtask_todo_lib::Todo;
 
 /// Exit codes: 0 success, 1 general, 2 parameter, 3 data (e.g. not found).
-#[allow(dead_code)]
 pub const EXIT_GENERAL: i32 = 1;
 pub const EXIT_PARAMETER: i32 = 2;
 pub const EXIT_DATA: i32 = 3;
@@ -45,15 +44,13 @@ pub struct TodoJsonSuccess<T> {
     pub data: T,
 }
 
-/// Unified JSON error payload (for future use: error output with --json).
-#[allow(dead_code)]
+/// Unified JSON error payload (error output with `--json`).
 #[derive(serde::Serialize)]
 pub struct TodoJsonError {
     pub status: &'static str,
     pub error: TodoJsonErrorBody,
 }
 
-#[allow(dead_code)]
 #[derive(serde::Serialize)]
 pub struct TodoJsonErrorBody {
     pub code: i32,
@@ -68,7 +65,7 @@ pub(super) fn print_json_success<T: serde::Serialize>(data: &T) {
     println!("{}", serde_json::to_string(&out).expect("serialize"));
 }
 
-#[allow(dead_code)]
+/// Print JSON error to stdout (used when `cmd_todo` fails with `--json`).
 pub(super) fn print_json_error(code: i32, message: &str) {
     let out = TodoJsonError {
         status: "error",

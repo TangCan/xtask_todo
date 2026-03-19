@@ -58,10 +58,21 @@ pub fn run_with(cmd: XtaskCmd) -> Result<(), RunFailure> {
         XtaskSub::Gh(args) => gh::cmd_gh(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Git(args) => git::cmd_git(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Publish(args) => publish::cmd_publish(&args).map_err(|e| to_run_failure(&*e)),
-        XtaskSub::Todo(args) => todo::cmd_todo(args).map_err(|e| RunFailure {
-            code: e.exit_code(),
-            message: e.to_string(),
-        }),
+        XtaskSub::Todo(args) => {
+            let json = args.json;
+            match todo::cmd_todo(args) {
+                Ok(()) => Ok(()),
+                Err(e) => {
+                    if json {
+                        todo::print_json_error(e.exit_code(), &e.to_string());
+                    }
+                    Err(RunFailure {
+                        code: e.exit_code(),
+                        message: e.to_string(),
+                    })
+                }
+            }
+        }
     }
 }
 
