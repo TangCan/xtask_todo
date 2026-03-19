@@ -111,6 +111,40 @@ fn run_with_todo_complete_nonexistent_errors() {
 }
 
 #[test]
+fn run_with_todo_update_nonexistent_errors() {
+    let input = "todo update 999 newtitle\nexit\n";
+    let mut stdin = Cursor::new(input);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    run_with(
+        &["dev_shell".to_string()],
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(err.contains("update") || err.contains("todo") || err.contains("not found"));
+}
+
+#[test]
+fn run_with_todo_delete_nonexistent_errors() {
+    let input = "todo delete 999\nexit\n";
+    let mut stdin = Cursor::new(input);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    run_with(
+        &["dev_shell".to_string()],
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(err.contains("delete") || err.contains("todo") || err.contains("not found"));
+}
+
+#[test]
 fn run_with_todo_search_output() {
     let dir = std::env::temp_dir().join(format!("devshell_srch_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);

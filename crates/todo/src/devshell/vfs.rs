@@ -416,6 +416,27 @@ mod tests {
     }
 
     #[test]
+    fn mkdir_when_component_is_file_returns_err() {
+        let mut vfs = Vfs::new();
+        vfs.write_file("/f", b"").unwrap();
+        assert!(vfs.mkdir("/f/sub").is_err());
+    }
+
+    #[test]
+    fn write_file_when_parent_is_file_returns_err() {
+        let mut vfs = Vfs::new();
+        vfs.write_file("/f", b"").unwrap();
+        assert!(vfs.write_file("/f/child", b"x").is_err());
+    }
+
+    #[test]
+    fn write_file_when_parent_does_not_exist_returns_err() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/d").unwrap();
+        assert!(vfs.write_file("/d/nonexistent/sub", b"x").is_err());
+    }
+
+    #[test]
     fn write_file_overwrite_existing() {
         let mut vfs = Vfs::new();
         vfs.mkdir("/d").unwrap();

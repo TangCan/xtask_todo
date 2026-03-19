@@ -104,4 +104,12 @@ mod tests {
         assert_eq!("2d".parse::<RepeatRule>().unwrap(), RepeatRule::Custom(2));
         assert_eq!("3w".parse::<RepeatRule>().unwrap(), RepeatRule::Custom(21));
     }
+
+    #[test]
+    fn from_str_weekdays() {
+        assert_eq!(
+            "weekdays".parse::<RepeatRule>().unwrap(),
+            RepeatRule::Weekdays
+        );
+    }
 }

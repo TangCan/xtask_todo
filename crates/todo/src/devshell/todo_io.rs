@@ -123,13 +123,22 @@ mod tests {
 
     #[test]
     fn load_todos_when_file_missing_returns_empty() {
-        let dir = std::env::temp_dir().join(format!("todo_io_nojson_{}", std::process::id()));
-        let _ = std::fs::create_dir_all(&dir);
+        let dir = std::env::temp_dir().join(format!(
+            "todo_io_nojson_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let todo_json = dir.join(".todo.json");
+        let _ = std::fs::remove_file(&todo_json);
         let cwd = std::env::current_dir().unwrap();
-        let _ = std::env::set_current_dir(&dir);
+        std::env::set_current_dir(&dir).unwrap();
         let result = load_todos();
-        let _ = std::env::set_current_dir(&cwd);
-        let _ = std::fs::remove_dir(&dir);
+        std::env::set_current_dir(&cwd).unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
         let todos = result.unwrap();
         assert!(todos.is_empty());
     }

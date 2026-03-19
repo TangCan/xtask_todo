@@ -1,16 +1,1 @@
-[
-  {
-    "id": 2,
-    "title": "buy milk",
-    "completed": false,
-    "created_at_secs": 1773893607,
-    "completed_at_secs": null,
-    "description": null,
-    "due_date": null,
-    "priority": null,
-    "tags": [],
-    "repeat_rule": null,
-    "repeat_until": null,
-    "repeat_count": null
-  }
-]
+[]

@@ -344,6 +344,23 @@ mod tests {
     }
 
     #[test]
+    fn completion_context_with_2_redirect() {
+        let ctx = completion_context("echo x 2> ", 10).unwrap();
+        assert_eq!(ctx.kind, CompletionKind::Path);
+    }
+
+    #[test]
+    fn completion_context_trailing_space_after_command() {
+        let ctx = completion_context("pwd ", 4).unwrap();
+        assert_eq!(ctx.prefix, "");
+    }
+
+    #[test]
+    fn completion_context_pos_past_line_len_returns_none() {
+        assert!(completion_context("pwd", 10).is_none());
+    }
+
+    #[test]
     fn complete_path_with_prefix() {
         let names = vec!["foo".into(), "bar".into(), "food".into()];
         let c = complete_path("fo", &names);

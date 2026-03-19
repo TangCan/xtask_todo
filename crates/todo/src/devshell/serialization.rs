@@ -258,4 +258,12 @@ mod tests {
         let e: Error = std::io::Error::other("test").into();
         assert!(matches!(e, Error::Io(_)));
     }
+
+    /// Truncated data after header: no byte for root node tag; `deserialize_node` `read_exact` fails (Truncated or Io).
+    #[test]
+    fn deserialize_truncated_after_cwd() {
+        let bytes = vec![b'D', b'E', b'V', b'S', 1, 0, 0, 0, 1, b'/']; // MAGIC + VERSION + cwd_len=1 + cwd="/"
+        let r = deserialize(&bytes);
+        assert!(r.is_err(), "expected Err (Truncated or Io)");
+    }
 }
