@@ -14,11 +14,13 @@ use rustyline::Helper;
 
 use super::vfs::Vfs;
 
-/// 当前输入位置是命令名还是路径（用于选择补全源）
+/// 当前输入位置是命令名、路径，或不需要补全（用于选择补全源）
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompletionKind {
     Command,
     Path,
+    /// 前一 token 不是管道也不是路径型参数，不提供补全
+    Other,
 }
 
 /// 从 (line, pos) 解析出的补全上下文：当前词的前缀，以及是命令还是路径
@@ -125,7 +127,7 @@ pub fn complete_path(prefix: &str, parent_names: &[String]) -> Vec<String> {
         .collect()
 }
 
-#[allow(dead_code)]
+/// Tokens after which the next word is completed as a path (command args or redirect target).
 const PATH_TRIGGER_TOKENS: &[&str] = &[
     "cd",
     "ls",
@@ -134,6 +136,8 @@ const PATH_TRIGGER_TOKENS: &[&str] = &[
     "touch",
     "export-readonly",
     "export_readonly",
+    "source",
+    ".",
     ">",
     "2>",
     "<",
@@ -205,8 +209,10 @@ pub fn completion_context(line: &str, pos: usize) -> Option<CompletionContext> {
         let prev = tokens.get(idx.wrapping_sub(1)).map(|(t, _)| t.as_str());
         if prev == Some("|") {
             CompletionKind::Command
-        } else {
+        } else if prev.is_some_and(|p| PATH_TRIGGER_TOKENS.contains(&p)) {
             CompletionKind::Path
+        } else {
+            CompletionKind::Other
         }
     };
 
@@ -258,6 +264,7 @@ impl Completer for DevShellHelper {
         };
         let candidates = match ctx.kind {
             CompletionKind::Command => complete_commands(&ctx.prefix),
+            CompletionKind::Other => vec![],
             CompletionKind::Path => {
                 let parent = if ctx.prefix.contains('/') {
                     let idx = ctx.prefix.rfind('/').unwrap();

@@ -6,26 +6,6 @@ use crate::git::{cmd_git, GitAddArgs, GitArgs, GitCommitArgs, GitSub};
 use crate::tests::{cwd_test_lock, dir_outside_cwd, RestoreCwd};
 use crate::{run_with, XtaskCmd, XtaskSub};
 
-/// Sets `GIT_DIR` to the given path for the duration of the guard; restores the previous value on drop.
-#[allow(dead_code)]
-struct GitDirGuard(Option<std::ffi::OsString>);
-impl GitDirGuard {
-    #[allow(dead_code)]
-    fn new(git_dir: &std::path::Path) -> Self {
-        let prev = std::env::var_os("GIT_DIR");
-        std::env::set_var("GIT_DIR", git_dir);
-        Self(prev)
-    }
-}
-impl Drop for GitDirGuard {
-    fn drop(&mut self) {
-        match &self.0 {
-            Some(v) => std::env::set_var("GIT_DIR", v),
-            None => std::env::remove_var("GIT_DIR"),
-        }
-    }
-}
-
 /// Sets `GIT_DIR` and `GIT_WORK_TREE` so git uses only the given repo; restores both on drop.
 struct GitRepoGuard {
     prev_dir: Option<std::ffi::OsString>,
