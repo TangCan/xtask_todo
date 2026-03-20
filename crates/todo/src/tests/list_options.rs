@@ -293,6 +293,29 @@ fn list_with_options_filter_due_before_after() {
     assert_eq!(after[0].title, "late");
 }
 
+/// `due_after` excludes todos whose due date is strictly before the cutoff (`due < d` branch).
+#[test]
+fn list_with_options_due_after_excludes_todos_before_cutoff() {
+    let todos = vec![
+        make_todo(1, "before", false, Some("2025-05-01"), None, vec![]),
+        make_todo(2, "on_cutoff", false, Some("2025-07-01"), None, vec![]),
+        make_todo(3, "after", false, Some("2025-08-01"), None, vec![]),
+    ];
+    let list = TodoList::with_store(InMemoryStore::from_todos(todos));
+    let filtered = list.list_with_options(&ListOptions {
+        filter: Some(ListFilter {
+            due_after: Some("2025-07-01".into()),
+            ..ListFilter::default()
+        }),
+        sort: ListSort::CreatedAt,
+    });
+    assert_eq!(filtered.len(), 2);
+    let titles: Vec<_> = filtered.iter().map(|t| t.title.as_str()).collect();
+    assert!(titles.contains(&"on_cutoff"));
+    assert!(titles.contains(&"after"));
+    assert!(!titles.contains(&"before"));
+}
+
 #[test]
 fn list_with_options_sort_due_date_priority_title() {
     let created = SystemTime::now();

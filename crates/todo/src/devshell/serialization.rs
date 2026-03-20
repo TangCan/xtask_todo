@@ -300,4 +300,25 @@ mod tests {
         let r = deserialize(&bytes);
         assert!(r.is_err(), "expected Err (Truncated or Io)");
     }
+
+    /// First byte of a node: EOF maps to `Error::Truncated` (covers `UnexpectedEof` branch in `deserialize_node`).
+    #[test]
+    fn deserialize_node_tag_unexpected_eof_is_truncated() {
+        let mut r = Cursor::new(&[]);
+        let e = deserialize_node(&mut r).unwrap_err();
+        assert!(matches!(e, Error::Truncated));
+    }
+
+    /// Non-EOF I/O errors from reading the node tag map to `Error::Io`.
+    #[test]
+    fn deserialize_node_tag_other_io_error_is_io() {
+        struct FailRead;
+        impl std::io::Read for FailRead {
+            fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+                Err(std::io::Error::other("injected read failure"))
+            }
+        }
+        let e = deserialize_node(&mut FailRead).unwrap_err();
+        assert!(matches!(e, Error::Io(_)));
+    }
 }

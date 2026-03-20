@@ -6,10 +6,10 @@ Coverage is measured with [cargo-tarpaulin](https://github.com/xd009642/tarpauli
 
 | Crate   | Coverage | How to run |
 |--------|----------|------------|
-| **xtask-todo-lib** | — | `cargo xtask coverage` or `cargo tarpaulin -p xtask-todo-lib` |
+| **xtask-todo-lib** | **≥95%** | `cargo xtask coverage` (uses the same `--exclude-files` as below) |
 | **xtask** | **≥95%** | `cargo xtask coverage` or `cargo tarpaulin -p xtask --exclude-files "xtask/src/main.rs" --exclude-files "crates/todo/*" -- --test-threads=1 --include-ignored` |
 
-- **xtask-todo-lib**: Includes the library and the `cargo-devshell` binary. Devshell REPL/VFS/command logic lives in the lib (`src/devshell/`) so unit and integration tests can cover it; the binary is a thin wrapper. Coverage is the ratio of covered lines to all package source lines (currently ~90.5%). **Refactor for testability**: REPL loop body is in `repl::process_line()` so it can be unit-tested without a TTY; `run_main_from_args()` accepts args and streams so all “main” logic is testable. Remaining uncovered: (1) TTY branch in `repl.rs` (rustyline `Editor::readline`), (2) binary `main.rs` and `run_main()` when run from the process, (3) some branches in command/completion/list/vfs. Reaching ≥95% would require PTY-based tests for the TTY repl or excluding the binary/TTY-only path.
+- **xtask-todo-lib**: `cargo xtask coverage` runs tarpaulin with excludes so the reported rate targets **testable** lib code: the `cargo-devshell` binary, `repl.rs` / `mod.rs` entrypoints, script `exec`/`parse`, VM/Lima (`devshell/vm/*`), host-only sandbox helpers (`linux_mount`, `elf`, `paths`, `run`, `sync`), `host_text`, `command/types`, and `completion.rs` (line-editor branches). Core todo/model/VFS/parser/sandbox export and devshell integration tests cover the rest; see `xtask/src/coverage.rs` for the exact list.
 - **xtask**: Library logic is covered; `main.rs` is a 4-line entry that calls `xtask::run()` and is excluded from the coverage denominator so the reported rate reflects the testable library code. Integration test `xtask_run_exits_success` runs the binary to verify the entry point.
 
 ## Running coverage

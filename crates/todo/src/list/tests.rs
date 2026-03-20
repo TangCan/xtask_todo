@@ -2,6 +2,7 @@
 
 use std::time::SystemTime;
 
+use crate::error::TodoError;
 use crate::model::{ListFilter, ListOptions, ListSort, Todo, TodoPatch};
 use crate::store::InMemoryStore;
 use crate::{RepeatRule, TodoId, TodoList};
@@ -232,6 +233,33 @@ fn update_repeat_count_and_search_empty_returns_all() {
     assert_eq!(empty_search.len(), 2);
     let whitespace_search = list.search("   ");
     assert_eq!(whitespace_search.len(), 2);
+}
+
+#[test]
+fn update_title_whitespace_only_returns_invalid_input() {
+    let mut list = TodoList::new();
+    let id = list.create("ok").unwrap();
+    let err = list.update_title(id, "   ").unwrap_err();
+    assert!(matches!(err, TodoError::InvalidInput));
+}
+
+#[test]
+fn complete_repeat_count_zero_does_not_create_next() {
+    let mut list = TodoList::new();
+    let id = list.create("repeat me").unwrap();
+    list.update(
+        id,
+        TodoPatch {
+            due_date: Some("2026-01-01".into()),
+            repeat_rule: Some(RepeatRule::Daily),
+            repeat_count: Some(0),
+            ..TodoPatch::default()
+        },
+    )
+    .unwrap();
+    list.complete(id, false).unwrap();
+    assert_eq!(list.list().len(), 1);
+    assert!(list.get(id).unwrap().completed);
 }
 
 #[test]
