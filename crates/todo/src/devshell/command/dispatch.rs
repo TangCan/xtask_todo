@@ -9,12 +9,14 @@ use super::super::parser::{Pipeline, SimpleCommand};
 use super::super::sandbox;
 use super::super::serialization;
 use super::super::vfs::Vfs;
+use super::super::vm::VmError;
 use super::todo_builtin::run_todo_cmd;
 use super::types::{BuiltinError, ExecContext, RunResult};
 
 /// Run a single command with given streams. Redirects override the provided stdin/stdout/stderr.
 fn run_builtin_with_streams(
     vfs: &mut Vfs,
+    vm_session: &mut super::super::vm::SessionHolder,
     default_stdin: &mut dyn Read,
     default_stdout: &mut dyn Write,
     default_stderr: &mut dyn Write,
@@ -59,7 +61,7 @@ fn run_builtin_with_streams(
         .as_mut()
         .map_or(default_stderr, |v| v as &mut dyn Write);
 
-    let result = run_builtin_core(vfs, stdin, stdout, stderr, argv);
+    let result = run_builtin_core(vfs, vm_session, stdin, stdout, stderr, argv);
 
     if let Some(path) = stdout_redirect_path {
         if let Some(buf) = &stdout_override {
@@ -83,7 +85,14 @@ fn run_builtin_with_streams(
 /// # Errors
 /// Returns `BuiltinError` on redirect or builtin execution failure.
 pub fn run_builtin(ctx: &mut ExecContext<'_>, cmd: &SimpleCommand) -> Result<(), BuiltinError> {
-    run_builtin_with_streams(ctx.vfs, ctx.stdin, ctx.stdout, ctx.stderr, cmd)
+    run_builtin_with_streams(
+        ctx.vfs,
+        ctx.vm_session,
+        ctx.stdin,
+        ctx.stdout,
+        ctx.stderr,
+        cmd,
+    )
 }
 
 /// Execute a pipeline: run each command with stdin from previous stage (or `ctx.stdin` for first),
@@ -133,7 +142,7 @@ pub fn execute_pipeline(
             &mut next_buffer
         };
 
-        run_builtin_with_streams(ctx.vfs, stdin, stdout, ctx.stderr, cmd)?;
+        run_builtin_with_streams(ctx.vfs, ctx.vm_session, stdin, stdout, ctx.stderr, cmd)?;
 
         if !is_last {
             prev_output = Some(next_buffer);
@@ -193,7 +202,8 @@ fn run_builtin_export_readonly(
     stdout: &mut dyn Write,
     path: &str,
 ) -> Result<(), BuiltinError> {
-    let temp_base = std::env::temp_dir();
+    let temp_base = sandbox::devshell_export_parent_dir();
+    std::fs::create_dir_all(&temp_base).map_err(|_| BuiltinError::ExportFailed)?;
     let subdir_name = format!(
         "dev_shell_export_{}_{}",
         std::process::id(),
@@ -214,22 +224,25 @@ fn run_builtin_export_readonly(
 
 fn run_rust_tool_builtin(
     vfs: &mut Vfs,
+    vm_session: &mut super::super::vm::SessionHolder,
     stderr: &mut dyn Write,
     program: &str,
     argv: &[String],
 ) -> Result<(), BuiltinError> {
     let tool_args: Vec<String> = argv.get(1..).unwrap_or_default().to_vec();
     let cwd = vfs.cwd().to_string();
-    match sandbox::run_rust_tool(vfs, &cwd, program, &tool_args) {
+    match vm_session.run_rust_tool(vfs, &cwd, program, &tool_args) {
         Ok(status) => {
             if status.success() {
                 Ok(())
             } else {
-                let _ = writeln!(stderr, "{program} exited with {status}");
-                Err(BuiltinError::SandboxExportFailed)
+                Err(BuiltinError::RustToolNonZeroExit {
+                    program: program.to_string(),
+                    code: status.code(),
+                })
             }
         }
-        Err(sandbox::SandboxError::ExportFailed(e)) => {
+        Err(VmError::Sandbox(sandbox::SandboxError::ExportFailed(e))) => {
             let _ = writeln!(stderr, "{program}: {e}");
             if e.kind() == std::io::ErrorKind::NotFound {
                 Err(if program == "rustup" {
@@ -241,19 +254,32 @@ fn run_rust_tool_builtin(
                 Err(BuiltinError::SandboxExportFailed)
             }
         }
-        Err(sandbox::SandboxError::CopyFailed(_)) => {
+        Err(VmError::Sandbox(sandbox::SandboxError::CopyFailed(_))) => {
             let _ = writeln!(stderr, "{program}: export failed");
             Err(BuiltinError::SandboxExportFailed)
         }
-        Err(sandbox::SandboxError::SyncBackFailed(e)) => {
+        Err(VmError::Sandbox(sandbox::SandboxError::SyncBackFailed(e))) => {
             let _ = writeln!(stderr, "{program}: sync back failed: {e}");
             Err(BuiltinError::SandboxSyncFailed)
+        }
+        Err(VmError::Sync(e)) => {
+            let _ = writeln!(stderr, "{program}: {e}");
+            Err(BuiltinError::VmWorkspaceSyncFailed)
+        }
+        Err(VmError::BackendNotImplemented(msg)) => {
+            let _ = writeln!(stderr, "{program}: {msg}");
+            Err(BuiltinError::VmSessionError(msg.to_string()))
+        }
+        Err(VmError::Lima(msg) | VmError::Ipc(msg)) => {
+            let _ = writeln!(stderr, "{program}: {msg}");
+            Err(BuiltinError::VmSessionError(msg))
         }
     }
 }
 
 fn run_builtin_core(
     vfs: &mut Vfs,
+    vm_session: &mut super::super::vm::SessionHolder,
     stdin: &mut dyn Read,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
@@ -317,8 +343,8 @@ fn run_builtin_core(
             Ok(())
         }
         "todo" => run_todo_cmd(stdout, stderr, argv),
-        "rustup" => run_rust_tool_builtin(vfs, stderr, "rustup", argv),
-        "cargo" => run_rust_tool_builtin(vfs, stderr, "cargo", argv),
+        "rustup" => run_rust_tool_builtin(vfs, vm_session, stderr, "rustup", argv),
+        "cargo" => run_rust_tool_builtin(vfs, vm_session, stderr, "cargo", argv),
         "help" => run_builtin_help(stdout),
         _ => {
             writeln!(stderr, "unknown command: {name}").map_err(|_| BuiltinError::RedirectWrite)?;

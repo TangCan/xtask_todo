@@ -10,8 +10,10 @@ use std::rc::Rc;
 use super::ast::ScriptStmt;
 use super::parse::parse_script;
 use crate::devshell::command::{execute_pipeline, ExecContext, RunResult};
+use crate::devshell::host_text;
 use crate::devshell::parser;
 use crate::devshell::vfs::Vfs;
+use crate::devshell::vm::SessionHolder;
 
 const MAX_SOURCE_DEPTH: u32 = 64;
 
@@ -38,6 +40,7 @@ impl std::error::Error for RunScriptError {}
 /// Execution context for script interpretation: VFS, variables, streams, and source depth.
 struct ExecScriptContext<'a, R, W1, W2> {
     vfs: &'a Rc<RefCell<Vfs>>,
+    vm_session: Rc<RefCell<SessionHolder>>,
     vars: &'a mut HashMap<String, String>,
     set_e: &'a mut bool,
     source_depth: u32,
@@ -65,8 +68,8 @@ where
         .borrow()
         .read_file(path)
         .ok()
-        .and_then(|b| String::from_utf8(b).ok())
-        .or_else(|| std::fs::read_to_string(path).ok());
+        .and_then(|b| host_text::script_text_from_vfs_bytes(&b))
+        .or_else(|| host_text::read_host_text(Path::new(path)).ok());
     let Some(content) = content else {
         let _ = writeln!(ctx.stderr, "source: cannot read {path}");
         return Err(RunScriptError::Source);
@@ -121,17 +124,19 @@ where
         return CmdOutcome::Exit;
     }
     let mut vfs_ref = ctx.vfs.borrow_mut();
+    let mut sess_ref = ctx.vm_session.borrow_mut();
     let mut exec_ctx = ExecContext {
         vfs: &mut vfs_ref,
         stdin: ctx.stdin,
         stdout: ctx.stdout,
         stderr: ctx.stderr,
+        vm_session: &mut sess_ref,
     };
     match execute_pipeline(&mut exec_ctx, &pipeline) {
         Ok(RunResult::Continue) => CmdOutcome::Success,
         Ok(RunResult::Exit) => CmdOutcome::Exit,
         Err(e) => {
-            let _ = writeln!(ctx.stderr, "error: {e:?}");
+            let _ = writeln!(ctx.stderr, "error: {e}");
             CmdOutcome::Failed
         }
     }
@@ -293,8 +298,10 @@ pub fn logical_lines(source: &str) -> Vec<String> {
 ///
 /// # Errors
 /// Returns `Err(RunScriptError)` on parse error (message to stderr), when `set_e` is true and a command fails, or on source failure.
+#[allow(clippy::too_many_arguments)] // vfs + vm session + script I/O surface
 pub fn run_script<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
+    vm_session: &Rc<RefCell<SessionHolder>>,
     script_src: &str,
     _bin_path: &Path,
     set_e: bool,
@@ -319,6 +326,7 @@ where
     let mut set_e_flag = set_e;
     let mut ctx = ExecScriptContext {
         vfs,
+        vm_session: Rc::clone(vm_session),
         vars: &mut vars,
         set_e: &mut set_e_flag,
         source_depth: 0,
@@ -326,6 +334,14 @@ where
         stdout,
         stderr,
     };
-    let _ = exec_stmts(&mut ctx, &stmts)?;
+    let result = exec_stmts(&mut ctx, &stmts);
+    let cwd = vfs.borrow().cwd().to_string();
+    {
+        let mut vfs_mut = vfs.borrow_mut();
+        if let Err(e) = vm_session.borrow_mut().shutdown(&mut vfs_mut, &cwd) {
+            let _ = writeln!(stderr, "dev_shell: session shutdown: {e}");
+        }
+    }
+    result?;
     Ok(())
 }

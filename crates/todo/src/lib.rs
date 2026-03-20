@@ -12,9 +12,6 @@ mod priority;
 mod repeat;
 mod store;
 
-#[cfg(test)]
-mod tests;
-
 pub use error::TodoError;
 pub use id::TodoId;
 pub use list::TodoList;
@@ -22,3 +19,19 @@ pub use model::{ListFilter, ListOptions, ListSort, Todo, TodoPatch};
 pub use priority::Priority;
 pub use repeat::RepeatRule;
 pub use store::{InMemoryStore, Store};
+
+#[cfg(test)]
+mod tests;
+
+/// Serialize tests that use `std::env::set_current_dir` (process-global).
+#[cfg(test)]
+pub(crate) mod test_support {
+    use std::sync::{Mutex, OnceLock, PoisonError};
+
+    pub fn cwd_mutex() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+}

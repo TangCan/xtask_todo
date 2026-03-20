@@ -176,7 +176,7 @@
 | `save [path]` | 将 VFS 保存到 bin。 |
 | `export-readonly [path]` | 将 VFS 子树导出到宿主临时目录（只读用途）。 |
 | `todo …` | **子集**：`list`、`add`、`show`、`update`、`complete`、`delete`、`search`、`stats`（无 `export` / `import` / `init-ai`）；与 `cargo xtask todo` 共用 **`.todo.json`** 约定。 |
-| `rustup [args…]` / `cargo [args…]` | 在沙箱中运行宿主工具：导出当前 cwd 对应 VFS 子树到临时目录、执行命令、同步回 VFS、删除临时目录；需可执行文件在 PATH 中。 |
+| `rustup [args…]` / `cargo [args…]` | 导出 cwd 对应 VFS 子树 → 在宿主临时目录中执行 `PATH` 内的 `rustup`/`cargo` → 同步回 VFS → 删除临时目录。**不得**内建调用 `podman`/`docker` 等 OCI 运行时。Linux 可选 `DEVSHELL_RUST_MOUNT_NAMESPACE`（独立 mount namespace，libc）；详见 [dev-container.md](./dev-container.md)。**Unix γ（`cargo devshell` 默认）：** 未设置 `DEVSHELL_VM` 时视为开启 VM；未设置 `DEVSHELL_VM_BACKEND` 时 Unix 默认为 `lima`，经 Lima 在 VM 内执行；`DEVSHELL_VM=off` 或 `DEVSHELL_VM_BACKEND=host`/`auto` 回退宿主 sandbox。工作区挂载见 [devshell-vm-gamma.md](./devshell-vm-gamma.md)。 |
 | `exit` / `quit` | 结束 REPL。 |
 | `help` | 列出内置命令说明。 |
 
@@ -207,6 +207,7 @@
 ### 6.8 设计与扩展
 
 - Rust 沙箱隔离的进一步设计见：`docs/superpowers/specs/2026-03-20-devshell-rust-vm-design.md` 及对应实现计划（可选更强隔离后端等）。
+- 会话级 microVM（γ Lima + β 侧车）见：`docs/superpowers/specs/2026-03-11-devshell-microvm-session-design.md`、IPC 草案 `docs/superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md`；侧车占位 crate **`crates/devshell-vm`**（`cargo run -p devshell-vm`）。
 
 **US-D1**：开发者可通过 devshell 在隔离 VFS 中演练文件操作与脚本。  
 **US-D2**：开发者可在 VFS 内使用宿主 `rustup`/`cargo` 并看到产物写回 VFS（在 PATH 满足前提下）。

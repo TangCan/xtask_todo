@@ -2,12 +2,14 @@
 
 pub mod command;
 pub mod completion;
+pub mod host_text;
 pub mod parser;
 pub mod sandbox;
 pub mod script;
 pub mod serialization;
 pub mod todo_io;
 pub mod vfs;
+pub mod vm;
 
 mod repl;
 
@@ -80,7 +82,7 @@ where
             return Err(Box::new(std::io::Error::other("usage")));
         }
         let script_path = positionals[0];
-        let script_src = match std::fs::read_to_string(script_path) {
+        let script_src = match host_text::read_host_text(Path::new(script_path)) {
             Ok(s) => s,
             Err(e) => {
                 writeln!(stderr, "dev_shell: {script_path}: {e}")?;
@@ -98,9 +100,20 @@ where
             }
         };
         let vfs = Rc::new(RefCell::new(vfs));
-        script::run_script(&vfs, &script_src, bin_path, set_e, stdin, stdout, stderr).map_err(|e| {
-            Box::new(std::io::Error::other(e.to_string())) as Box<dyn std::error::Error>
-        })
+        let Ok(vm_session) = vm::try_session_rc(stderr) else {
+            return Err(Box::new(std::io::Error::other("vm session")));
+        };
+        script::run_script(
+            &vfs,
+            &vm_session,
+            &script_src,
+            bin_path,
+            set_e,
+            stdin,
+            stdout,
+            stderr,
+        )
+        .map_err(|e| Box::new(std::io::Error::other(e.to_string())) as Box<dyn std::error::Error>)
     } else {
         let path = match positionals.as_slice() {
             [] => Path::new(".dev_shell.bin"),
@@ -124,7 +137,10 @@ where
             }
         };
         let vfs = Rc::new(RefCell::new(vfs));
-        repl::run(&vfs, is_tty, path, stdin, stdout, stderr).map_err(|()| {
+        let Ok(vm_session) = vm::try_session_rc(stderr) else {
+            return Err(Box::new(std::io::Error::other("vm session")));
+        };
+        repl::run(&vfs, &vm_session, is_tty, path, stdin, stdout, stderr).map_err(|()| {
             Box::new(std::io::Error::other("repl error")) as Box<dyn std::error::Error>
         })?;
         Ok(())
@@ -156,7 +172,9 @@ where
     };
     let vfs = serialization::load_from_file(path).unwrap_or_default();
     let vfs = Rc::new(RefCell::new(vfs));
-    repl::run(&vfs, false, path, stdin, stdout, stderr).map_err(|()| RunWithError::ReplFailed)
+    let vm_session = vm::try_session_rc(stderr).map_err(|()| RunWithError::ReplFailed)?;
+    repl::run(&vfs, &vm_session, false, path, stdin, stdout, stderr)
+        .map_err(|()| RunWithError::ReplFailed)
 }
 
 #[cfg(test)]

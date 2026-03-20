@@ -15,10 +15,12 @@ use rustyline::{CompletionType, Editor};
 
 use super::command::{execute_pipeline, ExecContext, RunResult};
 use super::completion::DevShellHelper;
+use super::host_text;
 use super::parser;
 use super::script;
 use super::serialization;
 use super::vfs::Vfs;
+use super::vm::SessionHolder;
 
 /// Result of processing one REPL line: continue the loop or exit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,6 +34,7 @@ pub enum StepResult {
 /// Used by both TTY and non-TTY loops; exposed for tests.
 pub fn process_line<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
+    vm_session: &Rc<RefCell<SessionHolder>>,
     line: &str,
     stdin: &mut R,
     stdout: &mut W1,
@@ -58,11 +61,20 @@ where
             .borrow()
             .read_file(path)
             .ok()
-            .and_then(|b| String::from_utf8(b).ok())
-            .or_else(|| std::fs::read_to_string(path).ok());
+            .and_then(|b| host_text::script_text_from_vfs_bytes(&b))
+            .or_else(|| host_text::read_host_text(Path::new(path)).ok());
         match content {
             Some(c) => {
-                let _ = script::run_script(vfs, &c, Path::new(""), false, stdin, stdout, stderr);
+                let _ = script::run_script(
+                    vfs,
+                    vm_session,
+                    &c,
+                    Path::new(""),
+                    false,
+                    stdin,
+                    stdout,
+                    stderr,
+                );
             }
             None => {
                 let _ = writeln!(stderr, "source: cannot read {path}");
@@ -80,11 +92,20 @@ where
             .borrow()
             .read_file(path)
             .ok()
-            .and_then(|b| String::from_utf8(b).ok())
-            .or_else(|| std::fs::read_to_string(path).ok());
+            .and_then(|b| host_text::script_text_from_vfs_bytes(&b))
+            .or_else(|| host_text::read_host_text(Path::new(path)).ok());
         match content {
             Some(c) => {
-                let _ = script::run_script(vfs, &c, Path::new(""), false, stdin, stdout, stderr);
+                let _ = script::run_script(
+                    vfs,
+                    vm_session,
+                    &c,
+                    Path::new(""),
+                    false,
+                    stdin,
+                    stdout,
+                    stderr,
+                );
             }
             None => {
                 let _ = writeln!(stderr, ".: cannot read {path}");
@@ -109,17 +130,19 @@ where
         return StepResult::Exit;
     }
     let mut vfs_ref = vfs.borrow_mut();
+    let mut sess_ref = vm_session.borrow_mut();
     let mut ctx = ExecContext {
         vfs: &mut vfs_ref,
         stdin,
         stdout,
         stderr,
+        vm_session: &mut sess_ref,
     };
     match execute_pipeline(&mut ctx, &pipeline) {
         Ok(RunResult::Exit) => StepResult::Exit,
         Ok(RunResult::Continue) => StepResult::Continue,
         Err(e) => {
-            let _ = writeln!(stderr, "error: {e:?}");
+            let _ = writeln!(stderr, "error: {e}");
             StepResult::Continue
         }
     }
@@ -132,6 +155,7 @@ where
 /// On exit, the VFS is automatically saved to `bin_path`.
 pub fn run<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
+    vm_session: &Rc<RefCell<SessionHolder>>,
     is_tty: bool,
     bin_path: &Path,
     stdin: &mut R,
@@ -144,13 +168,25 @@ where
     W2: Write,
 {
     if is_tty {
-        run_tty(vfs, bin_path, stdin, stdout, stderr)
+        run_tty(vfs, vm_session, bin_path, stdin, stdout, stderr)
     } else {
-        run_readline(vfs, bin_path, stdin, stdout, stderr)
+        run_readline(vfs, vm_session, bin_path, stdin, stdout, stderr)
     }
 }
 
-fn save_on_exit<W2: Write>(vfs: &Rc<RefCell<Vfs>>, bin_path: &Path, stderr: &mut W2) {
+fn save_on_exit<W2: Write>(
+    vfs: &Rc<RefCell<Vfs>>,
+    vm_session: &Rc<RefCell<SessionHolder>>,
+    bin_path: &Path,
+    stderr: &mut W2,
+) {
+    let cwd = vfs.borrow().cwd().to_string();
+    {
+        let mut vfs_mut = vfs.borrow_mut();
+        if let Err(e) = vm_session.borrow_mut().shutdown(&mut vfs_mut, &cwd) {
+            let _ = writeln!(stderr, "dev_shell: session shutdown: {e}");
+        }
+    }
     if let Err(e) = serialization::save_to_file(&vfs.borrow(), bin_path) {
         let _ = writeln!(stderr, "save on exit failed: {e}");
     }
@@ -159,6 +195,7 @@ fn save_on_exit<W2: Write>(vfs: &Rc<RefCell<Vfs>>, bin_path: &Path, stderr: &mut
 /// TTY branch: rustyline Editor with `DevShellHelper` (path completion via vfs).
 fn run_tty<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
+    vm_session: &Rc<RefCell<SessionHolder>>,
     bin_path: &Path,
     stdin: &mut R,
     stdout: &mut W1,
@@ -181,7 +218,7 @@ where
         let line = match editor.readline(&prompt) {
             Ok(line) => line,
             Err(rustyline::error::ReadlineError::Eof) => {
-                save_on_exit(vfs, bin_path, stderr);
+                save_on_exit(vfs, vm_session, bin_path, stderr);
                 return Ok(());
             }
             Err(rustyline::error::ReadlineError::Interrupted) => continue,
@@ -190,17 +227,18 @@ where
                 continue;
             }
         };
-        if process_line(vfs, &line, stdin, stdout, stderr) == StepResult::Exit {
+        if process_line(vfs, vm_session, &line, stdin, stdout, stderr) == StepResult::Exit {
             break;
         }
     }
-    save_on_exit(vfs, bin_path, stderr);
+    save_on_exit(vfs, vm_session, bin_path, stderr);
     Ok(())
 }
 
 /// Non-TTY branch: `read_line` loop; `borrow_mut` once per iteration for prompt and `ExecContext`.
 fn run_readline<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
+    vm_session: &Rc<RefCell<SessionHolder>>,
     bin_path: &Path,
     stdin: &mut R,
     stdout: &mut W1,
@@ -219,14 +257,14 @@ where
         let _ = stdout.flush();
         let n = stdin.read_line(&mut line).map_err(|_| ())?;
         if n == 0 {
-            save_on_exit(vfs, bin_path, stderr);
+            save_on_exit(vfs, vm_session, bin_path, stderr);
             return Ok(());
         }
-        if process_line(vfs, &line, stdin, stdout, stderr) == StepResult::Exit {
+        if process_line(vfs, vm_session, &line, stdin, stdout, stderr) == StepResult::Exit {
             break;
         }
     }
-    save_on_exit(vfs, bin_path, stderr);
+    save_on_exit(vfs, vm_session, bin_path, stderr);
     Ok(())
 }
 
@@ -237,45 +275,54 @@ mod tests {
     use std::rc::Rc;
 
     use super::super::vfs::Vfs;
+    use super::super::vm::SessionHolder;
     use super::{process_line, StepResult};
+
+    fn vm_test() -> Rc<RefCell<SessionHolder>> {
+        Rc::new(RefCell::new(SessionHolder::new_host()))
+    }
 
     #[test]
     fn process_line_empty_returns_continue() {
         let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let vm = vm_test();
         let mut stdin = Cursor::new(b"");
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
-        let r = process_line(&vfs, "  \n", &mut stdin, &mut stdout, &mut stderr);
+        let r = process_line(&vfs, &vm, "  \n", &mut stdin, &mut stdout, &mut stderr);
         assert_eq!(r, StepResult::Continue);
     }
 
     #[test]
     fn process_line_exit_returns_exit() {
         let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let vm = vm_test();
         let mut stdin = Cursor::new(b"");
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
-        let r = process_line(&vfs, "exit", &mut stdin, &mut stdout, &mut stderr);
+        let r = process_line(&vfs, &vm, "exit", &mut stdin, &mut stdout, &mut stderr);
         assert_eq!(r, StepResult::Exit);
     }
 
     #[test]
     fn process_line_quit_returns_exit() {
         let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let vm = vm_test();
         let mut stdin = Cursor::new(b"");
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
-        let r = process_line(&vfs, "quit", &mut stdin, &mut stdout, &mut stderr);
+        let r = process_line(&vfs, &vm, "quit", &mut stdin, &mut stdout, &mut stderr);
         assert_eq!(r, StepResult::Exit);
     }
 
     #[test]
     fn process_line_parse_error_returns_continue() {
         let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let vm = vm_test();
         let mut stdin = Cursor::new(b"");
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
-        let r = process_line(&vfs, "echo >", &mut stdin, &mut stdout, &mut stderr);
+        let r = process_line(&vfs, &vm, "echo >", &mut stdin, &mut stdout, &mut stderr);
         assert_eq!(r, StepResult::Continue);
         let err = String::from_utf8(stderr).unwrap();
         assert!(err.contains("parse error"));
@@ -284,10 +331,11 @@ mod tests {
     #[test]
     fn process_line_pwd_continues_and_writes() {
         let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let vm = vm_test();
         let mut stdin = Cursor::new(b"");
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
-        let r = process_line(&vfs, "pwd", &mut stdin, &mut stdout, &mut stderr);
+        let r = process_line(&vfs, &vm, "pwd", &mut stdin, &mut stdout, &mut stderr);
         assert_eq!(r, StepResult::Continue);
         let out = String::from_utf8(stdout).unwrap();
         assert!(out.contains('/'));
@@ -296,10 +344,18 @@ mod tests {
     #[test]
     fn process_line_unknown_command_continues_and_stderr() {
         let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let vm = vm_test();
         let mut stdin = Cursor::new(b"");
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
-        let r = process_line(&vfs, "unknowncmd", &mut stdin, &mut stdout, &mut stderr);
+        let r = process_line(
+            &vfs,
+            &vm,
+            "unknowncmd",
+            &mut stdin,
+            &mut stdout,
+            &mut stderr,
+        );
         assert_eq!(r, StepResult::Continue);
         let err = String::from_utf8(stderr).unwrap();
         assert!(err.contains("unknown command"));
@@ -308,6 +364,7 @@ mod tests {
     #[test]
     fn process_line_source_runs_script_from_host() {
         let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let vm = vm_test();
         let dir = std::env::temp_dir().join(format!("devshell_repl_source_{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let script_path = dir.join("repl_sourced.dsh");
@@ -316,7 +373,7 @@ mod tests {
         let mut stdin = Cursor::new(b"");
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
-        let r = process_line(&vfs, &line, &mut stdin, &mut stdout, &mut stderr);
+        let r = process_line(&vfs, &vm, &line, &mut stdin, &mut stdout, &mut stderr);
         assert_eq!(r, StepResult::Continue);
         let out = String::from_utf8(stdout).unwrap();
         assert!(out.contains("repl_sourced"), "stdout: {out}");
@@ -327,6 +384,7 @@ mod tests {
     #[test]
     fn process_line_dot_path_runs_script() {
         let vfs = Rc::new(RefCell::new(Vfs::new()));
+        let vm = vm_test();
         let dir = std::env::temp_dir().join(format!("devshell_repl_dot_{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let script_path = dir.join("dot_sourced.dsh");
@@ -335,7 +393,7 @@ mod tests {
         let mut stdin = Cursor::new(b"");
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
-        let r = process_line(&vfs, &line, &mut stdin, &mut stdout, &mut stderr);
+        let r = process_line(&vfs, &vm, &line, &mut stdin, &mut stdout, &mut stderr);
         assert_eq!(r, StepResult::Continue);
         let out = String::from_utf8(stdout).unwrap();
         assert!(out.contains("dot_ok"), "stdout: {out}");

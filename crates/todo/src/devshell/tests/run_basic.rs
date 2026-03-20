@@ -6,6 +6,7 @@ use super::super::command::{execute_pipeline, run_builtin, ExecContext, RunResul
 use super::super::parser::{Pipeline, SimpleCommand};
 use super::super::run_with;
 use super::super::vfs::Vfs;
+use super::super::vm::SessionHolder;
 
 #[test]
 fn run_with_pwd_mkdir_ls_exit() {
@@ -113,6 +114,7 @@ fn run_with_todo_list_and_stats() {
 
 #[test]
 fn run_with_todo_add_and_list() {
+    let _g = crate::test_support::cwd_mutex();
     let dir = std::env::temp_dir().join(format!("devshell_todo_add_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -138,6 +140,7 @@ fn run_with_todo_add_and_list() {
 #[test]
 fn execute_pipeline_empty_returns_continue() {
     let mut vfs = Vfs::new();
+    let mut vm_session = SessionHolder::new_host();
     let mut stdin = Cursor::new(vec![]);
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
@@ -146,6 +149,7 @@ fn execute_pipeline_empty_returns_continue() {
         stdin: &mut stdin,
         stdout: &mut stdout,
         stderr: &mut stderr,
+        vm_session: &mut vm_session,
     };
     let pipeline = Pipeline { commands: vec![] };
     let r = execute_pipeline(&mut ctx, &pipeline).unwrap();
@@ -155,6 +159,7 @@ fn execute_pipeline_empty_returns_continue() {
 #[test]
 fn execute_pipeline_exit_returns_exit() {
     let mut vfs = Vfs::new();
+    let mut vm_session = SessionHolder::new_host();
     let mut stdin = Cursor::new(vec![]);
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
@@ -163,6 +168,7 @@ fn execute_pipeline_exit_returns_exit() {
         stdin: &mut stdin,
         stdout: &mut stdout,
         stderr: &mut stderr,
+        vm_session: &mut vm_session,
     };
     let pipeline = Pipeline {
         commands: vec![SimpleCommand {
@@ -177,6 +183,7 @@ fn execute_pipeline_exit_returns_exit() {
 #[test]
 fn run_builtin_pwd_covers_wrapper() {
     let mut vfs = Vfs::new();
+    let mut vm_session = SessionHolder::new_host();
     let mut stdin = Cursor::new(vec![]);
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
@@ -185,6 +192,7 @@ fn run_builtin_pwd_covers_wrapper() {
         stdin: &mut stdin,
         stdout: &mut stdout,
         stderr: &mut stderr,
+        vm_session: &mut vm_session,
     };
     let cmd = SimpleCommand {
         argv: vec!["pwd".to_string()],

@@ -1,0 +1,21 @@
+# Read-only host Rust → guest. Merge into lima.yaml after workspace mounts; set env: if not present.
+# Requires ~/.rustup and ~/.cargo on host (or change location to RUSTUP_HOME / CARGO_HOME).
+# Host and guest CPU arch must match (e.g. x86_64).
+#
+#   limactl stop devshell-rust
+#   limactl start -y devshell-rust
+#   limactl shell --workdir / devshell-rust -- cargo --version
+
+# --- mounts: (list entries) ---
+- location: "~/.rustup"
+  mountPoint: /host-rustup
+  writable: false
+- location: "~/.cargo"
+  mountPoint: /host-cargo
+  writable: false
+
+# --- top-level env: (map) ---
+env:
+  RUSTUP_HOME: /host-rustup
+  CARGO_HOME: /host-cargo
+  PATH: /host-cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

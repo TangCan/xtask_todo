@@ -1,6 +1,6 @@
 # 发布说明 (Publishing)
 
-本仓库为 Cargo workspace，仅 **`crates/todo`**（包名 **`xtask-todo-lib`**）适合发布到 [crates.io](https://crates.io)。该包**同一 Cargo.toml** 内包含 **库**（`[lib]`）和 **二进制**（`[[bin]] name = "cargo-devshell"`），一次 `cargo publish` 同时发布库与 `cargo devshell` 子命令。**xtask** 已设置 `publish = false`，仅作为工作区内部工具使用，不发布。
+本仓库为 Cargo workspace，仅 **`crates/todo`**（包名 **`xtask-todo-lib`**）适合发布到 [crates.io](https://crates.io)。该包**同一 Cargo.toml** 内包含 **库**（`[lib]`）和 **二进制**（`[[bin]] name = "cargo-devshell"`），一次 `cargo publish` 同时发布库与 `cargo devshell` 子命令。**xtask** 与 **`crates/devshell-vm`**（β 侧车占位）已设置 `publish = false`，仅工作区内使用，不发布。
 
 ---
 
@@ -164,10 +164,38 @@ cargo devshell [path]
 
 即可启动内嵌的 devshell（`path` 可选，为持久化 VFS 的文件路径，默认为 `.dev_shell.bin`）。若仅需库而不需要子命令，在 `Cargo.toml` 中依赖 `xtask-todo-lib = "x.y"` 即可。
 
-### 6.3 小结
+**VM 默认行为（与源码 tree 中 `cargo run --bin cargo-devshell` 一致）：** 在 **Linux / macOS** 上，未设置 **`DEVSHELL_VM`** 时视为 **开启**；未设置 **`DEVSHELL_VM_BACKEND`** 时默认为 **`lima`**。因此需本机已安装 **Lima**（`limactl` 在 `PATH`）且实例与工作区挂载按 **`docs/devshell-vm-gamma.md`** 配置，否则启动 devshell 时可能在创建会话阶段失败。若只想用宿主临时目录跑 `cargo`（无 VM），请设置 **`DEVSHELL_VM=off`** 或 **`DEVSHELL_VM_BACKEND=host`**。自动化/CI 无 Lima 时务必设置其一。
+
+### 6.3 可选 feature：`beta-vm`（β IPC 后端）
+
+默认发布的 **`cargo devshell` / 库** 不包含 **`DEVSHELL_VM_BACKEND=beta`** 相关代码路径；需显式打开 Cargo feature **`beta-vm`**（见 `crates/todo/Cargo.toml`）。
+
+**安装带 β 后端的 `cargo devshell`：**
+
+```bash
+cargo install xtask-todo-lib --features beta-vm
+```
+
+**其他 crate 依赖本库并启用 β：**
+
+```toml
+[dependencies]
+xtask-todo-lib = { version = "x.y", features = ["beta-vm"] }
+```
+
+启用后，在 Unix 上设置 **`DEVSHELL_VM_BACKEND=beta`** 与 **`DEVSHELL_VM_SOCKET`**（Unix 域套接字路径）即可（**`DEVSHELL_VM`** 二进制默认已开启，一般无需再设 `on`）。侧车 **`devshell-vm`** 当前为 workspace 内 crate（**`publish = false`**），不会随 `cargo install xtask-todo-lib` 安装，需从**本仓库**构建，例如：
+
+```bash
+cargo build -p devshell-vm --release
+# 可执行文件通常在 target/release/devshell-vm
+```
+
+侧车用法与 γ/β 环境变量摘要见 **`docs/devshell-vm-gamma.md`**（含 §「β 桩」）。
+
+### 6.4 小结
 
 | 项目 | 说明 |
 |------|------|
 | 子命令名 | **`cargo devshell`**（由二进制名 `cargo-devshell` 决定） |
 | 发布方式 | 与库**同一包**发布，一次 `cargo publish -p xtask-todo-lib` 同时发布 lib 与 bin |
-| 安装命令 | `cargo install xtask-todo-lib`（同时得到库与 `cargo devshell`） |
+| 安装命令 | `cargo install xtask-todo-lib`（同时得到库与 `cargo devshell`）；需 β IPC 时加 **`--features beta-vm`** |

@@ -69,9 +69,13 @@ Scripts only run built-in commands and use the same virtual filesystem as the RE
 
 **Rust toolchain** (sandboxed):
 
-- **`rustup [args...]`** — run host `rustup` in an isolated temp dir: the current VFS subtree (cwd) is exported, `rustup` runs there, then changes are synced back into the VFS. Requires `rustup` in PATH.
-- **`cargo [args...]`** — same flow for `cargo` (e.g. `cargo build`, `cargo run`, `cargo new`). Compilation outputs and new crates appear in the VFS after the command finishes.
-- Isolation: one unique temp dir per run (e.g. `devshell_<pid>_<nanos>` under `$TMPDIR`), mode `0o700`; the dir is removed after sync. Stronger isolation (e.g. fd-only on Linux, or optional Docker/Podman backend) is described in `docs/superpowers/specs/2026-03-20-devshell-rust-vm-design.md`.
+- **`rustup [args...]`** — export the current VFS subtree (cwd) to a host directory, run `rustup`, then sync changes back into the VFS.
+- **`cargo [args...]`** — same for `cargo` (e.g. `cargo build`, `cargo run`, `cargo new`).
+- **Host toolchain** — runs **`rustup` / `cargo` from your `PATH`** with `cwd` set to the export. Devshell does **not** call Podman, Docker, or any OCI runtime.
+- **Linux optional mount namespace** — set **`DEVSHELL_RUST_MOUNT_NAMESPACE=1`** so the child uses `unshare` + private mounts (libc/kernel only). See [docs/dev-container.md](docs/dev-container.md).
+- Export parent dir (then `devshell_<pid>_<nanos>`): defaults to **`~/.cache/cargo-devshell-exports`** (or **`XDG_CACHE_HOME`**, or on Windows **`%LOCALAPPDATA%/cargo-devshell-exports`**) so **`cargo run` can execute** binaries; plain **`$TMPDIR`** is often **`noexec`** on Linux and would cause *Permission denied* on the built binary. Override with **`DEVSHELL_EXPORT_BASE`**. Subdir mode `0o700` on Unix; removed after sync. Design: `docs/design.md` §2.5.
+- **VM (γ, Unix) — default for `cargo devshell`:** If **`DEVSHELL_VM`** is unset, VM mode is **on**; if **`DEVSHELL_VM_BACKEND`** is unset, it defaults to **`lima`**. `rustup`/`cargo` run inside [Lima](https://lima-vm.io/) with VFS ↔ host workspace sync; requires `limactl` and a matching mount in your Lima template. **Opt out:** **`DEVSHELL_VM=off`** or **`DEVSHELL_VM_BACKEND=host`** (or `auto`) for host temp export only. **`cargo test`** for this crate still defaults to host sandbox (`cfg(test)`). See **[docs/devshell-vm-gamma.md](docs/devshell-vm-gamma.md)**.
+- **β sidecar (stub):** workspace crate **`devshell-vm`** — `cargo run -p devshell-vm` prints a stub line. IPC draft: [docs/superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md](docs/superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md).
 
 Example: `mkdir my_project && cd my_project && cargo new . --name my_app && cargo build`.
 

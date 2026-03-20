@@ -1,0 +1,10 @@
+# Merge into your Lima instance lima.yaml under existing `mounts:` (keep other entries).
+# Instance name default: devshell-rust → last path segment must match sanitized instance name.
+# Override host root with DEVSHELL_VM_WORKSPACE_PARENT or DEVSHELL_EXPORT_BASE / XDG_CACHE_HOME.
+#
+#   limactl stop devshell-rust
+#   limactl start -y devshell-rust
+
+- location: "~/.cache/cargo-devshell-exports/vm-workspace/devshell-rust"
+  mountPoint: /workspace
+  writable: true

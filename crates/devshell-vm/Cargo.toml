@@ -1,0 +1,19 @@
+[package]
+name = "devshell-vm"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Devshell VM sidecar (β): lifecycle + IPC; currently a stub binary"
+readme = "../../README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/TangCan/xtask_todo"
+
+[[bin]]
+name = "devshell-vm"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"
+
+[lints.clippy]
+all = "warn"

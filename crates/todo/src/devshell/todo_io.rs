@@ -79,7 +79,7 @@ pub fn load_todos() -> Result<Vec<Todo>, Box<dyn std::error::Error>> {
     if !path.exists() {
         return Ok(Vec::new());
     }
-    let s = std::fs::read_to_string(&path)?;
+    let s = super::host_text::read_host_text(&path)?;
     let dtos: Vec<TodoDto> = serde_json::from_str(&s).unwrap_or_default();
     let todos = dtos.into_iter().filter_map(dto_to_todo).collect();
     Ok(todos)
@@ -132,6 +132,7 @@ mod tests {
 
     #[test]
     fn load_todos_when_file_missing_returns_empty() {
+        let _g = crate::test_support::cwd_mutex();
         let dir = std::env::temp_dir().join(format!(
             "todo_io_nojson_{}_{}",
             std::process::id(),

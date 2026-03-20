@@ -3,6 +3,7 @@
 use std::io::Cursor;
 
 use super::super::run_with;
+use crate::test_support::cwd_mutex;
 
 #[test]
 fn run_with_todo_add_empty_title_errors() {
@@ -40,6 +41,7 @@ fn run_with_todo_unknown_subcommand() {
 
 #[test]
 fn run_with_todo_show_invalid_id_errors() {
+    let _g = cwd_mutex();
     let dir = std::env::temp_dir().join(format!("devshell_show_err_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let json_path = dir.join(".todo.json");
@@ -66,6 +68,7 @@ fn run_with_todo_show_invalid_id_errors() {
 
 #[test]
 fn run_with_todo_list_json_in_temp_dir() {
+    let _g = cwd_mutex();
     let dir = std::env::temp_dir().join(format!("devshell_list_json_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let json_path = dir.join(".todo.json");
@@ -95,6 +98,7 @@ fn run_with_todo_list_json_in_temp_dir() {
 
 #[test]
 fn run_with_todo_complete_delete_nonexistent_in_temp_dir() {
+    let _g = cwd_mutex();
     let dir = std::env::temp_dir().join(format!("devshell_cd_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let json_path = dir.join(".todo.json");
@@ -130,6 +134,7 @@ fn run_with_todo_complete_delete_nonexistent_in_temp_dir() {
 
 #[test]
 fn run_with_todo_show_description_due() {
+    let _g = cwd_mutex();
     let dir = std::env::temp_dir().join(format!("devshell_show_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let json_path = dir.join(".todo.json");
@@ -158,6 +163,7 @@ fn run_with_todo_show_description_due() {
 
 #[test]
 fn run_with_todo_update_empty_title_errors() {
+    let _g = cwd_mutex();
     let dir = std::env::temp_dir().join(format!("devshell_upd_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let json_path = dir.join(".todo.json");
@@ -236,6 +242,7 @@ fn run_with_todo_delete_nonexistent_errors() {
 
 #[test]
 fn run_with_todo_search_output() {
+    let _g = cwd_mutex();
     let dir = std::env::temp_dir().join(format!("devshell_srch_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let json_path = dir.join(".todo.json");
@@ -265,6 +272,7 @@ fn run_with_todo_search_output() {
 
 #[test]
 fn run_with_todo_list_when_no_todo_file() {
+    let _g = cwd_mutex();
     let dir = std::env::temp_dir().join(format!("devshell_nojson_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -288,6 +296,7 @@ fn run_with_todo_list_when_no_todo_file() {
 
 #[test]
 fn run_with_todo_show_complete_search_with_existing_file() {
+    let _g = cwd_mutex();
     let dir = std::env::temp_dir().join(format!("devshell_todo_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let json_path = dir.join(".todo.json");
@@ -315,6 +324,7 @@ fn run_with_todo_show_complete_search_with_existing_file() {
 
 #[test]
 fn run_with_todo_update_and_delete() {
+    let _g = cwd_mutex();
     let dir = std::env::temp_dir().join(format!("devshell_todo2_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let json_path = dir.join(".todo.json");

@@ -247,6 +247,7 @@
 | TC-D-SBX-1 | US-D2 / §2.5 | 导出→临时目录→同步 | `devshell/sandbox.rs` 单元测试（export/sync） |
 | TC-D-SBX-2 | design §2.5 | 嵌套 VFS 路径 `host_export_root` 与 `copy_tree_to_host` 一致 | `nested_vfs_path_host_uses_leaf_dir_not_full_path` | `sandbox.rs` |
 | TC-D-SBX-3 | US-D2 | PATH 无 cargo/rustup 时错误提示 | 手工或隔离 PATH | **可选** |
+| TC-D-SBX-4 | dev-container.md | Linux `DEVSHELL_RUST_MOUNT_NAMESPACE=1` 下 `run_in_export_dir` 可启动子进程 | `run_in_export_dir_true_with_mount_namespace`（Linux，`#[ignore]`，需特权环境：`cargo test … -- --ignored`） | `sandbox.rs` |
 
 ### 5.9 序列化（design §1.4）
 
