@@ -117,15 +117,30 @@ pub fn complete_commands(prefix: &str) -> Vec<String> {
         .collect()
 }
 
-/// Path completion: prefix may contain slashes; only the last segment is used for matching.
-/// `parent_names` is the list of names in the parent directory. Empty prefix returns all.
+/// Split path being completed into `(dir_prefix, basename_prefix)`.
+///
+/// `dir_prefix` ends with `/` (or is empty); it is preserved in candidates so readline replaces
+/// the whole token (e.g. `src/` → `src/main.rs`, not `main.rs` alone).
+fn split_dir_and_basename_prefix(prefix: &str) -> (&str, &str) {
+    prefix.rfind('/').map_or(("", prefix), |idx| {
+        let dir = &prefix[..=idx];
+        let rest = &prefix[idx + 1..];
+        (dir, rest)
+    })
+}
+
+/// Path completion: prefix may contain slashes; only the basename segment is matched.
+///
+/// Returned strings are **full token replacements** (include any directory part before the last
+/// `/`), so rustyline's replace-from-`start` keeps paths like `src/main.rs` correct.
+/// `parent_names` are basenames in the resolved parent directory. Empty basename prefix returns all.
 #[must_use]
 pub fn complete_path(prefix: &str, parent_names: &[String]) -> Vec<String> {
-    let last = prefix.rsplit('/').next().unwrap_or(prefix);
+    let (dir_prefix, basename_prefix) = split_dir_and_basename_prefix(prefix);
     parent_names
         .iter()
-        .filter(|n| n.starts_with(last))
-        .cloned()
+        .filter(|n| n.starts_with(basename_prefix))
+        .map(|n| format!("{dir_prefix}{n}"))
         .collect()
 }
 
@@ -377,6 +392,21 @@ mod tests {
     }
 
     #[test]
+    fn complete_path_trailing_slash_keeps_parent_in_candidate() {
+        let names = vec!["main.rs".into(), "lib.rs".into()];
+        let mut c = complete_path("src/", &names);
+        c.sort();
+        assert_eq!(c, vec!["src/lib.rs", "src/main.rs"]);
+    }
+
+    #[test]
+    fn complete_path_partial_under_subdir() {
+        let names = vec!["main.rs".into(), "mod.rs".into()];
+        let c = complete_path("src/ma", &names);
+        assert_eq!(c, vec!["src/main.rs"]);
+    }
+
+    #[test]
     fn completer_complete_command() {
         use std::cell::RefCell;
         use std::rc::Rc;
@@ -403,8 +433,8 @@ mod tests {
         let ctx = Context::new(&hist);
         let (start, candidates) = helper.complete("ls /", 4, &ctx).unwrap();
         assert!(start <= 4);
-        assert!(candidates.contains(&"a".to_string()));
-        assert!(candidates.contains(&"b".to_string()));
+        assert!(candidates.contains(&"/a".to_string()));
+        assert!(candidates.contains(&"/b".to_string()));
     }
 
     #[test]

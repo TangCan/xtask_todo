@@ -1,6 +1,7 @@
 //! REPL: read-eval-print loop with `parse_line` and `execute_pipeline`; handles exit/quit.
 //!
-//! TTY: rustyline Editor with path completion; non-TTY: `read_line` loop.
+//! TTY: rustyline Editor with path completion (`CompletionType::List`, bash-like);
+//! non-TTY: `read_line` loop.
 //! On exit (exit/quit or EOF), VFS is auto-saved to `bin_path`.
 //! Shared loop body is in `process_line` so it can be unit-tested.
 
@@ -9,7 +10,8 @@ use std::io::{BufRead, Read, Write};
 use std::path::Path;
 use std::rc::Rc;
 
-use rustyline::Editor;
+use rustyline::config::Configurer;
+use rustyline::{CompletionType, Editor};
 
 use super::command::{execute_pipeline, ExecContext, RunResult};
 use super::completion::DevShellHelper;
@@ -168,6 +170,10 @@ where
     W2: Write,
 {
     let mut editor = Editor::new().map_err(|_| ())?;
+    // Bash/readline-style: extend to longest common prefix; second Tab lists options.
+    // Default rustyline `Circular` cycles candidates and then restores the pre-Tab line,
+    // so e.g. `cat s` → Tab → `cat src` → Tab → `cat s` again (surprising vs shells).
+    editor.set_completion_type(CompletionType::List);
     editor.set_helper(Some(DevShellHelper::new(vfs.clone())));
 
     loop {

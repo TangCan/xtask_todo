@@ -124,8 +124,9 @@ pub fn run_rust_tool(
     })?;
 
     let export_dir = export_vfs_to_temp_dir(vfs, vfs_path)?;
+    let work_dir = host_export_root(&export_dir, vfs_path);
 
-    let status = run_in_export_dir(&export_dir, &program_path, args);
+    let status = run_in_export_dir(&work_dir, &program_path, args);
     let sync_result = sync_host_dir_to_vfs(&export_dir, vfs_path, vfs);
     let _ = std::fs::remove_dir_all(&export_dir);
 
@@ -134,13 +135,16 @@ pub fn run_rust_tool(
 }
 
 /// Host path that corresponds to the root of the exported VFS subtree.
-/// For `/` it is `export_dir`; for `/proj` it is `export_dir/proj`.
+///
+/// `copy_tree_to_host` places the resolved node (with its name) directly under `export_dir`,
+/// so for `/projects/hello` we get `export_dir/hello`, not `export_dir/projects/hello`.
 fn host_export_root(export_dir: &Path, vfs_path: &str) -> PathBuf {
     let trimmed = vfs_path.trim_matches('/');
     if trimmed.is_empty() {
         export_dir.to_path_buf()
     } else {
-        export_dir.join(trimmed)
+        let last = trimmed.split('/').next_back().unwrap_or(".");
+        export_dir.join(last)
     }
 }
 
@@ -250,5 +254,37 @@ mod tests {
         let content = vfs.read_file("/proj/new.txt").unwrap();
         assert_eq!(content, b"hello");
         let _ = std::fs::remove_dir_all(path);
+    }
+
+    /// Regression: cwd for cargo must be `export_dir/<last-segment>`, not `export_dir/<full-vfs-path>`.
+    /// Otherwise `cargo run` fails with ENOENT on `current_dir` (misreported as `CargoNotFound`).
+    #[test]
+    fn nested_vfs_path_host_uses_leaf_dir_not_full_path() {
+        let mut vfs = Vfs::new();
+        vfs.mkdir("/projects").unwrap();
+        vfs.mkdir("/projects/hello").unwrap();
+        vfs.write_file(
+            "/projects/hello/Cargo.toml",
+            b"[package]\nname = \"hello\"\n",
+        )
+        .unwrap();
+
+        let export = export_vfs_to_temp_dir(&vfs, "/projects/hello").unwrap();
+        let hello = export.join("hello");
+        let wrong = export.join("projects").join("hello");
+        assert!(
+            hello.join("Cargo.toml").is_file(),
+            "expected export at export_dir/hello/, matching copy_tree_to_host"
+        );
+        assert!(
+            !wrong.join("Cargo.toml").is_file(),
+            "must not use export_dir/projects/hello (that path is empty)"
+        );
+
+        std::fs::write(hello.join("synced.txt"), b"ok").unwrap();
+        sync_host_dir_to_vfs(&export, "/projects/hello", &mut vfs).unwrap();
+        assert_eq!(vfs.read_file("/projects/hello/synced.txt").unwrap(), b"ok");
+
+        let _ = std::fs::remove_dir_all(export);
     }
 }
