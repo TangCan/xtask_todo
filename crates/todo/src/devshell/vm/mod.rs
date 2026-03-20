@@ -32,8 +32,9 @@ pub use guest_fs_ops::{
 pub use lima_diagnostics::ENV_DEVSHELL_VM_LIMA_HINTS;
 #[cfg(unix)]
 pub use session_gamma::{
-    GammaSession, ENV_DEVSHELL_VM_GUEST_WORKSPACE, ENV_DEVSHELL_VM_LIMACTL,
-    ENV_DEVSHELL_VM_STOP_ON_EXIT, ENV_DEVSHELL_VM_WORKSPACE_PARENT,
+    workspace_parent_for_instance, GammaSession, ENV_DEVSHELL_VM_AUTO_BUILD_ESSENTIAL,
+    ENV_DEVSHELL_VM_GUEST_WORKSPACE, ENV_DEVSHELL_VM_LIMACTL, ENV_DEVSHELL_VM_STOP_ON_EXIT,
+    ENV_DEVSHELL_VM_WORKSPACE_PARENT,
 };
 pub use session_host::HostSandboxSession;
 pub use sync::{pull_workspace_to_vfs, push_full, push_incremental, VmSyncError};
@@ -254,6 +255,33 @@ impl SessionHolder {
             false
         }
     }
+
+    /// `true` when using the host temp sandbox ([`HostSandboxSession`]) rather than γ/β.
+    #[must_use]
+    pub fn is_host_only(&self) -> bool {
+        matches!(self, Self::Host(_))
+    }
+
+    /// Replace this process with an interactive `limactl shell` (`bash -l`) under the guest workspace mount.
+    ///
+    /// On success, does not return. On failure, returns the [`std::io::Error`] from [`std::os::unix::process::CommandExt::exec`].
+    #[cfg(unix)]
+    pub fn exec_lima_interactive_shell(&self) -> std::io::Error {
+        use std::os::unix::process::CommandExt;
+        use std::process::Command;
+        match self {
+            Self::Gamma(g) => Command::new(g.limactl_path())
+                .arg("shell")
+                .arg("--workdir")
+                .arg(g.guest_mount())
+                .arg(g.lima_instance_name())
+                .arg("--")
+                .arg("bash")
+                .arg("-l")
+                .exec(),
+            _ => std::io::Error::other("exec_lima_interactive_shell: not a Lima gamma session"),
+        }
+    }
 }
 
 /// Build [`SessionHolder`] from the environment. On failure (e.g. default γ Lima but `limactl` missing), writes to `stderr` and returns `Err(())`.
@@ -268,4 +296,62 @@ pub fn try_session_rc(stderr: &mut dyn Write) -> Result<Rc<RefCell<SessionHolder
             Err(())
         }
     }
+}
+
+/// Like [`try_session_rc`], but on failure uses [`SessionHolder::Host`] so the REPL can run against
+/// [`session_gamma::workspace_parent_for_instance`] (same tree as the Lima mount).
+pub fn try_session_rc_or_host(stderr: &mut dyn Write) -> Rc<RefCell<SessionHolder>> {
+    match try_session_rc(stderr) {
+        Ok(s) => s,
+        Err(()) => {
+            let _ = writeln!(
+                stderr,
+                "dev_shell: VM unavailable — in-process REPL uses the same host directory as the Lima workspace (DEVSHELL_WORKSPACE_ROOT)."
+            );
+            Rc::new(RefCell::new(SessionHolder::Host(HostSandboxSession::new())))
+        }
+    }
+}
+
+#[cfg(unix)]
+pub fn export_devshell_workspace_root_env() {
+    let c = config::VmConfig::from_env();
+    let p = session_gamma::workspace_parent_for_instance(&c.lima_instance);
+    let _ = std::fs::create_dir_all(&p);
+    if let Ok(can) = p.canonicalize() {
+        std::env::set_var("DEVSHELL_WORKSPACE_ROOT", can.as_os_str());
+    }
+}
+
+#[cfg(not(unix))]
+pub fn export_devshell_workspace_root_env() {}
+
+/// Host directory that Lima mounts at the guest workspace (e.g. `/workspace`).
+#[cfg(unix)]
+#[must_use]
+pub fn vm_workspace_host_root() -> std::path::PathBuf {
+    let c = config::VmConfig::from_env();
+    session_gamma::workspace_parent_for_instance(&c.lima_instance)
+}
+
+#[cfg(unix)]
+#[must_use]
+pub fn should_delegate_lima_shell(
+    vm_session: &Rc<RefCell<SessionHolder>>,
+    is_tty: bool,
+    run_script: bool,
+) -> bool {
+    if run_script || !is_tty {
+        return false;
+    }
+    if std::env::var("DEVSHELL_VM_INTERNAL_REPL")
+        .map(|s| {
+            let s = s.trim();
+            s == "1" || s.eq_ignore_ascii_case("true") || s.eq_ignore_ascii_case("yes")
+        })
+        .unwrap_or(false)
+    {
+        return false;
+    }
+    matches!(*vm_session.borrow(), SessionHolder::Gamma(_))
 }

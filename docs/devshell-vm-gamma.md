@@ -4,6 +4,16 @@
 
 β 阶段会改为侧车进程 + IPC；γ 依赖本机安装的 `limactl`。
 
+### 简单心智模型（与交互 REPL 统一）
+
+1. **启动 `cargo-devshell` 时（Unix）**：进程会按当前 Lima 实例名解析 **主机工作区父目录**（与 Lima 里挂载到 guest `/workspace` 的目录一致），**`create_dir_all` 后** 把其 **规范绝对路径** 写入环境变量 **`DEVSHELL_WORKSPACE_ROOT`**。
+2. **交互式 + TTY + γ Lima 已启用（默认）**：不再进入进程内 rustyline REPL，而是在 **`ensure_ready`（必要时 `limactl start`）之后** 直接 **`exec limactl shell --workdir <guest 挂载点> <实例> -- bash -l`**，你在 **真实 shell** 里工作；工程树与 VM 共用同一套主机目录。
+3. **需要进程内 REPL**（调试补全/内置命令）：设置 **`DEVSHELL_VM_INTERNAL_REPL=1`**。
+4. **VM 未启用或回退到宿主会话**（`DEVSHELL_VM=off` / `DEVSHELL_VM_BACKEND=host` / γ 初始化失败等）：内置的 **`ls`/`cat`/`mkdir`/`todo` 等** 改为 **直接操作 `DEVSHELL_WORKSPACE_ROOT` 下的真实目录**（不再依赖单独的 `.dev_shell.bin` 树与之分叉）。退出时 **跳过** 写 `.dev_shell.bin`。
+5. **`-f` 脚本模式**、**非 TTY**（如管道/CI）：仍走进程内实现；宿主-only 时同样使用 **`DEVSHELL_WORKSPACE_ROOT`** 作为 VFS 根。
+
+下文表格中的 **`DEVSHELL_VM_WORKSPACE_MODE=guest`**、push/pull、guest-primary 等仍适用于 **`cargo`/`rustup` 子命令** 与 **Mode P** 细节；与上表不冲突。
+
 ### 架构方向：guest 为唯一真源（规划中）
 
 **Mode S（默认 `DEVSHELL_VM_WORKSPACE_MODE=sync` 或未设置）：** **内存 VFS** 为 REPL 工程树真源，**`cargo`/`rustup`** 经 **push → VM → pull** 同步。
@@ -105,12 +115,33 @@ limactl shell --workdir / devshell-rust -- cargo --version
 
 可复制片段：**[snippets/lima-devshell-rust-toolchain-mount.yaml](snippets/lima-devshell-rust-toolchain-mount.yaml)**。
 
+**做法三：在 guest 内安装 C 链接器（`cc` / `gcc` + binutils，推荐）**
+
+`cargo build` 在 Linux 上默认用系统的 **`cc`**（通常由 **`gcc`** 提供）；这与 Rust 来自 rustup 还是挂载的 **`~/.cargo`** 无关，**guest 里仍需一套 C 工具链**。
+
+**自动（默认）：** `cargo-devshell` 在 γ 会话 **`ensure_ready`**（VM 已 `limactl start`）时会在 guest 里检测 **`gcc`**；若缺失且存在 **`apt-get`/`dpkg`**，会尝试 **`sudo -n`** 非交互执行 **`apt-get update`** 与 **`apt-get install -y build-essential`**（需 guest 用户 **`sudo` 免密**，与多数 Lima 模板一致）。若 **`sudo` 需要密码**（`-n` 失败）或安装失败，会在宿主终端打印提示，请在 guest 内手动安装。可用 **`DEVSHELL_VM_AUTO_BUILD_ESSENTIAL=0`** 关闭自动安装。
+
+**手动：** 在 **guest** 内执行（Debian/Ubuntu 系 Lima 模板常见）：
+
+```bash
+sudo apt update
+sudo apt install -y build-essential
+```
+
+验证：`command -v gcc && gcc --version`，再在工程目录执行 `cargo build`。
+
+非 Debian 系 guest 请用对应包管理器安装 **`gcc`** 与 **binutils**（例如 Fedora：`sudo dnf install -y gcc gcc-c++ make`）；当前自动安装**仅支持 apt**。
+
+备忘片段（与本文一致）：**[snippets/lima-devshell-host-cc-mount.yaml](snippets/lima-devshell-host-cc-mount.yaml)**。
+
 ---
 
 ## 环境变量
 
 | 变量 | 含义 |
 |------|------|
+| `DEVSHELL_WORKSPACE_ROOT` | **由程序在 Unix 启动时设置（只读认知即可）：** Lima 工作区父目录的规范绝对路径；与 guest `/workspace` 挂载对应。宿主-only 时内置文件操作也使用该目录。 |
+| `DEVSHELL_VM_INTERNAL_REPL` | 设为 **`1`/`true`/`yes`** 时，即使 γ 可用也 **不** `exec limactl shell`，强制使用进程内 REPL。 |
 | `DEVSHELL_VM` | **二进制默认：** 未设置 = **开启** VM 模式。设为 **`off`** / **`0`** / **`false`** / **`no`**（大小写不敏感）则关闭，仅用宿主临时目录 + `sandbox::run_rust_tool`。`on` / `1` / `true` / `yes` 亦为开启。**`cargo test` 编译的库**（`cfg(test)`）未设置时视为关闭，便于无 Lima 的 CI。 |
 | `DEVSHELL_VM_BACKEND=lima` | 使用 γ Lima 后端（Unix）。**二进制在 Unix 上若未设置本变量，默认即为 `lima`。** |
 | `DEVSHELL_VM_BACKEND=host` 或 `auto` | 强制使用宿主临时目录 + `sandbox::run_rust_tool`（不用 Lima）。 |
@@ -121,6 +152,7 @@ limactl shell --workdir / devshell-rust -- cargo --version
 | `DEVSHELL_VM_STOP_ON_EXIT=1` | 会话结束（REPL exit / 脚本结束）时执行 `limactl stop`（默认不 stop，便于多终端共用实例）。 |
 | `DEVSHELL_VM_LIMA_HINTS=0` | 关闭 γ 的 **Lima 配置/故障提示**（默认开启）：首次 `cargo`/`rustup` 前会做一次 guest 探测；`cargo`/`rustup` 非零退出或 **`limactl start` 失败** 时会打印与 `lima.yaml`、挂载、KVM、`cargo` PATH 相关的建议。 |
 | `DEVSHELL_VM_WORKSPACE_MODE` | **`sync`**（默认）= 内存 VFS + push/pull（Mode S）。**`guest`** = 请求 **guest 真源**（Mode P，仍分阶段落地）。若 **`DEVSHELL_VM=off`** 或 **`DEVSHELL_VM_BACKEND=host`/`auto`**，则 **仍按 `sync` 生效**（不报错）；仅当 VM 开启且后端为 **`lima`** 或 **`beta`** 时 **`guest`** 才可能生效。详见 [`2026-03-20-devshell-guest-primary-design.md`](superpowers/specs/2026-03-20-devshell-guest-primary-design.md) §6。 |
+| `DEVSHELL_VM_AUTO_BUILD_ESSENTIAL` | **默认开启：** VM 就绪后若 guest 无 **`gcc`**，尝试用 **`apt-get`** 非交互安装 **`build-essential`**（需 **`sudo` 免密**）。设为 **`0`/`false`/`no`/`off`** 则跳过。非 apt 系 guest 仍须手动安装 C 工具链。 |
 
 ---
 
@@ -179,6 +211,7 @@ limactl shell --workdir / devshell-rust -- cargo --version
   其他常见原因：在**未开嵌套虚拟化**的虚拟机里跑 Lima；**OVMF** 路径异常。可装 **`cpu-checker`** 后运行 **`kvm-ok`**（物理机辅助检查）。
 - **`limactl start` 失败**：检查 `limactl list`、实例名、KVM/虚拟化权限。
 - **`cargo: command not found` / 退出码 127**：guest 内没有 **`cargo`**。见上文 **「Guest 内必须有 cargo / rustup」**：在 VM 内安装 rustup，或只读挂载宿主 **`RUSTUP_HOME`/`CARGO_HOME`** 并配置 **`PATH`**。
+- **`linker 'cc' not found`**：guest 内没有可用的 **C 链接器**。在 guest 执行 **`sudo apt update && sudo apt install -y build-essential`**（见上文 **「做法三」**）。
 - **挂载路径不一致**：guest 内 `ls /workspace` 应能看到 push 过去的目录；若为空，核对 `mountPoint` 与 `DEVSHELL_VM_WORKSPACE_PARENT` / 默认缓存路径是否一致。
 
 ---

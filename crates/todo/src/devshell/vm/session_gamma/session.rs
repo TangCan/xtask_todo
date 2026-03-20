@@ -1,30 +1,17 @@
-//! γ backend: [Lima](https://github.com/lima-vm/lima) via `limactl start` / `limactl shell`.
-//!
-//! The host directory [`GammaSession::workspace_parent`] must be mounted in the guest at
-//! [`GammaSession::guest_mount`] (default `/workspace`). See `docs/devshell-vm-gamma.md`.
-
-#![allow(clippy::pedantic, clippy::nursery)]
+//! [`GammaSession`] struct and Lima `limactl` helpers.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 
-use super::super::sandbox;
-use super::super::vfs::Vfs;
-use super::lima_diagnostics;
-use super::sync::{pull_workspace_to_vfs, push_incremental};
-use super::{VmConfig, VmError, VmExecutionSession, WorkspaceMode};
-
-/// Override path to `limactl` (default: `PATH`).
-pub const ENV_DEVSHELL_VM_LIMACTL: &str = "DEVSHELL_VM_LIMACTL";
-
-/// Host directory we push/pull (must be mounted at [`GammaSession::guest_mount`] in the Lima VM).
-pub const ENV_DEVSHELL_VM_WORKSPACE_PARENT: &str = "DEVSHELL_VM_WORKSPACE_PARENT";
-
-/// Guest mount point for that directory (default `/workspace`).
-pub const ENV_DEVSHELL_VM_GUEST_WORKSPACE: &str = "DEVSHELL_VM_GUEST_WORKSPACE";
-
-/// When set truthy, run `limactl stop` on session shutdown.
-pub const ENV_DEVSHELL_VM_STOP_ON_EXIT: &str = "DEVSHELL_VM_STOP_ON_EXIT";
+use super::super::super::vfs::Vfs;
+use super::super::lima_diagnostics;
+use super::super::sync::{pull_workspace_to_vfs, push_incremental};
+use super::super::{VmConfig, VmError, VmExecutionSession, WorkspaceMode};
+use super::env::ENV_DEVSHELL_VM_GUEST_WORKSPACE;
+use super::helpers::{
+    auto_build_essential_enabled, guest_dir_for_cwd_inner, resolve_limactl,
+    workspace_parent_for_instance,
+};
 
 /// Lima-backed session: sync VFS ↔ host workspace, run tools inside the VM.
 #[derive(Debug)]
@@ -38,70 +25,10 @@ pub struct GammaSession {
     vm_started: bool,
     /// After first successful `limactl start`, run one guest/yaml diagnostic pass.
     lima_hints_checked: bool,
+    /// After first `ensure_ready`, skip repeating guest C toolchain probe/install.
+    guest_build_essential_done: bool,
     /// When `true` (Mode S), push/pull VFS around each `cargo`/`rustup`. When `false` ([`WorkspaceMode::Guest`]), guest tree is authoritative — no sync (see guest-primary design §1c).
     sync_vfs_with_workspace: bool,
-}
-
-fn truthy_env(key: &str) -> bool {
-    std::env::var(key)
-        .map(|s| {
-            let s = s.trim();
-            s == "1" || s.eq_ignore_ascii_case("true") || s.eq_ignore_ascii_case("yes")
-        })
-        .unwrap_or(false)
-}
-
-fn resolve_limactl() -> Result<PathBuf, VmError> {
-    if let Ok(p) = std::env::var(ENV_DEVSHELL_VM_LIMACTL) {
-        let p = p.trim();
-        if !p.is_empty() {
-            return Ok(PathBuf::from(p));
-        }
-    }
-    sandbox::find_in_path("limactl").ok_or_else(|| {
-        VmError::Lima(
-            "limactl not found in PATH; install Lima (https://lima-vm.io/) or set DEVSHELL_VM_LIMACTL"
-                .to_string(),
-        )
-    })
-}
-
-fn sanitize_instance_segment(name: &str) -> String {
-    name.chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect()
-}
-
-/// Host workspace root shared with β (`session_start.staging_dir`).
-#[must_use]
-pub(crate) fn workspace_parent_for_instance(instance: &str) -> PathBuf {
-    if let Ok(p) = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_PARENT) {
-        let p = p.trim();
-        if !p.is_empty() {
-            return PathBuf::from(p);
-        }
-    }
-    let seg = sanitize_instance_segment(instance);
-    sandbox::devshell_export_parent_dir()
-        .join("vm-workspace")
-        .join(seg)
-}
-
-/// Guest working directory for VFS cwd (mount + last path segment).
-#[cfg_attr(not(feature = "beta-vm"), allow(dead_code))]
-#[must_use]
-pub(crate) fn guest_dir_for_vfs_cwd(guest_mount: &str, vfs_cwd: &str) -> String {
-    super::guest_fs_ops::guest_project_dir_on_guest(guest_mount, vfs_cwd)
-}
-
-fn guest_dir_for_cwd_inner(guest_mount: &str, vfs_cwd: &str) -> String {
-    super::guest_fs_ops::guest_project_dir_on_guest(guest_mount, vfs_cwd)
 }
 
 impl GammaSession {
@@ -128,6 +55,7 @@ impl GammaSession {
             limactl,
             vm_started: false,
             lima_hints_checked: false,
+            guest_build_essential_done: false,
             sync_vfs_with_workspace,
         })
     }
@@ -168,6 +96,96 @@ impl GammaSession {
             )));
         }
         self.vm_started = true;
+        Ok(())
+    }
+
+    /// Non-interactive `limactl shell -y … -- /bin/sh -c …` with captured output (VM started first).
+    fn limactl_shell_script_sh(
+        &mut self,
+        guest_workdir: &str,
+        sh_script: &str,
+    ) -> Result<std::process::Output, VmError> {
+        self.limactl_ensure_running()?;
+        Command::new(&self.limactl)
+            .arg("shell")
+            .arg("-y")
+            .arg("--workdir")
+            .arg(guest_workdir)
+            .arg(&self.lima_instance)
+            .arg("--")
+            .arg("/bin/sh")
+            .arg("-c")
+            .arg(sh_script)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .map_err(|e| VmError::Lima(format!("limactl shell: {e}")))
+    }
+
+    /// If guest has no `gcc`, try Debian/Ubuntu `apt-get install -y build-essential` (non-interactive sudo).
+    fn maybe_ensure_guest_build_essential(&mut self) -> Result<(), VmError> {
+        if self.guest_build_essential_done {
+            return Ok(());
+        }
+
+        if !auto_build_essential_enabled() {
+            self.guest_build_essential_done = true;
+            return Ok(());
+        }
+
+        let probe = self.limactl_shell_script_sh("/", "command -v gcc >/dev/null 2>&1")?;
+        if probe.status.success() {
+            self.guest_build_essential_done = true;
+            return Ok(());
+        }
+
+        eprintln!("dev_shell: guest: no C compiler (gcc) in PATH; attempting apt install build-essential…");
+
+        let has_apt =
+            self.limactl_shell_script_sh("/", "test -x /usr/bin/apt-get && test -x /usr/bin/dpkg")?;
+        if !has_apt.status.success() {
+            eprintln!(
+                "dev_shell: guest: no apt-get/dpkg; install gcc + binutils manually (see docs/devshell-vm-gamma.md)."
+            );
+            self.guest_build_essential_done = true;
+            return Ok(());
+        }
+
+        // `sudo -n` fails if a password is required (no TTY here).
+        const INSTALL_SH: &str = r"set -e
+export DEBIAN_FRONTEND=noninteractive
+if ! sudo -n true 2>/dev/null; then
+  echo 'dev_shell: guest: sudo needs a password; run in the VM: sudo apt update && sudo apt install -y build-essential' >&2
+  exit 1
+fi
+sudo apt-get update -qq
+sudo apt-get install -y -qq build-essential
+";
+
+        let out = self.limactl_shell_script_sh("/", INSTALL_SH)?;
+        if out.status.success() {
+            eprintln!(
+                "dev_shell: guest: build-essential installed (gcc available for cargo link)."
+            );
+        } else {
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            eprintln!(
+                "dev_shell: guest: automatic build-essential install failed (exit {:?}).",
+                out.status.code()
+            );
+            if !stdout.trim().is_empty() {
+                eprintln!("dev_shell: guest stdout: {stdout}");
+            }
+            if !stderr.trim().is_empty() {
+                eprintln!("dev_shell: guest stderr: {stderr}");
+            }
+            eprintln!(
+                "dev_shell: hint: in the guest shell: sudo apt update && sudo apt install -y build-essential"
+            );
+        }
+        self.guest_build_essential_done = true;
         Ok(())
     }
 
@@ -280,11 +298,25 @@ impl GammaSession {
     pub fn workspace_parent(&self) -> &Path {
         &self.workspace_parent
     }
+
+    /// Path to `limactl` binary (for `exec` delegation).
+    #[must_use]
+    pub fn limactl_path(&self) -> &Path {
+        &self.limactl
+    }
+
+    /// Lima instance name (`limactl shell <this> …`).
+    #[must_use]
+    pub fn lima_instance_name(&self) -> &str {
+        &self.lima_instance
+    }
 }
 
 impl VmExecutionSession for GammaSession {
     fn ensure_ready(&mut self, _vfs: &Vfs, _vfs_cwd: &str) -> Result<(), VmError> {
-        self.limactl_ensure_running()
+        self.limactl_ensure_running()?;
+        self.maybe_ensure_guest_build_essential()?;
+        Ok(())
     }
 
     fn run_rust_tool(
@@ -337,6 +369,9 @@ impl VmExecutionSession for GammaSession {
     }
 
     fn shutdown(&mut self, vfs: &mut Vfs, vfs_cwd: &str) -> Result<(), VmError> {
+        use super::env::ENV_DEVSHELL_VM_STOP_ON_EXIT;
+        use super::helpers::truthy_env;
+
         if self.vm_started && self.sync_vfs_with_workspace {
             if let Err(e) = pull_workspace_to_vfs(&self.workspace_parent, vfs_cwd, vfs) {
                 return Err(VmError::Sandbox(e));
@@ -346,80 +381,5 @@ impl VmExecutionSession for GammaSession {
             let _ = self.limactl_stop();
         }
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn guest_dir_for_cwd_root() {
-        assert_eq!(guest_dir_for_cwd_inner("/workspace", "/"), "/workspace");
-    }
-
-    #[test]
-    fn guest_dir_for_cwd_nested() {
-        assert_eq!(
-            guest_dir_for_cwd_inner("/workspace", "/projects/hello"),
-            "/workspace/hello"
-        );
-    }
-
-    #[test]
-    fn sanitize_instance_replaces_dots() {
-        assert_eq!(sanitize_instance_segment("a.b"), "a_b");
-    }
-
-    /// When `DEVSHELL_VM_WORKSPACE_MODE=guest` and γ is available, push/pull is disabled for rust tools.
-    #[cfg(unix)]
-    #[test]
-    fn gamma_session_sync_flag_follows_workspace_mode() {
-        use std::sync::{Mutex, OnceLock};
-
-        use crate::devshell::sandbox;
-        use crate::devshell::vm::{
-            GammaSession, VmConfig, ENV_DEVSHELL_VM, ENV_DEVSHELL_VM_BACKEND,
-            ENV_DEVSHELL_VM_WORKSPACE_MODE,
-        };
-
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        let _g = LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
-
-        if sandbox::find_in_path("limactl").is_none() {
-            return;
-        }
-
-        let old_wm = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_MODE).ok();
-        let old_vm = std::env::var(ENV_DEVSHELL_VM).ok();
-        let old_b = std::env::var(ENV_DEVSHELL_VM_BACKEND).ok();
-
-        std::env::set_var(ENV_DEVSHELL_VM, "1");
-        std::env::set_var(ENV_DEVSHELL_VM_BACKEND, "lima");
-        std::env::set_var(ENV_DEVSHELL_VM_WORKSPACE_MODE, "guest");
-        let c = VmConfig::from_env();
-        let g = GammaSession::new(&c).expect("gamma");
-        assert!(
-            !g.syncs_vfs_with_host_workspace(),
-            "guest mode should skip VFS sync"
-        );
-
-        std::env::set_var(ENV_DEVSHELL_VM_WORKSPACE_MODE, "sync");
-        let c2 = VmConfig::from_env();
-        let g2 = GammaSession::new(&c2).expect("gamma");
-        assert!(g2.syncs_vfs_with_host_workspace());
-
-        match old_wm {
-            Some(ref v) => std::env::set_var(ENV_DEVSHELL_VM_WORKSPACE_MODE, v),
-            None => std::env::remove_var(ENV_DEVSHELL_VM_WORKSPACE_MODE),
-        }
-        match old_vm {
-            Some(ref v) => std::env::set_var(ENV_DEVSHELL_VM, v),
-            None => std::env::remove_var(ENV_DEVSHELL_VM),
-        }
-        match old_b {
-            Some(ref v) => std::env::set_var(ENV_DEVSHELL_VM_BACKEND, v),
-            None => std::env::remove_var(ENV_DEVSHELL_VM_BACKEND),
-        }
     }
 }

@@ -1,0 +1,8 @@
+# C 工具链（供 cargo 链接）
+#
+# 默认：cargo-devshell（γ）在 VM 就绪后会尝试在 guest 内 apt 安装 build-essential（见
+# DEVSHELL_VM_AUTO_BUILD_ESSENTIAL）。若需手动安装：
+#
+#   sudo apt update && sudo apt install -y build-essential
+#
+# 不要只读挂载宿主的单个 `cc`/`gcc` 文件；gcc 依赖 cc1、ld、as 等完整前缀。

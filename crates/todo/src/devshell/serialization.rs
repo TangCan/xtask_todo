@@ -17,6 +17,8 @@ pub enum Error {
     Truncated,
     InvalidUtf8(std::string::FromUtf8Error),
     Io(std::io::Error),
+    /// Host-backed [`super::vfs::Vfs`] cannot be serialized to the legacy `.bin` format.
+    HostBacked,
 }
 
 impl std::fmt::Display for Error {
@@ -27,6 +29,9 @@ impl std::fmt::Display for Error {
             Self::Truncated => write!(f, "truncated data"),
             Self::InvalidUtf8(e) => write!(f, "invalid utf-8: {e}"),
             Self::Io(e) => write!(f, "io error: {e}"),
+            Self::HostBacked => {
+                f.write_str("host-backed workspace cannot be saved as .dev_shell.bin")
+            }
         }
     }
 }
@@ -147,6 +152,9 @@ fn deserialize_node(r: &mut impl Read) -> Result<Node, Error> {
 /// # Errors
 /// Returns `Error::Io` on write failure or if cwd/name/children length overflows the wire format.
 pub fn serialize(vfs: &Vfs) -> Result<Vec<u8>, Error> {
+    if vfs.is_host_backed() {
+        return Err(Error::HostBacked);
+    }
     let mut out = Vec::new();
     out.write_all(MAGIC)?;
     out.write_all(&[VERSION])?;

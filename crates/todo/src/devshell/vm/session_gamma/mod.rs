@@ -1,0 +1,27 @@
+//! γ backend: [Lima](https://github.com/lima-vm/lima) via `limactl start` / `limactl shell`.
+//!
+//! The host directory [`GammaSession::workspace_parent`] must be mounted in the guest at
+//! [`GammaSession::guest_mount`] (default `/workspace`). See `docs/devshell-vm-gamma.md`.
+
+#![allow(clippy::pedantic, clippy::nursery)]
+
+mod env;
+mod helpers;
+mod session;
+
+#[cfg(test)]
+mod tests;
+
+pub use env::{
+    ENV_DEVSHELL_VM_AUTO_BUILD_ESSENTIAL, ENV_DEVSHELL_VM_GUEST_WORKSPACE, ENV_DEVSHELL_VM_LIMACTL,
+    ENV_DEVSHELL_VM_STOP_ON_EXIT, ENV_DEVSHELL_VM_WORKSPACE_PARENT,
+};
+pub use helpers::workspace_parent_for_instance;
+pub use session::GammaSession;
+
+/// Guest working directory for VFS cwd (mount + last path segment).
+#[cfg_attr(not(feature = "beta-vm"), allow(dead_code))]
+#[must_use]
+pub(crate) fn guest_dir_for_vfs_cwd(guest_mount: &str, vfs_cwd: &str) -> String {
+    helpers::guest_dir_for_vfs_cwd(guest_mount, vfs_cwd)
+}

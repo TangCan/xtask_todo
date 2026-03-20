@@ -178,6 +178,13 @@ fn save_on_exit<W2: Write>(
             let _ = writeln!(stderr, "dev_shell: session shutdown: {e}");
         }
     }
+    if vfs.borrow().is_host_backed() {
+        let _ = writeln!(
+            stderr,
+            "dev_shell: host workspace: skipping .dev_shell.bin (tree is on disk under DEVSHELL_WORKSPACE_ROOT)"
+        );
+        return;
+    }
     if vm_session.borrow().is_guest_primary() {
         let _ = writeln!(
             stderr,
