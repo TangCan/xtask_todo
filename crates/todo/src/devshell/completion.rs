@@ -93,6 +93,8 @@ const BUILTIN_COMMANDS: &[&str] = &[
     "cd",
     "ls",
     "mkdir",
+    "rustup",
+    "cargo",
     "cat",
     "touch",
     "echo",

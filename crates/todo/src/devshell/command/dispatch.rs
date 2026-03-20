@@ -1,49 +1,16 @@
-//! Command execution: `ExecContext`, redirects, and builtin dispatch (pwd, cd, ls, mkdir, cat, touch, echo, export-readonly, save, todo, exit/quit).
+//! Redirect handling, pipeline execution, and builtin dispatch.
 
 use std::io::Cursor;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::path::PathBuf;
 
-use super::parser::{Pipeline, SimpleCommand};
-use super::serialization;
-use super::todo_io::{list_from_todos, load_todos, save_todos};
-use super::vfs::Vfs;
-use crate::{InMemoryStore, TodoId, TodoList};
-
-/// Result of running a pipeline: continue the REPL loop or exit.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RunResult {
-    Continue,
-    Exit,
-}
-
-/// Execution context: VFS and standard streams for one command.
-pub struct ExecContext<'a> {
-    pub vfs: &'a mut Vfs,
-    pub stdin: &'a mut dyn Read,
-    pub stdout: &'a mut dyn Write,
-    pub stderr: &'a mut dyn Write,
-}
-
-/// Error from builtin execution (redirect or VFS failure, unknown command).
-#[derive(Debug)]
-pub enum BuiltinError {
-    UnknownCommand(String),
-    RedirectRead,
-    RedirectWrite,
-    CdFailed,
-    MkdirFailed,
-    CatFailed,
-    TouchFailed,
-    LsFailed,
-    ExportFailed,
-    SaveFailed,
-    TodoLoadFailed,
-    TodoSaveFailed,
-    TodoArgError,
-    TodoDataError,
-}
+use super::super::parser::{Pipeline, SimpleCommand};
+use super::super::sandbox;
+use super::super::serialization;
+use super::super::vfs::Vfs;
+use super::todo_builtin::run_todo_cmd;
+use super::types::{BuiltinError, ExecContext, RunResult};
 
 /// Run a single command with given streams. Redirects override the provided stdin/stdout/stderr.
 fn run_builtin_with_streams(
@@ -176,194 +143,6 @@ pub fn execute_pipeline(
     Ok(RunResult::Continue)
 }
 
-fn run_todo_list(
-    stdout: &mut dyn Write,
-    list: &TodoList<InMemoryStore>,
-    rest: &[String],
-) -> Result<(), BuiltinError> {
-    let use_json = rest.iter().any(|a| a == "--json");
-    if use_json {
-        #[derive(serde::Serialize)]
-        struct TodoRow {
-            id: u64,
-            title: String,
-            completed: bool,
-        }
-        let rows: Vec<TodoRow> = list
-            .list()
-            .into_iter()
-            .map(|t| TodoRow {
-                id: t.id.as_u64(),
-                title: t.title.clone(),
-                completed: t.completed,
-            })
-            .collect();
-        let json = serde_json::to_string_pretty(&rows).map_err(|_| BuiltinError::TodoDataError)?;
-        writeln!(stdout, "{json}").map_err(|_| BuiltinError::RedirectWrite)?;
-    } else {
-        for t in list.list() {
-            let done = if t.completed { " [done]" } else { "" };
-            writeln!(stdout, "{}. {}{}", t.id.as_u64(), t.title, done)
-                .map_err(|_| BuiltinError::RedirectWrite)?;
-        }
-    }
-    Ok(())
-}
-
-fn run_todo_add(
-    stdout: &mut dyn Write,
-    stderr: &mut dyn Write,
-    rest: &[String],
-    list: &mut TodoList<InMemoryStore>,
-) -> Result<(), BuiltinError> {
-    let title = rest.join(" ").trim().to_string();
-    if title.is_empty() {
-        writeln!(stderr, "todo add: title must be non-empty")
-            .map_err(|_| BuiltinError::RedirectWrite)?;
-        return Err(BuiltinError::TodoArgError);
-    }
-    let id = list.create(&title).map_err(|e| {
-        let _ = writeln!(stderr, "todo add: {e}");
-        BuiltinError::TodoArgError
-    })?;
-    save_todos(list).map_err(|_| BuiltinError::TodoSaveFailed)?;
-    writeln!(stdout, "{}", id.as_u64()).map_err(|_| BuiltinError::RedirectWrite)?;
-    Ok(())
-}
-
-fn run_todo_show(
-    stdout: &mut dyn Write,
-    rest: &[String],
-    list: &TodoList<InMemoryStore>,
-) -> Result<(), BuiltinError> {
-    let id_str = rest.first().ok_or(BuiltinError::TodoArgError)?;
-    let id_raw: u64 = id_str.parse().map_err(|_| BuiltinError::TodoArgError)?;
-    let id = TodoId::from_raw(id_raw).ok_or(BuiltinError::TodoArgError)?;
-    let t = list.get(id).ok_or(BuiltinError::TodoDataError)?;
-    let done = if t.completed { " [done]" } else { "" };
-    writeln!(stdout, "{}. {}{}", t.id.as_u64(), t.title, done)
-        .map_err(|_| BuiltinError::RedirectWrite)?;
-    if let Some(ref d) = t.description {
-        writeln!(stdout, "  {d}").map_err(|_| BuiltinError::RedirectWrite)?;
-    }
-    if let Some(ref due) = t.due_date {
-        writeln!(stdout, "  due: {due}").map_err(|_| BuiltinError::RedirectWrite)?;
-    }
-    Ok(())
-}
-
-fn run_todo_update(
-    stderr: &mut dyn Write,
-    rest: &[String],
-    list: &mut TodoList<InMemoryStore>,
-) -> Result<(), BuiltinError> {
-    let id_str = rest.first().ok_or(BuiltinError::TodoArgError)?;
-    let id_raw: u64 = id_str.parse().map_err(|_| BuiltinError::TodoArgError)?;
-    let id = TodoId::from_raw(id_raw).ok_or(BuiltinError::TodoArgError)?;
-    let title = rest
-        .get(1..)
-        .map(|a| a.join(" ").trim().to_string())
-        .unwrap_or_default();
-    if title.is_empty() {
-        writeln!(stderr, "todo update: new title must be non-empty")
-            .map_err(|_| BuiltinError::RedirectWrite)?;
-        return Err(BuiltinError::TodoArgError);
-    }
-    list.update_title(id, &title).map_err(|e| {
-        let _ = writeln!(stderr, "todo update: {e}");
-        BuiltinError::TodoDataError
-    })?;
-    save_todos(list).map_err(|_| BuiltinError::TodoSaveFailed)?;
-    Ok(())
-}
-
-fn run_todo_complete(
-    stderr: &mut dyn Write,
-    rest: &[String],
-    list: &mut TodoList<InMemoryStore>,
-) -> Result<(), BuiltinError> {
-    let id_str = rest.first().ok_or(BuiltinError::TodoArgError)?;
-    let id_raw: u64 = id_str.parse().map_err(|_| BuiltinError::TodoArgError)?;
-    let id = TodoId::from_raw(id_raw).ok_or(BuiltinError::TodoArgError)?;
-    list.complete(id, false).map_err(|e| {
-        let _ = writeln!(stderr, "todo complete: {e}");
-        BuiltinError::TodoDataError
-    })?;
-    save_todos(list).map_err(|_| BuiltinError::TodoSaveFailed)?;
-    Ok(())
-}
-
-fn run_todo_delete(
-    stderr: &mut dyn Write,
-    rest: &[String],
-    list: &mut TodoList<InMemoryStore>,
-) -> Result<(), BuiltinError> {
-    let id_str = rest.first().ok_or(BuiltinError::TodoArgError)?;
-    let id_raw: u64 = id_str.parse().map_err(|_| BuiltinError::TodoArgError)?;
-    let id = TodoId::from_raw(id_raw).ok_or(BuiltinError::TodoArgError)?;
-    list.delete(id).map_err(|e| {
-        let _ = writeln!(stderr, "todo delete: {e}");
-        BuiltinError::TodoDataError
-    })?;
-    save_todos(list).map_err(|_| BuiltinError::TodoSaveFailed)?;
-    Ok(())
-}
-
-fn run_todo_search(
-    stdout: &mut dyn Write,
-    rest: &[String],
-    list: &TodoList<InMemoryStore>,
-) -> Result<(), BuiltinError> {
-    let keyword = rest.join(" ").trim().to_string();
-    for t in list.search(&keyword) {
-        let done = if t.completed { " [done]" } else { "" };
-        writeln!(stdout, "{}. {}{}", t.id.as_u64(), t.title, done)
-            .map_err(|_| BuiltinError::RedirectWrite)?;
-    }
-    Ok(())
-}
-
-fn run_todo_stats(
-    stdout: &mut dyn Write,
-    list: &TodoList<InMemoryStore>,
-) -> Result<(), BuiltinError> {
-    let (total, open, completed) = list.stats();
-    writeln!(
-        stdout,
-        "open: {open}  completed: {completed}  total: {total}"
-    )
-    .map_err(|_| BuiltinError::RedirectWrite)?;
-    Ok(())
-}
-
-fn run_todo_cmd(
-    stdout: &mut dyn Write,
-    stderr: &mut dyn Write,
-    argv: &[String],
-) -> Result<(), BuiltinError> {
-    let sub = argv.get(1).map_or("list", String::as_str);
-    let rest = argv.get(2..).unwrap_or(&[]);
-
-    let todos = load_todos().map_err(|_| BuiltinError::TodoLoadFailed)?;
-    let mut list = list_from_todos(todos);
-
-    match sub {
-        "list" => run_todo_list(stdout, &list, rest),
-        "add" => run_todo_add(stdout, stderr, rest, &mut list),
-        "show" => run_todo_show(stdout, rest, &list),
-        "update" => run_todo_update(stderr, rest, &mut list),
-        "complete" => run_todo_complete(stderr, rest, &mut list),
-        "delete" => run_todo_delete(stderr, rest, &mut list),
-        "search" => run_todo_search(stdout, rest, &list),
-        "stats" => run_todo_stats(stdout, &list),
-        _ => {
-            writeln!(stderr, "todo: unknown subcommand '{sub}' (list, add, show, update, complete, delete, search, stats)")
-                .map_err(|_| BuiltinError::RedirectWrite)?;
-            Err(BuiltinError::TodoArgError)
-        }
-    }
-}
-
 fn run_builtin_help(stdout: &mut dyn Write) -> Result<(), BuiltinError> {
     writeln!(stdout, "Supported commands:").map_err(|_| BuiltinError::RedirectWrite)?;
     writeln!(stdout, "  pwd              print current working directory")
@@ -392,6 +171,16 @@ fn run_builtin_help(stdout: &mut dyn Write) -> Result<(), BuiltinError> {
     .map_err(|_| BuiltinError::RedirectWrite)?;
     writeln!(stdout, "  todo [list|add|show|update|complete|delete|search|stats] ...  todo list (shares .todo.json with cargo xtask todo)")
         .map_err(|_| BuiltinError::RedirectWrite)?;
+    writeln!(
+        stdout,
+        "  rustup [args...] run rustup in sandbox (exports VFS cwd, runs, syncs back)"
+    )
+    .map_err(|_| BuiltinError::RedirectWrite)?;
+    writeln!(
+        stdout,
+        "  cargo [args...]  run cargo in sandbox (exports VFS cwd, runs, syncs back)"
+    )
+    .map_err(|_| BuiltinError::RedirectWrite)?;
     writeln!(stdout, "  exit, quit       exit the shell")
         .map_err(|_| BuiltinError::RedirectWrite)?;
     writeln!(stdout, "  help             show this help")
@@ -421,6 +210,46 @@ fn run_builtin_export_readonly(
         std::fs::canonicalize(&temp_dir).map_err(|_| BuiltinError::ExportFailed)?;
     writeln!(stdout, "{}", abs_path.display()).map_err(|_| BuiltinError::RedirectWrite)?;
     Ok(())
+}
+
+fn run_rust_tool_builtin(
+    vfs: &mut Vfs,
+    stderr: &mut dyn Write,
+    program: &str,
+    argv: &[String],
+) -> Result<(), BuiltinError> {
+    let tool_args: Vec<String> = argv.get(1..).unwrap_or_default().to_vec();
+    let cwd = vfs.cwd().to_string();
+    match sandbox::run_rust_tool(vfs, &cwd, program, &tool_args) {
+        Ok(status) => {
+            if status.success() {
+                Ok(())
+            } else {
+                let _ = writeln!(stderr, "{program} exited with {status}");
+                Err(BuiltinError::SandboxExportFailed)
+            }
+        }
+        Err(sandbox::SandboxError::ExportFailed(e)) => {
+            let _ = writeln!(stderr, "{program}: {e}");
+            if e.kind() == std::io::ErrorKind::NotFound {
+                Err(if program == "rustup" {
+                    BuiltinError::RustupNotFound
+                } else {
+                    BuiltinError::CargoNotFound
+                })
+            } else {
+                Err(BuiltinError::SandboxExportFailed)
+            }
+        }
+        Err(sandbox::SandboxError::CopyFailed(_)) => {
+            let _ = writeln!(stderr, "{program}: export failed");
+            Err(BuiltinError::SandboxExportFailed)
+        }
+        Err(sandbox::SandboxError::SyncBackFailed(e)) => {
+            let _ = writeln!(stderr, "{program}: sync back failed: {e}");
+            Err(BuiltinError::SandboxSyncFailed)
+        }
+    }
 }
 
 fn run_builtin_core(
@@ -488,6 +317,8 @@ fn run_builtin_core(
             Ok(())
         }
         "todo" => run_todo_cmd(stdout, stderr, argv),
+        "rustup" => run_rust_tool_builtin(vfs, stderr, "rustup", argv),
+        "cargo" => run_rust_tool_builtin(vfs, stderr, "cargo", argv),
         "help" => run_builtin_help(stdout),
         _ => {
             writeln!(stderr, "unknown command: {name}").map_err(|_| BuiltinError::RedirectWrite)?;

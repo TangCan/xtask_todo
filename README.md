@@ -31,7 +31,7 @@ cargo xtask todo delete <id>
 
 ### Dev shell and scripting
 
-The **xtask-todo-lib** crate provides a small dev shell (VFS, builtins: `pwd`, `cd`, `ls`, `mkdir`, `cat`, `touch`, `echo`, `save`, `export-readonly`, `todo`, `exit`). Run the REPL:
+The **xtask-todo-lib** crate provides a small dev shell (VFS, builtins: `pwd`, `cd`, `ls`, `mkdir`, `cat`, `touch`, `echo`, `save`, `export-readonly`, `todo`, `rustup`, `cargo`, `exit`). Run the REPL:
 
 ```bash
 cargo run -p xtask-todo-lib --bin cargo-devshell [path]
@@ -66,6 +66,14 @@ if pwd; then echo ok; fi
 ```
 
 Scripts only run built-in commands and use the same virtual filesystem as the REPL; they do not invoke the host shell or external programs.
+
+**Rust toolchain** (sandboxed):
+
+- **`rustup [args...]`** — run host `rustup` in an isolated temp dir: the current VFS subtree (cwd) is exported, `rustup` runs there, then changes are synced back into the VFS. Requires `rustup` in PATH.
+- **`cargo [args...]`** — same flow for `cargo` (e.g. `cargo build`, `cargo run`, `cargo new`). Compilation outputs and new crates appear in the VFS after the command finishes.
+- Isolation: one unique temp dir per run (e.g. `devshell_<pid>_<nanos>` under `$TMPDIR`), mode `0o700`; the dir is removed after sync. Stronger isolation (e.g. fd-only on Linux, or optional Docker/Podman backend) is described in `docs/superpowers/specs/2026-03-20-devshell-rust-vm-design.md`.
+
+Example: `mkdir my_project && cd my_project && cargo new . --name my_app && cargo build`.
 
 ## Tests
 

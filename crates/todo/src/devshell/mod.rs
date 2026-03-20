@@ -3,6 +3,7 @@
 pub mod command;
 pub mod completion;
 pub mod parser;
+pub mod sandbox;
 pub mod script;
 pub mod serialization;
 pub mod todo_io;
