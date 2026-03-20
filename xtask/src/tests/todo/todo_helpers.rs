@@ -138,11 +138,11 @@ fn is_old_open_old_true() {
 
 #[test]
 fn load_todos_from_invalid_json_defaults_empty() {
-    let _guard = crate::tests::cwd_test_lock();
+    let _cwd_lock = crate::tests::cwd_test_lock();
     let dir = std::env::temp_dir().join("xtask_todo_test_invalid");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = crate::tests::RestoreCwd::new(&dir, &cwd);
+    let _restore = crate::tests::RestoreCwd::new(&dir, &cwd);
     let path = dir.join(".todo.json");
     std::fs::write(&path, "not json").unwrap();
 

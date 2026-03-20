@@ -100,7 +100,15 @@ git config core.hooksPath .githooks
 
 ## Documentation
 
-See the [docs](docs/) folder for requirements, design, acceptance criteria, and test cases.
+| Document | Contents |
+|----------|----------|
+| [docs/requirements.md](docs/requirements.md) | **§1** overview, **§1.1** Mode S/P, **§3** Todo, **§5** Devshell, **§6** JSON/exit codes |
+| [docs/design.md](docs/design.md) | Architecture, data flow, module map |
+| [docs/acceptance.md](docs/acceptance.md) | Checklist vs requirements |
+| [docs/test-cases.md](docs/test-cases.md) | Requirement → test mapping |
+| [docs/test-coverage.md](docs/test-coverage.md) | Tarpaulin targets |
+
+More under [docs/](docs/) (e.g. `devshell-vm-gamma.md`, `publishing.md`).
 
 ## Publishing
 

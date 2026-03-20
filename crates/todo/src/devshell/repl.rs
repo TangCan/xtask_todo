@@ -194,7 +194,7 @@ fn save_on_exit<W2: Write>(
             let _ = writeln!(
                 stderr,
                 "dev_shell: failed to write guest-primary session {}: {e}",
-                session_store::session_path_for_bin(bin_path).display()
+                session_store::session_metadata_path(bin_path).display()
             );
         }
     } else if let Err(e) = serialization::save_to_file(&vfs.borrow(), bin_path) {

@@ -12,19 +12,19 @@
 
 | 需求/设计 | 本文档章节 |
 |-----------|------------|
-| requirements §1～2 概述与范围 | §8 非功能；各章概述性用例 |
-| requirements §3 US-T1～T13 | §2 |
-| requirements §4 `cargo xtask todo` | §2、§4 |
-| requirements §5 其他 xtask | §5 |
-| requirements §6 Devshell | §6 |
-| requirements §7 US-A1～A4 | §3 |
-| requirements §8 非功能 | §8 |
-| design §1 架构 / §2 数据流 / §3 接口 | §5～§7 |
-| design §4 关键决策（补全、沙箱、持久化分离） | §6、§7 |
+| requirements §1 概述（含 Mode S/P） | §5 Devshell |
+| requirements §2 能力与不承诺 | §8 非功能；概述性用例 |
+| requirements §3 Todo | §2 |
+| requirements §4 其他 xtask | §4 |
+| requirements §5 Devshell | §5 |
+| requirements §6 AI / 退出码 | §1 |
+| requirements §7 非功能 | §7 |
+| design §1～§3 | §4～§6 |
+| design §4 关键决策 | §5、§6 |
 
 ---
 
-## 1. AI / 可编程接口（requirements §7）
+## 1. AI / 可编程接口（requirements §6）
 
 ### US-A1：结构化 JSON
 
@@ -56,7 +56,7 @@
 
 ---
 
-## 2. Todo 领域（requirements §3 + §4.3）
+## 2. Todo 领域（requirements §3）
 
 ### US-T1 创建
 
@@ -64,7 +64,7 @@
 |----|------|------|----------|----------|----------|
 | TC-T1-1 | US-T1 | 非空标题创建成功 | 单元/集成 | `Ok(TodoId)`，list 含该项 | `crates/todo/src/tests/crud.rs` |
 | TC-T1-2 | US-T1 | 空标题拒绝 | 单元 | `InvalidInput`，条数不变 | `crates/todo/src/tests/crud.rs` |
-| TC-T1-3 | US-T1 / §4.3 | CLI 空标题退出码 2 | `cargo xtask todo add ""` | 集成 | 退出码 2 | `xtask` todo_cmd 测试 |
+| TC-T1-3 | US-T1 / §3.2 | CLI 空标题退出码 2 | `cargo xtask todo add ""` | 集成 | 退出码 2 | `xtask` todo_cmd 测试 |
 
 ### US-T2 列表
 
@@ -106,7 +106,7 @@
 | TC-T8-2 | US-T8 | `--clear-repeat-rule` | `priority_repeat.rs`、`advanced.rs` |
 | TC-T9-1 | US-T9 | add/update 可选字段 | `list_options.rs`、`todo_cmd_io.rs` |
 | TC-T9-2 | US-T9 | list 过滤排序 | `crates/todo/src/tests/list_options.rs`、`xtask/.../list_options.rs` |
-| TC-T9-3 | US-T9 / §4.3 | 非法 `--status` / `--due-before` 等 | 集成 | 退出码 2 | `xtask/.../list_options.rs`（`cmd_todo_list_invalid_status_*`、`invalid_due_before_*`） |
+| TC-T9-3 | US-T9 / §3.2 | 非法 `--status` / `--due-before` 等 | 集成 | 退出码 2 | `xtask/.../list_options.rs`（`cmd_todo_list_invalid_status_*`、`invalid_due_before_*`） |
 | TC-T10-1 | US-T10 | search 命中 | `advanced.rs`、`xtask` |
 | TC-T10-2 | US-T10 | search 空 | 同上 |
 | TC-T11-1 | US-T11 | stats 计数 | `advanced.rs`、`xtask` |
@@ -117,7 +117,7 @@
 |----|------|------|----------|
 | TC-T12-1 | US-T12 | export JSON/CSV | `xtask/todo_cmd_io.rs` 或 `json_dry_init` |
 | TC-T12-2 | US-T12 | import 合并 | `todo_cmd_io.rs` |
-| TC-T12-3 | US-T12 / §4.2 | `import --replace` 替换列表 | 集成 | 仅导入文件中的任务 | `xtask/.../todo_cmd_io.rs`（`cmd_todo_export_and_import_merge_replace`） |
+| TC-T12-3 | US-T12 / §3.2 | `import --replace` 替换列表 | 集成 | 仅导入文件中的任务 | `xtask/.../todo_cmd_io.rs`（`cmd_todo_export_and_import_merge_replace`） |
 
 ### US-T13 重复任务
 
@@ -131,13 +131,13 @@
 | TC-T13-6 | US-T13 | 非法 repeat_count | CLI 退出码 2 | `todo_error.rs` |
 | TC-T13-7 | US-T13 | add 带 repeat 端到端 | `xtask/tests/integration.rs`（`xtask_todo_add_with_repeat_options_then_list`） |
 
-### 日期与参数校验（§4.3）
+### 日期与参数校验（requirements §3.2）
 
 | ID | 需求 | 描述 | 实现映射 |
 |----|------|------|----------|
-| TC-DATE-1 | §4.3 | 非法 `--due-date` / `--repeat-until` | 退出码 2 | `todo_cmd_io.rs`、`todo_error.rs` |
-| TC-DATE-2 | §4.3 | 非法 `--due-before` / `--due-after` | 退出码 2 | `list_options.rs` |
-| TC-PRI-1 | §4.3 | 非法 `--priority` | 退出码 2 | `todo_error.rs` |
+| TC-DATE-1 | §3.2 | 非法 `--due-date` / `--repeat-until` | 退出码 2 | `todo_cmd_io.rs`、`todo_error.rs` |
+| TC-DATE-2 | §3.2 | 非法 `--due-before` / `--due-after` | 退出码 2 | `list_options.rs` |
+| TC-PRI-1 | §3.2 | 非法 `--priority` | 退出码 2 | `todo_error.rs` |
 
 ### 库层集成（design §2.1 / §3.1）
 
@@ -148,7 +148,7 @@
 
 ---
 
-## 3. `cargo xtask todo` 端到端（requirements §4 + US-X4）
+## 3. `cargo xtask todo` 端到端（requirements §3 + US-X4）
 
 | ID | 需求 | 描述 | 实现映射 |
 |----|------|------|----------|
@@ -158,7 +158,7 @@
 
 ---
 
-## 4. 其他 `cargo xtask` 子命令（requirements §5 + design §3.2）
+## 4. 其他 `cargo xtask` 子命令（requirements §4 + design §3.2）
 
 ### US-X1～X3
 
@@ -184,69 +184,69 @@
 
 ---
 
-## 5. Devshell（requirements §6 + US-D1/US-D2 + design §1.4～§2.5）
+## 5. Devshell（requirements §1.1 + §5 + design §1.4～§2.5）
 
-### 5.1 启动、持久化、二进制（§6.1 / design §2.3）
-
-| ID | 需求/设计 | 描述 | 实现映射 |
-|----|-----------|------|----------|
-| TC-D0-1 | §6.1 | 非法 CLI 参数非零退出 | `crates/todo/tests/integration.rs`（`cargo_devshell_usage_error_exits_nonzero`） |
-| TC-D0-2 | §6.1 / design §2.3 | REPL/脚本结束保存 `.dev_shell.bin` | `devshell/tests/run_main.rs`、`serialization.rs` 测试 |
-| TC-D0-3 | §6.1 | `-f script` / `-e` | `run_main.rs` |
-
-### 5.2 VFS（§6.2 / design vfs）
-
-| ID | 需求 | 描述 | 实现映射 |
-|----|------|------|----------|
-| TC-D-VFS-1 | §6.2 | mkdir / cd / pwd / ls | `devshell/tests/run_basic.rs`、`vfs/tests.rs` |
-| TC-D-VFS-2 | §6.2 | 读写文件、路径解析 | `vfs/tests.rs`、`run_basic.rs` |
-
-### 5.3 内置命令（§6.3）
-
-| ID | 需求 | 描述 | 实现映射 |
-|----|------|------|----------|
-| TC-D-BUILTIN-1 | §6.3 | cat/touch/echo/save/help | `run_basic.rs`、`run_io.rs` |
-| TC-D-BUILTIN-2 | §6.3 | export-readonly | `devshell/tests/run_io.rs`（`run_with_export_readonly`） |
-| TC-D-BUILTIN-3 | §6.3 | 管道 `\|` | `run_io.rs`、`parser.rs` 测试 |
-| TC-D-BUILTIN-4 | §6.3 | 重定向 `<` `>` `2>` | `run_io.rs` |
-| TC-D-BUILTIN-5 | §6.3 | 解析错误可读 | `parser.rs` 测试 |
-
-### 5.4 内置 `todo` 子集（§6.3）
-
-| ID | 需求 | 描述 | 实现映射 |
-|----|------|------|----------|
-| TC-D-TODO-1 | §6.3 | list/add/show/update/complete/delete/search/stats | `devshell/tests/run_todo.rs` |
-| TC-D-TODO-2 | §6.3 | 与 `.todo.json` 约定一致 | `run_todo.rs`、`todo_io.rs` |
-
-### 5.5 脚本（§6.5）
-
-| ID | 需求 | 描述 | 实现映射 |
-|----|------|------|----------|
-| TC-D-SCRIPT-1 | §6.5 | 变量、if/for/while | `devshell/script/tests.rs` |
-| TC-D-SCRIPT-2 | §6.5 | `set -e`、续行、注释 | `script/tests.rs` |
-| TC-D-SCRIPT-3 | §6.5 | source / 嵌套深度 | `script/tests.rs`、`run_basic.rs`（source） |
-
-### 5.6 REPL：`source` / `.`（§6.6）
-
-| ID | 需求 | 描述 | 实现映射 |
-|----|------|------|----------|
-| TC-D-REPL-1 | §6.6 | `source path`、`. path` | `repl.rs` 测试、`run_basic.rs` |
-
-### 5.7 Tab 补全（§6.7 / design §4.3）
+### 5.1 启动、持久化、CLI（requirements §5.3）
 
 | ID | 需求/设计 | 描述 | 实现映射 |
 |----|-----------|------|----------|
-| TC-D-COMP-1 | §6.7 | 命令名补全 | `devshell/completion.rs` 测试 |
-| TC-D-COMP-2 | §6.7 / design §4.3 | 路径补全；`src/` 前缀保留 | `complete_path_trailing_slash_keeps_parent_in_candidate` 等 | `completion.rs` |
+| TC-D0-1 | §5.3 | 非法 CLI 参数非零退出 | `crates/todo/tests/integration.rs`（`cargo_devshell_usage_error_exits_nonzero`） |
+| TC-D0-2 | §1.1 / design §2.3 | 会话与工作区：VFS 序列化、`session_store`、**工作区内** `session.json` 路径（实现演进中） | `devshell/tests/run_main.rs`、`serialization.rs`、`session_store` 测试 |
+| TC-D0-3 | §5.3 | `-f script` / `-e` | `run_main.rs` |
+
+### 5.2 VFS（requirements §5.4 + design vfs）
+
+| ID | 需求 | 描述 | 实现映射 |
+|----|------|------|----------|
+| TC-D-VFS-1 | §5.4 | mkdir / cd / pwd / ls | `devshell/tests/run_basic.rs`、`vfs/tests.rs` |
+| TC-D-VFS-2 | §5.4 | 读写文件、路径解析 | `vfs/tests.rs`、`run_basic.rs` |
+
+### 5.3 内置命令（requirements §5.4）
+
+| ID | 需求 | 描述 | 实现映射 |
+|----|------|------|----------|
+| TC-D-BUILTIN-1 | §5.4 | cat/touch/echo/save/help | `run_basic.rs`、`run_io.rs` |
+| TC-D-BUILTIN-2 | §5.4 | export-readonly | `devshell/tests/run_io.rs`（`run_with_export_readonly`） |
+| TC-D-BUILTIN-3 | §5.4 | 管道 `\|` | `run_io.rs`、`parser.rs` 测试 |
+| TC-D-BUILTIN-4 | §5.4 | 重定向 `<` `>` `2>` | `run_io.rs` |
+| TC-D-BUILTIN-5 | §5.4 | 解析错误可读 | `parser.rs` 测试 |
+
+### 5.4 内置 `todo` 子集
+
+| ID | 需求 | 描述 | 实现映射 |
+|----|------|------|----------|
+| TC-D-TODO-1 | §5.4 | list/add/show/update/complete/delete/search/stats | `devshell/tests/run_todo.rs` |
+| TC-D-TODO-2 | §5.4 | 与 `.todo.json` 约定一致 | `run_todo.rs`、`todo_io.rs` |
+
+### 5.5 脚本（requirements §5.5）
+
+| ID | 需求 | 描述 | 实现映射 |
+|----|------|------|----------|
+| TC-D-SCRIPT-1 | §5.5 | 变量、if/for/while | `devshell/script/tests.rs` |
+| TC-D-SCRIPT-2 | §5.5 | `set -e`、续行、注释 | `script/tests.rs` |
+| TC-D-SCRIPT-3 | §5.5 | source / 嵌套深度 | `script/tests.rs`、`run_basic.rs`（source） |
+
+### 5.6 REPL：`source` / `.`（requirements §5.5）
+
+| ID | 需求 | 描述 | 实现映射 |
+|----|------|------|----------|
+| TC-D-REPL-1 | §5.5 | `source path`、`. path` | `repl.rs` 测试、`run_basic.rs` |
+
+### 5.7 Tab 补全（requirements §5.6 + design §4.3）
+
+| ID | 需求/设计 | 描述 | 实现映射 |
+|----|-----------|------|----------|
+| TC-D-COMP-1 | §5.6 | 命令名补全 | `devshell/completion.rs` 测试 |
+| TC-D-COMP-2 | §5.6 / design §4.3 | 路径补全；`src/` 前缀保留 | `complete_path_trailing_slash_keeps_parent_in_candidate` 等 | `completion.rs` |
 | TC-D-COMP-3 | design §4.3 | `CompletionType::List`（非 Circular 回退） | 手工 REPL 或配置断言 | `repl.rs`（集成配置）；**行为**以代码为准 |
 
-### 5.8 Rust 沙箱（§6.3 rustup/cargo + design §2.5）
+### 5.8 Rust 沙箱（requirements §5.4 + design §2.5）
 
 | ID | 需求/设计 | 描述 | 实现映射 |
 |----|-----------|------|----------|
-| TC-D-SBX-1 | US-D2 / §2.5 | 导出→临时目录→同步 | `devshell/sandbox.rs` 单元测试（export/sync） |
+| TC-D-SBX-1 | §5.4 / §2.5 | 导出→临时目录→同步 | `devshell/sandbox.rs` 单元测试（export/sync） |
 | TC-D-SBX-2 | design §2.5 | 嵌套 VFS 路径 `host_export_root` 与 `copy_tree_to_host` 一致 | `nested_vfs_path_host_uses_leaf_dir_not_full_path` | `sandbox.rs` |
-| TC-D-SBX-3 | US-D2 | PATH 无 cargo/rustup 时错误提示 | 手工或隔离 PATH | **可选** |
+| TC-D-SBX-3 | §5.4 | PATH 无 cargo/rustup 时错误提示 | 手工或隔离 PATH | **可选** |
 | TC-D-SBX-4 | dev-container.md | Linux `DEVSHELL_RUST_MOUNT_NAMESPACE=1` 下 `run_in_export_dir` 可启动子进程 | `run_in_export_dir_true_with_mount_namespace`（Linux，`#[ignore]`，需特权环境：`cargo test … -- --ignored`） | `sandbox.rs` |
 
 ### 5.9 序列化（design §1.4）
@@ -268,14 +268,14 @@
 
 ---
 
-## 7. 非功能（requirements §8）
+## 7. 非功能（requirements §7）
 
 | ID | 需求 | 描述 | 验证方式 | 实现映射 |
 |----|------|------|----------|----------|
-| TC-NF-1 | §8.1 | Workspace members | 检查根 `Cargo.toml` | 手工 |
-| TC-NF-2 | §8.1 | 无需全局 cargo-xtask | `.cargo/config.toml` alias | 手工 |
-| TC-NF-3 | §8.2 | 人类错误 stderr；json 错误结构 | 抽样 CLI | `todo_cmd` 测试 |
-| TC-NF-4 | §8.2 | 列表颜色仅 TTY | 见 TC-T6 | `format.rs` |
+| TC-NF-1 | §7 | Workspace members | 检查根 `Cargo.toml` | 手工 |
+| TC-NF-2 | §7 | 无需全局 cargo-xtask | `.cargo/config.toml` alias | 手工 |
+| TC-NF-3 | §7 | 人类错误 stderr；json 错误结构 | 抽样 CLI | `todo_cmd` 测试 |
+| TC-NF-4 | §7 | 列表颜色仅 TTY | 见 TC-T6 | `format.rs` |
 
 ---
 
@@ -313,12 +313,12 @@
 ## 9. 维护说明
 
 1. **新增需求**（requirements.md）：在本文档增加至少一条用例，或标注 **N/A / 待补充** 及原因。  
-2. **新增设计决策**（design.md）：在 §6～§7 增加 **TC-DES-*** 或 devshell/xtask 用例。  
+2. **新增设计决策**（design.md）：在 **design §4～§5** 增加 **TC-DES-*** 或 devshell/xtask 用例。  
 3. **新增自动化测试**：更新 §8 映射表。  
 4. **与 acceptance.md**：若验收表中有独立 ID，可在用例表「需求引用」列双向注明。
 
 ---
 
-## 10. 明确不覆盖（requirements §9）
+## 10. 明确不覆盖（requirements §2「当前不承诺」）
 
-以下不在当前测试用例范围内（按需未来补充）：HTTP API、多用户权限、`.todo.json` 自动 schema 迁移、并发写同一文件的强保证、自然语言界面等。
+以下不在当前测试用例范围内（按需补充）：HTTP API、多用户权限、`.todo.json` 自动迁移流水线、并发写同一文件的强保证等。

@@ -271,8 +271,13 @@ impl GammaSession {
             if let Some(ref c) = cwd {
                 let _ = writeln!(
                     std::io::stderr(),
-                    "dev_shell: lima: host cwd {} is outside {} — shell starts at {}; clone or symlink the repo under the workspace mount, or add a `lima.yaml` mount for this path.",
+                    "dev_shell: lima: host cwd {} is outside workspace_parent {} — shell starts at {}.\n\
+dev_shell: hint: `workspace_parent` defaults to the Cargo workspace root (or set DEVSHELL_VM_WORKSPACE_PARENT). \
+In ~/.lima/<instance>/lima.yaml, mount that host path, e.g.:\n  - location: \"{}\"\n    mountPoint: {}\n    writable: true\n\
+Then limactl stop/start the instance. See docs/devshell-vm-gamma.md.",
                     c.display(),
+                    self.workspace_parent.display(),
+                    self.guest_mount,
                     self.workspace_parent.display(),
                     self.guest_mount
                 );

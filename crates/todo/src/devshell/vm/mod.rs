@@ -36,7 +36,7 @@ pub use session_gamma::{
     ENV_DEVSHELL_VM_AUTO_BUILD_TODO_GUEST, ENV_DEVSHELL_VM_AUTO_TODO_PATH,
     ENV_DEVSHELL_VM_GUEST_HOST_DIR, ENV_DEVSHELL_VM_GUEST_TODO_HINT,
     ENV_DEVSHELL_VM_GUEST_WORKSPACE, ENV_DEVSHELL_VM_LIMACTL, ENV_DEVSHELL_VM_STOP_ON_EXIT,
-    ENV_DEVSHELL_VM_WORKSPACE_PARENT,
+    ENV_DEVSHELL_VM_WORKSPACE_PARENT, ENV_DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT,
 };
 pub use session_host::HostSandboxSession;
 pub use sync::{pull_workspace_to_vfs, push_full, push_incremental, VmSyncError};
@@ -350,6 +350,8 @@ pub fn try_session_rc_or_host(stderr: &mut dyn Write) -> Rc<RefCell<SessionHolde
 
 #[cfg(unix)]
 pub fn export_devshell_workspace_root_env() {
+    #[cfg(test)]
+    let _workspace_env_test_guard = crate::test_support::devshell_workspace_env_mutex();
     let c = config::VmConfig::from_env();
     let p = session_gamma::workspace_parent_for_instance(&c.lima_instance);
     let _ = std::fs::create_dir_all(&p);

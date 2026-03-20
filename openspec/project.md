@@ -2,11 +2,11 @@
 
 ## Purpose
 - **xtask_todo** provides reusable Todo (待办) capability as a library and optional entrypoints, with development and build automation via `cargo xtask`.
-- Scope: (1) Todo domain in `crates/todo` (create, list, complete, delete); (2) xtask workflow for developers (run, extend subcommands). See `docs/requirements.md` for user stories and acceptance criteria.
+- Scope: (1) Todo domain in `crates/todo`; (2) `cargo xtask` workflow; (3) optional devshell / VM. See `docs/requirements.md` (**§1** overview, **§3** Todo, **§5** Devshell) and `docs/acceptance.md`.
 
 ## Tech Stack
 - **Language**: Rust, edition 2021
-- **Workspace**: Cargo workspace, resolver `"2"`, members `crates/todo` and `xtask`
+- **Workspace**: Cargo workspace, resolver `"2"`, members `crates/todo`, `crates/devshell-vm`, `xtask`
 - **CLI (xtask)**: `argh` for subcommand and argument parsing
 - **Entrypoint**: `cargo xtask` via `.cargo/config.toml` alias (`xtask = "run -p xtask --"`), no global install required
 - **Xtask subcommands**: `run`, `fmt` (same as `cargo fmt`), `clippy`, `coverage` (per-crate tarpaulin), `git add` / `git commit`, `todo add/list/complete/delete` (data in `.todo.json`). See root `README.md`.

@@ -5,6 +5,7 @@ use super::{
     export_vfs_to_temp_dir, find_in_path, run_in_export_dir, run_rust_tool, sync_host_dir_to_vfs,
     SandboxError,
 };
+use crate::test_support::cwd_mutex;
 
 fn path_env_lock() -> std::sync::MutexGuard<'static, ()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -194,6 +195,7 @@ fn export_empty_cwd_creates_dir() {
 
 #[test]
 fn export_with_files_and_dirs() {
+    let _cwd = cwd_mutex();
     let mut vfs = Vfs::new();
     vfs.mkdir("/proj").unwrap();
     vfs.set_cwd("/proj").unwrap();

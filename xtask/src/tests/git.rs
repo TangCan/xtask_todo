@@ -3,7 +3,7 @@
 use std::process::Stdio;
 
 use crate::git::{cmd_git, GitAddArgs, GitArgs, GitCommitArgs, GitSub};
-use crate::tests::{cwd_test_lock, dir_outside_cwd, RestoreCwd};
+use crate::tests::{cwd_test_lock, dir_outside_cwd, git_available, sh_available, RestoreCwd};
 use crate::{run_with, XtaskCmd, XtaskSub};
 
 /// Sets `GIT_DIR` and `GIT_WORK_TREE` so git uses only the given repo; restores both on drop.
@@ -38,7 +38,7 @@ impl Drop for GitRepoGuard {
 
 #[test]
 fn run_subcommand_git_add() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_git_add_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -58,7 +58,7 @@ fn run_subcommand_git_add() {
 
 #[test]
 fn run_subcommand_git_commit() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_git_commit_run_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
@@ -78,13 +78,16 @@ fn run_subcommand_git_commit() {
 
 #[test]
 fn cmd_git_add_in_nongit_dir_returns_err() {
-    let _guard = cwd_test_lock();
+    if !git_available() {
+        return;
+    }
+    let _cwd_lock = cwd_test_lock();
     // Dir outside workspace; pin GIT_DIR and GIT_WORK_TREE so git cannot use main repo (CI).
     let dir = dir_outside_cwd("xtask_nongit");
     std::fs::create_dir_all(&dir).unwrap();
     let dir = std::fs::canonicalize(&dir).unwrap_or(dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let bad_git_dir = dir.join(".git_absent");
     let _env_guard = GitRepoGuard::new(&bad_git_dir, &dir);
     let cmd = GitArgs {
@@ -96,11 +99,14 @@ fn cmd_git_add_in_nongit_dir_returns_err() {
 
 #[test]
 fn cmd_git_pre_commit_in_nongit_dir_returns_err() {
-    let _guard = cwd_test_lock();
+    if !git_available() || !sh_available() {
+        return;
+    }
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_git_precommit_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let cmd = GitArgs {
         sub: GitSub::PreCommit(crate::git::GitPreCommitArgs {}),
     };
@@ -115,11 +121,14 @@ fn cmd_git_pre_commit_in_nongit_dir_returns_err() {
 
 #[test]
 fn cmd_git_pre_commit_in_repo_without_hook_returns_err() {
-    let _guard = cwd_test_lock();
+    if !git_available() || !sh_available() {
+        return;
+    }
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_git_nohook_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::process::Command::new("git")
         .args(["init", "-b", "main"])
         .stdout(Stdio::null())
@@ -138,11 +147,14 @@ fn cmd_git_pre_commit_in_repo_without_hook_returns_err() {
 
 #[test]
 fn cmd_git_pre_commit_in_repo_with_hook_succeeds() {
-    let _guard = cwd_test_lock();
+    if !git_available() || !sh_available() {
+        return;
+    }
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_git_precommit_ok_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::process::Command::new("git")
         .args(["init", "-b", "main"])
         .stdout(Stdio::null())
@@ -168,13 +180,16 @@ fn cmd_git_pre_commit_in_repo_with_hook_succeeds() {
 
 #[test]
 fn cmd_git_commit_with_nothing_to_commit_returns_err() {
-    let _guard = cwd_test_lock();
+    if !git_available() {
+        return;
+    }
+    let _cwd_lock = cwd_test_lock();
     // Dir outside workspace so git only sees this empty repo (CI temp_dir may be under workspace).
     let dir = dir_outside_cwd("xtask_git_commit");
     std::fs::create_dir_all(&dir).unwrap();
     let dir = std::fs::canonicalize(&dir).unwrap_or(dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::process::Command::new("git")
         .args(["init", "-b", "main"])
         .current_dir(&dir)

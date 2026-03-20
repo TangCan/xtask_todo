@@ -10,7 +10,8 @@ use super::super::VmError;
 use super::env::{
     ENV_DEVSHELL_VM_AUTO_BUILD_ESSENTIAL, ENV_DEVSHELL_VM_AUTO_BUILD_TODO_GUEST,
     ENV_DEVSHELL_VM_AUTO_TODO_PATH, ENV_DEVSHELL_VM_GUEST_HOST_DIR,
-    ENV_DEVSHELL_VM_GUEST_TODO_HINT,
+    ENV_DEVSHELL_VM_GUEST_TODO_HINT, ENV_DEVSHELL_VM_WORKSPACE_PARENT,
+    ENV_DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT,
 };
 
 pub(super) fn truthy_env(key: &str) -> bool {
@@ -235,13 +236,39 @@ pub(super) fn sanitize_instance_segment(name: &str) -> String {
 ///
 /// Same directory is mounted at [`super::GammaSession::guest_mount`] in the VM; offline devshell uses this path
 /// for host-backed [`crate::devshell::vfs::Vfs`] so it stays unified with the guest tree.
+///
+/// Resolution order:
+/// 1. [`ENV_DEVSHELL_VM_WORKSPACE_PARENT`] if set and non-empty.
+/// 2. If [`ENV_DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT`] is unset or truthy: `cargo metadata` workspace root from
+///    [`std::env::current_dir`] (so the repo you start from is the logical mount root).
+/// 3. Legacy fallback: `…/vm-workspace/<instance>/` under the devshell export cache.
 #[must_use]
 pub fn workspace_parent_for_instance(instance: &str) -> PathBuf {
-    use super::env::ENV_DEVSHELL_VM_WORKSPACE_PARENT;
     if let Ok(p) = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_PARENT) {
         let p = p.trim();
         if !p.is_empty() {
             return PathBuf::from(p);
+        }
+    }
+    let use_cargo = match std::env::var(ENV_DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT) {
+        Err(_) => true,
+        Ok(s) => {
+            let s = s.trim();
+            if s.is_empty() {
+                true
+            } else {
+                !(s == "0"
+                    || s.eq_ignore_ascii_case("false")
+                    || s.eq_ignore_ascii_case("no")
+                    || s.eq_ignore_ascii_case("off"))
+            }
+        }
+    };
+    if use_cargo {
+        if let Ok(cwd) = std::env::current_dir() {
+            if let Ok((wr, _)) = cargo_metadata_workspace_and_target(&cwd) {
+                return wr.canonicalize().unwrap_or(wr);
+            }
         }
     }
     let seg = sanitize_instance_segment(instance);

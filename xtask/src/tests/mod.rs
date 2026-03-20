@@ -14,9 +14,19 @@ use std::sync::Mutex;
 /// Uses `into_inner()` on poison so one panicking test doesn't cause all others to fail with `PoisonError`.
 pub static CWD_TEST_MUTEX: Mutex<()> = Mutex::new(());
 
+/// Serialize tests that mutate `PATH` (parallel `cargo test` races otherwise).
+static PATH_TEST_MUTEX: Mutex<()> = Mutex::new(());
+
 /// Acquires the CWD mutex; if poisoned (a prior test panicked while holding it), continues with the inner lock.
 pub fn cwd_test_lock() -> std::sync::MutexGuard<'static, ()> {
     CWD_TEST_MUTEX
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// Lock with [`PATH_TEST_MUTEX`] for tests that set or clear `PATH`.
+pub fn path_test_lock() -> std::sync::MutexGuard<'static, ()> {
+    PATH_TEST_MUTEX
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
@@ -35,8 +45,32 @@ impl Drop for RestoreCwd {
     }
 }
 
+/// True if `git` is on `PATH` (git subcommand tests).
+#[must_use]
+pub fn git_available() -> bool {
+    std::process::Command::new("git")
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
+/// True if `sh -c true` works (pre-commit hook runs hooks via `sh`).
+#[must_use]
+pub fn sh_available() -> bool {
+    std::process::Command::new("sh")
+        .arg("-c")
+        .arg("true")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
 /// Returns a path outside the current directory (and thus outside the workspace when run from repo root).
 /// Use for tests that must run in a non-git or non-workspace dir so CI (where temp may be under workspace) doesn't break.
+#[must_use]
 pub fn dir_outside_cwd(prefix: &str) -> PathBuf {
     let cwd = std::env::current_dir().unwrap().canonicalize().unwrap();
     let parent = cwd

@@ -2,7 +2,8 @@
 
 **状态：** 架构选型已确认；**实现未开始**。本文描述目标形态、与当前 γ 的差异、分阶段路线与风险。  
 **详细设计（头脑风暴收敛稿）：** [`2026-03-20-devshell-guest-primary-design.md`](./2026-03-20-devshell-guest-primary-design.md)（含技术路线 A/B/C、`WorkspaceBackend`、路径模型、开放决策勾选）。  
-**关联：** `docs/design.md` §1.4、`docs/devshell-vm-gamma.md`、`docs/superpowers/specs/2026-03-11-devshell-microvm-session-design.md`。
+**关联：** `docs/design.md` §1.4、`docs/devshell-vm-gamma.md`、`docs/superpowers/specs/2026-03-11-devshell-microvm-session-design.md`。  
+**产品需求**：[requirements.md](../../requirements.md) **§1.1**、**§5**。
 
 ---
 

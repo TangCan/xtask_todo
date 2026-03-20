@@ -1,10 +1,25 @@
-# 任务分解 (Tasks)
+# 任务分解（Tasks）
 
-本文档将 [requirements.md](./requirements.md) 与 [design.md](./design.md) 中的工作分解为有依赖关系的具体任务，便于排期与跟踪。任务 ID 格式：`Tnn`（Todo 相关）、`Xnn`（Xtask 相关）。
+本文档将 [requirements.md](./requirements.md) 与 [design.md](./design.md) 中的工作映射为可跟踪任务 ID，便于排期、追溯与迭代。**需求章节索引**见 **requirements §9**。
+
+- **状态说明**：**已完成** 表示当前主线已实现并通过测试；**持续** 表示与规格/环境（Lima、β）对齐的长期项；**待对齐** 表示需求已写清、实现需随契约演进。
 
 ---
 
-## 1. 依赖关系概览
+## 1. 与 requirements 章节的对应（总表）
+
+| requirements | 主题 | 任务 ID（见下） |
+|--------------|------|-----------------|
+| **§1** / **§1.1** | 概述、Mode S/P、会话路径、qcow2/挂载 | **D1–D7**（Devshell / VM） |
+| **§3** | Todo 领域 + **`cargo xtask todo`** | **T1–T23**，**X3–X7** |
+| **§4** | 其他 **`cargo xtask`**（`run` / `fmt` / `clippy` / …） | **X1–X2** 及 xtask crate 内实现（未逐条编号） |
+| **§5** | Devshell（`cargo-devshell`） | **D1–D7** |
+| **§6** | **`--json`**、退出码、`init-ai`、**`--dry-run`** | **X8–X11** |
+| **§7** | 非功能（Clippy、stderr、TTY、兼容性） | 各 crate **`Cargo.toml`** / CI，未单独任务行 |
+
+---
+
+## 2. 依赖关系概览（领域层，仍适用）
 
 ```mermaid
 flowchart TD
@@ -25,14 +40,14 @@ flowchart TD
         T10[T10 complete]
         T11[T11 delete]
     end
-    subgraph Tests["验收测试"]
-        T12[T12 US-T1 测试]
-        T13[T13 US-T2 测试]
-        T14[T14 US-T3 测试]
-        T15[T15 US-T4 测试]
+    subgraph Tests["领域测试"]
+        T12[T12 创建验收]
+        T13[T13 列表验收]
+        T14[T14 完成验收]
+        T15[T15 删除验收]
     end
     subgraph Xtask["Xtask"]
-        X1[X1 run 对接]
+        X1[X1 run]
         X2[X2 帮助与退出码]
     end
 
@@ -64,117 +79,104 @@ flowchart TD
 
 ---
 
-## 2. 任务列表
+## 3. 任务列表
 
-### 2.1 领域层（crates/todo）
-
-| ID | 任务 | 依赖 | 产出 / 验收 |
-|----|------|------|-------------|
-| **T1** | 定义 `TodoId` 类型 | — | 不透明唯一标识（如 `NonZeroU64` 或 `uuid::Uuid`），实现 `Clone`、`Eq`、`Hash` 等以便作为 key |
-| **T2** | 定义 `Todo` 类型 | T1 | 含 `id: TodoId`、`title: String`、`completed: bool`、`created_at`、`completed_at: Option<SystemTime>`；实现必要 trait |
-| **T3** | 定义 `TodoError` 枚举 | — | 至少 `InvalidInput`（含原因）、`NotFound(TodoId)`；实现 `std::error::Error` 与 `Display` |
-| **T4** | 实现标题校验规则 | — | 函数或方法：空标题（及可选 trim/长度）返回错误原因，供 create 使用（对应 US-T1 非法输入） |
-
-### 2.2 存储层（crates/todo）
+### 3.1 领域层（`crates/todo`）— **已完成**
 
 | ID | 任务 | 依赖 | 产出 / 验收 |
 |----|------|------|-------------|
-| **T5** | 定义 `Store` trait | T1, T2 | 方法：`insert(Todo)`、`get(TodoId) -> Option<Todo>`、`list() -> Vec<Todo>`、`update(Todo)`、`remove(TodoId)`；放在内部模块或 crate 内可见 |
-| **T6** | 实现 `InMemoryStore` | T5 | 使用 `HashMap<TodoId, Todo>`（或等价结构），实现 `Store`；列表返回时可按 `created_at` 排序 |
+| **T1** | 定义 `TodoId`（`NonZeroU64`） | — | 0 非法；可哈希、可比较 |
+| **T2** | 定义 `Todo` | T1 | title、completed、`created_at` / `completed_at`、扩展字段 |
+| **T3** | 定义 `TodoError` | — | `InvalidInput`、`NotFound` 等 |
+| **T4** | 标题校验 | — | 空标题等返回明确错误 |
+| **T5** | `Store` trait | T1, T2 | insert/get/list/update/remove |
+| **T6** | `InMemoryStore` | T5 | 默认存储 |
+| **T7** | `TodoList<S: Store>` | T5, T6 | 领域门面 |
+| **T8** | `create` | T7–T4 | 与 **§3.1** 一致 |
+| **T9** | `list` | T7 | 排序与过滤见 T18 |
+| **T10** | `complete` | T7, T3 | 含 `completed_at`、`no_next`（T23） |
+| **T11** | `delete` | T7, T3 | 与 **§3.1** 一致 |
+| **T12–T15** | 领域单元/集成测试 | T8–T11 | 覆盖创建/列表/完成/删除 |
 
-### 2.3 Public API（crates/todo）
-
-| ID | 任务 | 依赖 | 产出 / 验收 |
-|----|------|------|-------------|
-| **T7** | 实现 `TodoList` 门面 | T5, T6 | 持有一个 `dyn Store` 或泛型 `S: Store`，构造时注入（如默认 `InMemoryStore`） |
-| **T8** | 实现 `create(&mut self, title)` | T7, T2, T3, T4, T5 | 校验标题（T4）→ 构造 `Todo` → `store.insert` → 返回 `Result<TodoId, TodoError>`（US-T1） |
-| **T9** | 实现 `list(&self)` | T7 | 调用 `store.list()`，按创建时间排序后返回 `Vec<Todo>`（US-T2） |
-| **T10** | 实现 `complete(&mut self, id)` | T7, T3 | 若存在则更新 `completed = true` 并记录 `completed_at`，否则返回 `TodoError::NotFound`（US-T3、US-T5） |
-| **T11** | 实现 `delete(&mut self, id)` | T7, T3 | 若存在则 `store.remove(id)`，否则返回错误或幂等 Ok（US-T4） |
-
-### 2.4 验收测试
-
-| ID | 任务 | 依赖 | 产出 / 验收 |
-|----|------|------|-------------|
-| **T12** | US-T1 验收测试 | T8 | 有效标题 → 返回 Ok(id)；空标题（及约定非法输入）→ 返回 Err，且列表无新项 |
-| **T13** | US-T2 验收测试 | T9, T8 | 空列表 → 返回空 Vec；创建若干条后 list → 顺序按创建时间 |
-| **T14** | US-T3 验收测试 | T10, T8 | 存在 id 完成 → 后续 list 中该项 completed=true；不存在 id → Err(NotFound) |
-| **T15** | US-T4 验收测试 | T11, T8 | 存在 id 删除 → 后续 list 无该项；不存在 id → 约定行为（Err 或幂等 Ok） |
-
-### 2.5 Xtask 工作流
+### 3.2 Xtask 工作流（`xtask`）— **已完成**
 
 | ID | 任务 | 依赖 | 产出 / 验收 |
 |----|------|------|-------------|
-| **X1** | 将 `cargo xtask run` 对接主程序 | T7（可选） | `xtask run` 执行「运行主程序」逻辑（如 `cargo run -p todo` 或占位实现）；失败时 stderr 输出并非 0 退出（US-X2） |
-| **X2** | 确认 xtask 帮助与退出码 | X1 | `cargo xtask --help` 列出子命令；`cargo xtask run` 成功 0、失败非 0（US-X1） |
-| **X3** | `cargo xtask todo` 子命令 add/list/complete/delete | T7 | 数据持久化到 `.todo.json`；list 展示创建/完成时间与用时（US-X4） |
-| **X4** | 时间戳与完成时间（Todo 模型 + list 展示） | T10 | `Todo` 含 `created_at`、`completed_at`；complete 时写入完成时间；list 显示创建/完成/用时（US-T5） |
-| **X5** | 长时间未完成高亮（TTY 下 list 着色） | X3 | 创建超过 7 天且未完成项在 TTY 下以不同颜色展示；非 TTY 不输出颜色（US-T6） |
+| **X1** | `cargo xtask run` | T7（可选） | 运行约定目标 |
+| **X2** | `--help`、基础退出码 | X1 | **§4** |
+| **X3** | `cargo xtask todo` + **`.todo.json`** | T7 | **§3.2** |
+| **X4** | 列表时间展示、`completed_at` | T10 | **§3.1** 时间 |
+| **X5** | TTY 下超 7 天未完成高亮 | X3 | **§3.1** |
 
-### 2.6 扩展任务（US-T7～US-T13、US-A1～US-A4，已实现）
+### 3.3 扩展（Todo + CLI）— **已完成**
 
-以下任务对应 requirements 中的扩展需求，**当前均已实现**：领域层 get/update、可选属性与 ListOptions、search/stats、export/import、RepeatRule 与 complete(id, no_next)；CLI show/update/search/stats/export/import/init-ai、--no-next、--json、退出码 0/1/2/3、--dry-run。
+对应 **§3** 扩展能力与 **§6** 可编程接口。
 
 | ID | 任务 | 依赖 | 产出 / 验收 |
 |----|------|------|-------------|
-| **T16** | 实现 `get(id)` / 查看单条 | T7 | Store 与 TodoList 支持按 id 取单条；不存在返回 None 或 Err（US-T7） |
-| **T17** | 实现 `update(id, patch)` | T7, T16 | 支持修改标题及扩展字段；持久化与 list/show 一致（US-T8） |
-| **T18** | Todo 可选属性 + list 过滤/排序 | T2, T9 | Todo 增加 description、due_date、priority、tags；add/update 支持；list 支持 Filter/Sort（US-T9） |
-| **T19** | 实现 `search(keyword)` | T7, T18 | 在标题（及描述、标签）中匹配，返回匹配列表（US-T10） |
-| **T20** | 实现 `stats()` | T7 | 返回总数、未完成数、已完成数等（US-T11） |
-| **T21** | 导出 export(path, format) | T7 | 将当前 list 序列化为 JSON/CSV 写入文件（US-T12） |
-| **T22** | 导入 import(path) | T7 | 从文件反序列化并合并/覆盖到 Store（US-T12） |
-| **T23** | 重复规则 RepeatRule + 完成时生成下一实例 | T2, T10 | Todo 增加 repeat_rule；complete 时可选生成下一笔并计算 due；complete 支持 no_next 参数（US-T13） |
-| **X6** | CLI：todo show / update / search / stats / export / import | T16～T22, X3 | 子命令 show \<id\>、update \<id\>、search \<keyword\>、stats、export/import \<file\>（US-T7～T12） |
-| **X7** | CLI：todo complete --no-next | T23, X3 | complete 子命令支持 --no-next，不生成下一实例（US-T13） |
-| **X8** | 全局选项 --json | X3, X6 | 各子命令支持 --json，输出统一 JSON 结构（US-A1） |
-| **X9** | 标准退出码 0/1/2/3 | X3 | 成功 0，一般错误 1，参数错误 2，数据错误 3（US-A2） |
-| **X10** | 子命令 todo init-ai | X3 | init-ai --for cursor|claude|... --output \<dir\>，生成技能文件（US-A3） |
-| **X11** | 修改类命令 --dry-run | X3, X6 | add/update/complete/delete 支持 --dry-run，仅输出拟执行操作、不写 .todo.json（US-A4） |
+| **T16** | `get` / show | T7 | 单条查询 |
+| **T17** | `update` / `TodoPatch` | T7, T16 | **§3.2** |
+| **T18** | 可选字段、`ListOptions` | T2, T9 | 过滤/排序 **§3.2** |
+| **T19** | `search` | T7, T18 | **§3.1** |
+| **T20** | `stats` | T7 | **§3.1** |
+| **T21** | `export` | T7 | JSON/CSV |
+| **T22** | `import` | T7 | 合并 / `--replace` |
+| **T23** | `RepeatRule`、`complete(_, no_next)` | T2, T10 | **§3.1** |
+| **X6** | CLI：`show` / `update` / `search` / `stats` / `export` / `import` | T16–T22, X3 | **§3.2** |
+| **X7** | CLI：`complete --no-next` | T23, X3 | **§3.1** |
+| **X8** | 全局 **`--json`** | X3, X6 | **§6** US-A1 |
+| **X9** | 退出码 **0/1/2/3** | X3 | **§6** US-A2 |
+| **X10** | `todo init-ai` | X3 | **§6** US-A3 |
+| **X11** | 修改类 **`--dry-run`** | X3, X6 | **§6** US-A4 |
+
+### 3.4 Devshell / VM（`xtask-todo-lib::devshell`）— **已实现为主，部分持续**
+
+对应 **§1.1**、**§5**、[design.md](./design.md) §1.4、[devshell-vm-gamma.md](./devshell-vm-gamma.md)、[guest-primary-design](./superpowers/specs/2026-03-20-devshell-guest-primary-design.md)。
+
+| ID | 任务 | 状态 | 说明 |
+|----|------|------|------|
+| **D1** | REPL、**`.dsh`** 脚本、parser、管道、重定向 | 已完成 | **§5.3–§5.5** |
+| **D2** | 内存 **VFS**、`cd`/`ls`/文件 builtin | 已完成 | **§5.4** |
+| **D3** | **`rustup`/`cargo`** sandbox（导出 → 临时目录 → 同步） | 已完成 | **§5.4**；Linux 可选 mount namespace 见 **dev-container.md** |
+| **D4** | γ **Lima** 会话、`push_incremental` / `pull_workspace_to_vfs`、**`DEVSHELL_WORKSPACE_ROOT`** | 已完成 | **§1.1** Mode **S**、[devshell-vm-gamma.md](./devshell-vm-gamma.md) |
+| **D5** | **Mode P**：**`GuestFsOps`**、工程树与 guest 挂载一致、**`export-readonly`**（guest 镜像） | 持续 | **§5.1**、**§5.7**；与规格迭代对齐 |
+| **D6** | 会话持久化：**`logical_cwd`** 等 → **`$DEVSHELL_WORKSPACE_ROOT/.cargo-devshell/session.json`**（**§1.1**）；无 env 时写入 **`./.cargo-devshell/session.json`**（`current_dir`）；**加载**仍尝试旧版 **`*.session.json`**（与 `.bin` 同目录）以迁移 | 已完成 | `crates/todo/src/devshell/session_store.rs` |
+| **D7** | β：**`beta-vm`**、**`devshell-vm`** 侧车、**`guest_fs` IPC** | 可选 / 持续 | **§5.7** |
 
 ---
 
-## 3. 建议执行顺序
+## 4. 用户故事 / 需求条目 → 任务 ID（追溯）
 
-按依赖拓扑排序，可按下述批次实施（同一批内任务可并行）：
-
-1. **第一批（无依赖）**：T1, T3, T4  
-2. **第二批**：T2（依赖 T1）  
-3. **第三批**：T5（依赖 T1, T2）  
-4. **第四批**：T6（依赖 T5）  
-5. **第五批**：T7（依赖 T5, T6）  
-6. **第六批**：T8, T9, T10, T11（依赖 T7 及前述领域/错误）  
-7. **第七批**：T12, T13, T14, T15（依赖对应 API 任务）
-8. **第八批**：X1（可选依赖 T7 用于演示），X2（依赖 X1）
-9. **第九批**：X4（时间戳与 completed_at），X3（xtask todo 子命令与 .todo.json），X5（TTY 下列表超 7 天未完成项着色）
-10. **第十批（扩展）**：T16（get）、T17（update）、T18（可选属性+过滤排序）、T19（search）、T20（stats）、T21～T22（export/import）、T23（重复规则）；X6（CLI show/update/search/stats/export/import）、X7（--no-next）、X8（--json）、X9（退出码）、X10（init-ai）、X11（--dry-run）。可按 P0→P1→P2 分阶段实施。
+| 需求条目（acceptance / 旧 US 编号） | requirements | 任务 |
+|-----------------------------------|--------------|------|
+| 创建 / 列表 / 完成 / 删除（核心） | §3.1 | T4, T8–T11, T12–T15 |
+| 时间戳与展示 | §3.1 | X4 |
+| 长期未完成高亮 | §3.1 | X5 |
+| `cargo xtask` / `run` | §4 | X1, X2 |
+| `cargo xtask todo` 持久化 | §3.2 | X3 |
+| show / update / 可选字段 / 过滤排序 | §3 | T16–T18, X6 |
+| search / stats | §3 | T19, T20, X6 |
+| export / import | §3 | T21, T22, X6 |
+| 重复任务 / `--no-next` | §3 | T23, X7 |
+| `--json` / 退出码 / `init-ai` / `--dry-run` | §6 | X8–X11 |
+| Mode S/P、VFS、VM、内置语言、会话路径 | §1.1, §5 | D1–D7 |
 
 ---
 
-## 4. 与需求/设计的对应
+## 5. 建议执行顺序（归档）
 
-| 需求 | 任务 |
-|------|------|
-| US-T1 创建待办 | T4, T8, T12 |
-| US-T2 列出待办 | T9, T13 |
-| US-T3 完成待办 | T10, T14 |
-| US-T4 删除待办 | T11, T15 |
-| US-X1 cargo xtask 执行 | X1, X2 |
-| US-X2 xtask run | X1 |
-| US-X3 扩展子命令 | 已在现有 xtask 结构中支持，无需新任务 |
-| US-T5 时间戳与完成时间 | X4 |
-| US-T6 长时间未完成提醒 | X5 |
-| US-X4 cargo xtask todo | X3 |
-| US-T7 查看单条 | T16, X6 |
-| US-T8 更新任务 | T17, X6 |
-| US-T9 任务可选属性 | T18, X6 |
-| US-T10 搜索 | T19, X6 |
-| US-T11 统计 | T20, X6 |
-| US-T12 导入导出 | T21, T22, X6 |
-| US-T13 定期重复任务 | T23, X6, X7 |
-| US-A1 JSON 输出 | X8 |
-| US-A2 标准退出码 | X9 |
-| US-A3 init-ai | X10 |
-| US-A4 dry-run | X11 |
+历史实施可按下述拓扑分批（当前核心路径**已完成**，仅供回顾或新人理解依赖）：
 
-文档与实现不一致时，以 [requirements.md](./requirements.md) 与 [design.md](./design.md) 为准，并同步更新本任务说明。
+1. T1, T3, T4 → T2 → T5 → T6 → T7 → T8–T11 → T12–T15  
+2. X1, X2 → X4, X3, X5  
+3. T16–T23 与 X6–X11（扩展）  
+4. Devshell：实现顺序见 **design.md** 与 **superpowers/plans/**（D1–D5 主线；D6–D7 随契约）
+
+---
+
+## 6. 维护
+
+- 新增能力：在 **requirements.md** 落条 → 本表增 ID 或子行 → **test-cases.md** / **acceptance.md** 同步。  
+- 文档与实现不一致时，以 [requirements.md](./requirements.md) 与 [design.md](./design.md) 为准，并更新本任务说明。
+- **`xtask` 单测**：改动 **`PATH`** 的用例经 **`path_test_lock()`** 串行；改动 **`cwd`** 的经 **`cwd_test_lock()`**；**`git` / `sh`** 相关 pre-commit 用例在宿主无 **`git`** 或 **`sh`** 时提前返回（不失败）。
+- **D5 / D7**（Mode P 与 β 侧车）在表中为 **持续 / 可选**：主线能力已接好，后续随 Lima / IPC 契约迭代；非「未实现缺口」。

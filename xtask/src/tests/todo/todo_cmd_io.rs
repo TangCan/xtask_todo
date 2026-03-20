@@ -12,11 +12,11 @@ use crate::todo::io::{
 
 #[test]
 fn cmd_todo_search_and_stats() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_srch_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: "alpha".to_string(),
@@ -49,11 +49,11 @@ fn cmd_todo_search_and_stats() {
 
 #[test]
 fn cmd_todo_export_and_import_merge_replace() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_io_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
     let export_path = dir.join("export.json");
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
@@ -117,11 +117,11 @@ fn cmd_todo_export_and_import_merge_replace() {
 
 #[test]
 fn cmd_todo_export_and_import_with_json() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_io_json_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: "one".to_string(),
@@ -167,11 +167,11 @@ fn cmd_todo_export_and_import_with_json() {
 
 #[test]
 fn save_todos_to_path_and_load_todos_from_path() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_path_{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let path = dir.join("custom.json");
     let mut list = xtask_todo_lib::TodoList::new();
     let _ = list.create("saved");
@@ -187,11 +187,11 @@ fn save_todos_to_path_and_load_todos_from_path() {
 
 #[test]
 fn cmd_todo_export_csv_and_import_csv() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_csv_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: "csv task".to_string(),
@@ -229,11 +229,11 @@ fn cmd_todo_export_csv_and_import_csv() {
 
 #[test]
 fn load_todos_from_path_csv_with_special_chars() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_csv_esc_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let mut list = xtask_todo_lib::TodoList::new();
     let _ = list.create("title with, comma");
     let path = dir.join("esc.csv");
@@ -245,11 +245,11 @@ fn load_todos_from_path_csv_with_special_chars() {
 
 #[test]
 fn save_todos_to_path_with_format_csv() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_fmt_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let mut list = xtask_todo_lib::TodoList::new();
     let _ = list.create("one");
     let _ = list.create("two");

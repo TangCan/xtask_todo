@@ -1,11 +1,13 @@
 //! Tests for gh subcommand.
 
 use crate::gh::{cmd_gh, GhArgs, GhLogArgs, GhSub};
+use crate::tests::path_test_lock;
 use crate::{run_with, XtaskCmd, XtaskSub};
 
 /// Run `cmd_gh` (gh log). When `gh` is not in PATH we get Err and cover error branches.
 #[test]
 fn cmd_gh_log_errors_when_gh_not_found() {
+    let _path = path_test_lock();
     let path = std::env::var_os("PATH");
     std::env::set_var("PATH", "");
     let args = GhArgs {
@@ -22,6 +24,7 @@ fn cmd_gh_log_errors_when_gh_not_found() {
 
 #[test]
 fn run_with_gh_returns_run_failure_when_gh_fails() {
+    let _path = path_test_lock();
     let path = std::env::var_os("PATH");
     std::env::set_var("PATH", "");
     let cmd = XtaskCmd {
@@ -43,6 +46,7 @@ fn run_with_gh_returns_run_failure_when_gh_fails() {
 #[test]
 fn cmd_gh_log_errors_when_gh_run_list_fails() {
     use std::os::unix::fs::PermissionsExt;
+    let _path = path_test_lock();
     let path = std::env::var_os("PATH");
     let dir = std::env::temp_dir().join(format!("xtask_gh_fake_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);

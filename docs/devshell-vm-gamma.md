@@ -1,5 +1,7 @@
 # Devshell γ：Lima 后端
 
+**产品需求摘要**：[requirements.md](./requirements.md) **§1.1**（Mode S/P、会话路径）、**§5**（Devshell 行为摘要）。
+
 在 **Linux / macOS** 上，可将 `rustup` / `cargo` 放到 **Lima** 虚拟机里执行，同时在内存 **VFS** 与主机工作区之间做 **增量 push / pull**（见规格 `docs/superpowers/specs/2026-03-11-devshell-microvm-session-design.md` §3）。
 
 β 阶段会改为侧车进程 + IPC；γ 依赖本机安装的 `limactl`。
@@ -88,6 +90,28 @@ mounts:
 
 Guest 内工程目录为 **`/workspace/<VFS cwd 最后一段>`**，与当前宿主 temp 导出布局一致（例如 VFS cwd `/proj/foo` → 主机 `…/foo/` → guest `/workspace/foo`）。
 
+### 与宿主共用同一份 `.todo.json`（工作区根 = Cargo 仓库 + Lima 挂载一致）
+
+**`todo` / `cargo xtask todo` 只认当前目录下的 `.todo.json`。** 若宿主上的 **Lima 挂载** 与程序认为的 **工作区根** 不是同一棵主机目录树，guest 里看到的 **`.todo.json`** 会与宿主不一致。
+
+**默认行为（实现）：** 未设置 **`DEVSHELL_VM_WORKSPACE_PARENT`** 时，`cargo-devshell` 用 **`cargo metadata` 的 workspace 根目录**（你当前在仓库里启动时的 **Cargo 工作区根**）作为 **`workspace_parent`**，与 **`DEVSHELL_WORKSPACE_ROOT`** 对齐。这样 **在仓库任意子目录** 运行 **`cargo run --bin cargo-devshell`**，逻辑上的「工作区」都是 **你的这份 checkout**，无需再手动 symlink 到 `~/.cache/.../vm-workspace/...`。
+
+**你仍需要做的**（Lima 能力限制）：在 **`~/.lima/<实例>/lima.yaml`** 里把 **同一主机路径** 挂到 guest 的 **`/workspace`**（或你通过 **`DEVSHELL_VM_GUEST_WORKSPACE`** 设的路径），例如：
+
+```yaml
+mounts:
+  - location: "~"
+  - location: "/绝对路径/你的/xtask_todo"
+    mountPoint: /workspace
+    writable: true
+```
+
+把 **`location`** 换成上一步 **`cargo metadata`** 得到的 **workspace_root**（仓库根）。改完后 **`limactl stop` / `limactl start`** 实例。
+
+**若不想用 Cargo 推导**（恢复旧默认缓存目录 `…/vm-workspace/<实例>/`）：设置 **`DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT=0`**，或显式设置 **`DEVSHELL_VM_WORKSPACE_PARENT`**。
+
+**guest 里**：进入 **`/workspace`** 下与宿主 **相对 workspace_root 相同** 的路径（例如仓库根挂成 `/workspace` 时，工程在根目录则 **`cd /workspace`**；若在子目录则按相对路径 **`cd`**）。默认会 **`cd`** 到对应 guest 工程目录并（除非关闭）建立 **`~/host_dir`** / **`~/.todo.json`** 链接，指向 **`./.todo.json`**（见 **`DEVSHELL_VM_GUEST_HOST_DIR`**）。
+
 ### Guest 内必须有 `cargo` / `rustup`（γ 不代装）
 
 γ 只做 **`limactl shell … -- cargo …`**：若在 guest 里 **`cargo: command not found`**（退出码 **127**），说明 **VM 里尚未安装 Rust 工具链**，与挂载是否成功无关。
@@ -174,7 +198,8 @@ sudo apt install -y build-essential
 | `DEVSHELL_VM_BACKEND=host` 或 `auto` | 强制使用宿主临时目录 + `sandbox::run_rust_tool`（不用 Lima）。 |
 | `DEVSHELL_VM_LIMA_INSTANCE` | Lima 实例名（默认 `devshell-rust`）。 |
 | `DEVSHELL_VM_LIMACTL` | `limactl` 可执行文件路径（可选）。 |
-| `DEVSHELL_VM_WORKSPACE_PARENT` | 主机工作区根目录（可选；默认见上文）。 |
+| `DEVSHELL_VM_WORKSPACE_PARENT` | 主机工作区根目录（可选）。**未设置时** 默认取 **当前目录下 `cargo metadata` 的 workspace 根**（见 **`DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT`**）；再回退到 **`…/vm-workspace/<实例>/`** 缓存目录。 |
+| `DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT` | **默认开启：** 未设置 **`DEVSHELL_VM_WORKSPACE_PARENT`** 时用 **`cargo metadata`** 解析 workspace 根。设为 **`0`/`false`/`no`/`off`** 则 **不**用 Cargo 推导，直接用缓存目录 **`…/vm-workspace/<实例>/`**（旧行为）。 |
 | `DEVSHELL_VM_GUEST_WORKSPACE` | Guest 挂载点（默认 `/workspace`）。 |
 | `DEVSHELL_VM_STOP_ON_EXIT=1` | 会话结束（REPL exit / 脚本结束）时执行 `limactl stop`（默认不 stop，便于多终端共用实例）。 |
 | `DEVSHELL_VM_LIMA_HINTS=0` | 关闭 γ 的 **Lima 配置/故障提示**（默认开启）：首次 `cargo`/`rustup` 前会做一次 guest 探测；`cargo`/`rustup` 非零退出或 **`limactl start` 失败** 时会打印与 `lima.yaml`、挂载、KVM、`cargo` PATH 相关的建议。 |

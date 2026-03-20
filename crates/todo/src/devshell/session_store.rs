@@ -1,11 +1,15 @@
-//! Session persistence for devshell (design §10).
+//! Session persistence for devshell.
 //!
-//! - **Mode S:** legacy [`.dev_shell.bin`] snapshot via [`crate::devshell::serialization`].
-//! - **Mode P (guest-primary):** the guest workspace is authoritative; we **do not** write the legacy
-//!   bin format on exit. Instead we persist **metadata only** (JSON) beside the bin path:
-//!   **`{stem}.session.json`** when the bin path ends in `.bin` (e.g. `.dev_shell.bin` →
-//!   `.dev_shell.session.json`). The file records `logical_cwd` for the next REPL start; the in-memory
-//!   VFS tree is not a second source of truth for the project tree in Mode P.
+//! - **Workspace session (preferred):** [`ENV_DEVSHELL_WORKSPACE_ROOT`] — metadata at
+//!   **`$DEVSHELL_WORKSPACE_ROOT/.cargo-devshell/session.json`** (see `docs/requirements.md` §1.1).
+//!   On Unix, [`crate::devshell::vm::export_devshell_workspace_root_env`] sets this before REPL.
+//! - **Mode S:** legacy [`.dev_shell.bin`] via [`crate::devshell::serialization`] when applicable.
+//! - **Mode P (guest-primary):** no legacy bin on exit; JSON holds `logical_cwd` only.
+//! - **Fallback** (no `DEVSHELL_WORKSPACE_ROOT`): **`./.cargo-devshell/session.json`** under
+//!   [`std::env::current_dir`] when it succeeds (local dev / tests).
+//! - **Legacy (migration only):** **`{stem}.session.json`** beside the bin path (e.g.
+//!   `.dev_shell.bin` → `.dev_shell.session.json`); still **read** on load, no longer preferred for new saves.
+//! - **Load order:** workspace env path → cwd workspace path → legacy beside `bin_path`.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -13,10 +17,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
+/// Environment variable: host directory aligned with guest workspace (Lima γ).
+pub const ENV_DEVSHELL_WORKSPACE_ROOT: &str = "DEVSHELL_WORKSPACE_ROOT";
+
 /// JSON `format` field for [`GuestPrimarySessionV1`].
 pub const FORMAT_DEVSHELL_SESSION_V1: &str = "devshell_session_v1";
 
-/// Metadata persisted for guest-primary sessions (no legacy VFS snapshot).
+/// Serialize / deserialize guest-primary session file under [`ENV_DEVSHELL_WORKSPACE_ROOT`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GuestPrimarySessionV1 {
     pub format: String,
@@ -47,28 +54,48 @@ pub fn session_path_for_bin(bin_path: &Path) -> PathBuf {
     bin_path.with_extension("session.json")
 }
 
-/// Save guest-primary session metadata (JSON). Does **not** write `.dev_shell.bin`.
-///
-/// # Errors
-/// I/O errors from writing the JSON file.
-pub fn save_guest_primary(bin_path: &Path, logical_cwd: &str) -> io::Result<()> {
-    let meta = GuestPrimarySessionV1::new(logical_cwd.to_string());
-    let text = serde_json::to_string_pretty(&meta).map_err(|e| io::Error::other(e.to_string()))?;
-    std::fs::write(session_path_for_bin(bin_path), text)
+/// Session file under **`$DEVSHELL_WORKSPACE_ROOT/.cargo-devshell/session.json`** when the env var is set.
+#[must_use]
+pub fn workspace_session_metadata_path() -> Option<PathBuf> {
+    std::env::var(ENV_DEVSHELL_WORKSPACE_ROOT)
+        .ok()
+        .and_then(|s| {
+            let t = s.trim();
+            if t.is_empty() {
+                None
+            } else {
+                Some(
+                    PathBuf::from(t)
+                        .join(".cargo-devshell")
+                        .join("session.json"),
+                )
+            }
+        })
 }
 
-/// Load guest-primary metadata if the companion file exists and is valid v1.
+/// Same layout as [`workspace_session_metadata_path`], but rooted at [`std::env::current_dir`].
 ///
-/// Returns `Ok(None)` if the file is missing or not a recognized format.
-///
-/// # Errors
-/// I/O errors from reading the file, or invalid JSON (wrapped as `InvalidData`).
-pub fn load_guest_primary(bin_path: &Path) -> io::Result<Option<GuestPrimarySessionV1>> {
-    let p = session_path_for_bin(bin_path);
+/// Used when `DEVSHELL_WORKSPACE_ROOT` is unset (e.g. plain `cargo-devshell` without VM env).
+#[must_use]
+pub fn cwd_session_metadata_path() -> Option<PathBuf> {
+    std::env::current_dir()
+        .ok()
+        .map(|p| p.join(".cargo-devshell").join("session.json"))
+}
+
+/// Resolved path to write guest-primary session JSON: workspace env → cwd `.cargo-devshell/` → legacy beside `bin_path`.
+#[must_use]
+pub fn session_metadata_path(bin_path: &Path) -> PathBuf {
+    workspace_session_metadata_path()
+        .or_else(cwd_session_metadata_path)
+        .unwrap_or_else(|| session_path_for_bin(bin_path))
+}
+
+fn load_one_guest_primary(p: &Path) -> io::Result<Option<GuestPrimarySessionV1>> {
     if !p.is_file() {
         return Ok(None);
     }
-    let text = std::fs::read_to_string(&p)?;
+    let text = std::fs::read_to_string(p)?;
     let v: GuestPrimarySessionV1 = serde_json::from_str(&text).map_err(|e| {
         io::Error::new(
             io::ErrorKind::InvalidData,
@@ -79,6 +106,44 @@ pub fn load_guest_primary(bin_path: &Path) -> io::Result<Option<GuestPrimarySess
         return Ok(None);
     }
     Ok(Some(v))
+}
+
+/// Save guest-primary session metadata (JSON). Does **not** write `.dev_shell.bin`.
+///
+/// # Errors
+/// I/O errors from writing the JSON file or creating parent directories.
+pub fn save_guest_primary(bin_path: &Path, logical_cwd: &str) -> io::Result<()> {
+    let meta = GuestPrimarySessionV1::new(logical_cwd.to_string());
+    let text = serde_json::to_string_pretty(&meta).map_err(|e| io::Error::other(e.to_string()))?;
+    let path = session_metadata_path(bin_path);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(path, text)
+}
+
+/// Load guest-primary metadata: workspace env path, then cwd `.cargo-devshell/session.json`, then legacy beside `bin_path`.
+///
+/// Returns `Ok(None)` if no file exists or format is unrecognized.
+///
+/// # Errors
+/// I/O errors, or invalid JSON (wrapped as `InvalidData`).
+pub fn load_guest_primary(bin_path: &Path) -> io::Result<Option<GuestPrimarySessionV1>> {
+    if let Some(ref ws) = workspace_session_metadata_path() {
+        match load_one_guest_primary(ws) {
+            Ok(Some(m)) => return Ok(Some(m)),
+            Ok(None) => {}
+            Err(e) => return Err(e),
+        }
+    }
+    if let Some(ref cwd_meta) = cwd_session_metadata_path() {
+        match load_one_guest_primary(cwd_meta) {
+            Ok(Some(m)) => return Ok(Some(m)),
+            Ok(None) => {}
+            Err(e) => return Err(e),
+        }
+    }
+    load_one_guest_primary(&session_path_for_bin(bin_path))
 }
 
 /// On guest-primary startup: if a v1 session file exists, reset VFS to empty and restore `logical_cwd`
@@ -100,7 +165,6 @@ pub fn apply_guest_primary_startup(
     if cwd.is_empty() {
         return Ok(());
     }
-    // set_cwd requires the path to exist as a directory in VFS — mkdir the chain first.
     if let Err(e) = vfs.mkdir(cwd) {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
@@ -119,7 +183,9 @@ pub fn apply_guest_primary_startup(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::{cwd_mutex, devshell_workspace_env_mutex};
     use std::fs;
+    use std::io;
 
     fn tmp_dir(name: &str) -> PathBuf {
         std::env::temp_dir().join(format!(
@@ -127,6 +193,51 @@ mod tests {
             std::process::id(),
             std::thread::current().name().unwrap_or("test")
         ))
+    }
+
+    struct EnvRestore {
+        old: Option<String>,
+    }
+
+    impl EnvRestore {
+        fn set_workspace_root(value: impl AsRef<std::ffi::OsStr>) -> Self {
+            let old = std::env::var(ENV_DEVSHELL_WORKSPACE_ROOT).ok();
+            std::env::set_var(ENV_DEVSHELL_WORKSPACE_ROOT, value);
+            Self { old }
+        }
+
+        fn clear_workspace_root() -> Self {
+            let old = std::env::var(ENV_DEVSHELL_WORKSPACE_ROOT).ok();
+            std::env::remove_var(ENV_DEVSHELL_WORKSPACE_ROOT);
+            Self { old }
+        }
+    }
+
+    impl Drop for EnvRestore {
+        fn drop(&mut self) {
+            match &self.old {
+                Some(s) => std::env::set_var(ENV_DEVSHELL_WORKSPACE_ROOT, s),
+                None => std::env::remove_var(ENV_DEVSHELL_WORKSPACE_ROOT),
+            }
+        }
+    }
+
+    struct CurrentDirRestore {
+        previous: PathBuf,
+    }
+
+    impl CurrentDirRestore {
+        fn chdir(dir: &Path) -> io::Result<Self> {
+            let previous = std::env::current_dir()?;
+            std::env::set_current_dir(dir)?;
+            Ok(Self { previous })
+        }
+    }
+
+    impl Drop for CurrentDirRestore {
+        fn drop(&mut self) {
+            let _ = std::env::set_current_dir(&self.previous);
+        }
     }
 
     #[test]
@@ -139,12 +250,19 @@ mod tests {
     }
 
     #[test]
-    fn roundtrip_guest_primary_session() {
+    fn roundtrip_guest_primary_uses_cwd_cargo_devshell_when_no_workspace_env() {
+        let _cwd_lock = cwd_mutex();
+        let _workspace_env = devshell_workspace_env_mutex();
+        let _env = EnvRestore::clear_workspace_root();
         let dir = tmp_dir("roundtrip");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
+        let dir = dir.canonicalize().expect("canonicalize tmp");
+        let _restore_dir = CurrentDirRestore::chdir(&dir).expect("chdir tmp");
         let bin_path = dir.join("state.bin");
         save_guest_primary(&bin_path, "/proj/foo").unwrap();
+        let expected = dir.join(".cargo-devshell").join("session.json");
+        assert!(expected.is_file(), "expected {}", expected.display());
         let meta = load_guest_primary(&bin_path).unwrap().expect("some");
         assert_eq!(meta.logical_cwd, "/proj/foo");
         assert_eq!(meta.format, FORMAT_DEVSHELL_SESSION_V1);
@@ -152,10 +270,33 @@ mod tests {
     }
 
     #[test]
+    fn save_prefers_workspace_env_path() {
+        let _cwd_lock = cwd_mutex();
+        let _workspace_env = devshell_workspace_env_mutex();
+        let dir = tmp_dir("ws_sess");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let dir = dir.canonicalize().expect("canonicalize tmp");
+        let _env = EnvRestore::set_workspace_root(&dir);
+        let bin_path = dir.join("ignored.bin");
+        save_guest_primary(&bin_path, "/x").unwrap();
+        let expected = dir.join(".cargo-devshell").join("session.json");
+        assert!(expected.is_file(), "expected {}", expected.display());
+        let loaded = load_guest_primary(&bin_path).unwrap().expect("meta");
+        assert_eq!(loaded.logical_cwd, "/x");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn apply_startup_sets_cwd() {
+        let _cwd_lock = cwd_mutex();
+        let _workspace_env = devshell_workspace_env_mutex();
+        let _env = EnvRestore::clear_workspace_root();
         let dir = tmp_dir("apply");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
+        let dir = dir.canonicalize().expect("canonicalize tmp");
+        let _restore_dir = CurrentDirRestore::chdir(&dir).expect("chdir tmp");
         let bin_path = dir.join("x.bin");
         let session_path = session_path_for_bin(&bin_path);
         fs::write(

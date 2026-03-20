@@ -10,11 +10,11 @@ use crate::todo::io::{load_todos, TodoDto};
 
 #[test]
 fn cmd_todo_add_list_save_load() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_test_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
 
     let add_cmd = todo_args(TodoSub::Add(TodoAddArgs {
@@ -53,11 +53,11 @@ fn cmd_todo_add_list_save_load() {
 
 #[test]
 fn cmd_todo_complete_and_delete() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join("xtask_todo_test2");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let path = dir.join(".todo.json");
 
     let dtos = vec![TodoDto {
@@ -92,11 +92,11 @@ fn cmd_todo_complete_and_delete() {
 
 #[test]
 fn cmd_todo_list_empty_prints_no_tasks() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join("xtask_todo_list_empty");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
 
     let list_cmd = todo_args(TodoSub::List(TodoListArgs::default()));
@@ -105,11 +105,11 @@ fn cmd_todo_list_empty_prints_no_tasks() {
 
 #[test]
 fn cmd_todo_list_with_completed_todo() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join("xtask_todo_list_completed");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
     let dtos = vec![TodoDto {
         id: 1,
@@ -133,11 +133,11 @@ fn cmd_todo_list_with_completed_todo() {
 
 #[test]
 fn cmd_todo_complete_id_zero_errors() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join("xtask_todo_id0");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
 
     let err = cmd_todo(todo_args(TodoSub::Complete(TodoCompleteArgs {
@@ -151,11 +151,11 @@ fn cmd_todo_complete_id_zero_errors() {
 
 #[test]
 fn cmd_todo_complete_nonexistent_id_returns_exit_code_3() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_comp_nx_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: "only".to_string(),
@@ -179,11 +179,11 @@ fn cmd_todo_complete_nonexistent_id_returns_exit_code_3() {
 
 #[test]
 fn cmd_todo_delete_id_zero_errors() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join("xtask_todo_del_id0");
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
 
     let err = cmd_todo(todo_args(TodoSub::Delete(TodoDeleteArgs { id: 0 }))).unwrap_err();
@@ -193,11 +193,11 @@ fn cmd_todo_delete_id_zero_errors() {
 
 #[test]
 fn cmd_todo_delete_nonexistent_id_returns_exit_code_3() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_del_nx_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: "only".to_string(),
@@ -217,11 +217,11 @@ fn cmd_todo_delete_nonexistent_id_returns_exit_code_3() {
 
 #[test]
 fn cmd_todo_show_found_and_not_found() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_show_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
     let dtos = vec![TodoDto {
         id: 1,
@@ -273,11 +273,11 @@ fn cmd_todo_show_found_and_not_found() {
 
 #[test]
 fn cmd_todo_update_and_update_id_zero_errors() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_upd_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
     cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
         title: "original".to_string(),
@@ -342,11 +342,11 @@ fn cmd_todo_update_and_update_id_zero_errors() {
 
 #[test]
 fn cmd_todo_add_empty_title_returns_parameter_error() {
-    let _guard = cwd_test_lock();
+    let _cwd_lock = cwd_test_lock();
     let dir = std::env::temp_dir().join(format!("xtask_todo_empty_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let cwd = std::env::current_dir().unwrap();
-    let _guard = RestoreCwd::new(&dir, &cwd);
+    let _restore = RestoreCwd::new(&dir, &cwd);
     let _ = std::fs::remove_file(".todo.json");
 
     let err = cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {

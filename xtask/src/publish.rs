@@ -127,6 +127,7 @@ pub fn cmd_publish(_args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tests::{cwd_test_lock, path_test_lock};
     use std::process::Command;
 
     #[test]
@@ -216,6 +217,7 @@ edition = "2021"
 
     #[test]
     fn cmd_publish_fails_when_crate_cargo_missing() {
+        let _cwd_lock = cwd_test_lock();
         let dir = std::env::temp_dir().join(format!("xtask_publish_cmd_{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let cwd = std::env::current_dir().unwrap();
@@ -233,6 +235,8 @@ edition = "2021"
     fn cmd_publish_succeeds_with_fake_git_and_cargo() {
         use std::io::Write;
         use std::os::unix::fs::PermissionsExt;
+        let _path = path_test_lock();
+        let _cwd_lock = cwd_test_lock();
         let dir = std::env::temp_dir().join(format!("xtask_publish_ok_{}", std::process::id()));
         let _ = std::fs::create_dir_all(dir.join("crates/todo"));
         let _ = std::fs::create_dir_all(dir.join("bin"));
