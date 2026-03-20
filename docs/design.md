@@ -1,6 +1,6 @@
-# 设计说明 (Design)
+# 设计说明（Design）
 
-本文档描述 xtask_todo 的技术架构、数据流与接口设计，与 [requirements.md](./requirements.md) 中的用户故事与验收标准对应。
+本文档描述 xtask_todo 的**技术架构、模块划分与数据流**，与 [requirements.md](./requirements.md) 中的需求与验收对应。实现与文档不一致时，以代码为准并回写本文档。
 
 ---
 
@@ -8,233 +8,256 @@
 
 ### 1.1 总体结构
 
-项目为 Cargo workspace，根目录仅做工作区配置，业务与工具拆分到独立 crate：
+Cargo **workspace**（`resolver = "2"`）：根目录仅配置 members，业务在子 crate 中。
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     xtask_todo (workspace)                        │
-├─────────────────────────────────────────────────────────────────┤
-│  crates/todo          │  xtask                                   │
-│  领域库 + 存储抽象     │  CLI 入口，调用 todo 或执行构建/脚本      │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        xtask_todo (workspace)                             │
+├──────────────────────────────────────────────────────────────────────────┤
+│  crates/todo (xtask-todo-lib)     │  xtask                                │
+│  · Todo 领域库                     │  · cargo xtask 唯一二进制入口         │
+│  · devshell（VFS/脚本/REPL/沙箱）  │  · argh 解析，编排 todo 与宿主命令     │
+│  · 二进制 cargo-devshell           │  · publish = false                    │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **crates/todo**：待办领域逻辑与对外 API，不依赖 xtask。
-- **xtask**：通过 `cargo xtask` 调用的二进制，封装「运行主程序、构建、发布」等脚本式任务，可依赖 `todo` 做集成或演示。
+| Crate | 职责 |
+|-------|------|
+| **crates/todo** | 待办领域（`TodoList`、`Store`、`Todo`…）；**不依赖 xtask**。另含 **`devshell`** 子系统与 **`cargo-devshell`** 二进制。 |
+| **xtask** | `cargo xtask` 入口：`todo` 子命令走 `xtask_todo_lib`；其余子命令执行 fmt/clippy/git/gh 等。 |
 
 ### 1.2 技术选型
 
-| 层级       | 选型        | 说明 |
-|------------|-------------|------|
-| 语言       | Rust 2021   | 与 requirements 一致 |
-| 工作区解析 | resolver = "2" | 统一依赖版本 |
-| xtask CLI  | argh        | 子命令与参数解析，零配置 |
-| 入口       | .cargo/config.toml alias | `cargo xtask` → `cargo run -p xtask --` |
+| 层级 | 选型 | 说明 |
+|------|------|------|
+| 语言 / Edition | Rust 2021 | 各 member 自管 `[lints.clippy]` |
+| Workspace | `members = ["crates/todo", "xtask"]` | 虚拟 workspace 不在根设 `[lints]` |
+| xtask / todo CLI | **argh** | 子命令与 flag 解析 |
+| devshell 行解析 | 自研 **parser** | 管道 `\|`、重定向 `<` `>` `2>`、引号等 |
+| REPL | **rustyline** + 自定义 `Completer` | TTY 下 Tab 补全；`CompletionType::List` |
+| 入口别名 | `.cargo/config.toml` | `cargo xtask` → `cargo run -p xtask --` |
 
-### 1.3 Todo 库分层（crates/todo）
+### 1.3 Todo 库分层（`crates/todo` 领域部分）
 
 ```
-┌──────────────────────────────────────┐
-│  Public API (调用方：CLI / 其他 crate) │
-│  TodoList, create, list, complete, …  │
-├──────────────────────────────────────┤
-│  Domain (领域模型与规则)               │
-│  Todo, TodoId, 状态、校验              │
-├──────────────────────────────────────┤
-│  Storage (存储抽象，可替换实现)         │
-│  Store trait → InMemoryStore / 后续   │
-└──────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│  Public API                              │
+│  TodoList<S>, Todo, TodoId, TodoPatch,   │
+│  ListOptions, RepeatRule, Store, …       │
+├─────────────────────────────────────────┤
+│  Domain                                  │
+│  model, priority, repeat, id, error      │
+├─────────────────────────────────────────┤
+│  Storage                                 │
+│  Store trait → InMemoryStore             │
+└─────────────────────────────────────────┘
 ```
 
-- **Public API**：对外暴露的类型与函数，满足 requirements 中的创建/列表/完成/删除。
-- **Domain**：待办实体、ID、状态及不依赖存储的校验（如标题非空）。
-- **Storage**：以 trait 抽象「增删改查」，默认内存实现，便于测试与后续扩展持久化。
+- **`TodoList<S: Store>`**：创建、列表（含 `list_with_options`）、`get`、`update`、`complete(id, no_next)`、`delete`、`search`、`stats`、`add_todo`（导入）等。
+- **`InMemoryStore`**：进程内 Vec；**持久化**由 **xtask** 的 `todo/io` 将 `Vec<Todo>` ↔ `.todo.json` 完成，不在 Store 内嵌文件 I/O。
 
-### 1.4 Xtask 角色
+### 1.4 Devshell 分层（`crates/todo::devshell`）
 
-- 作为**单一入口**：`cargo xtask run`、`cargo xtask build` 等，不依赖系统 shell 或外部脚本。
-- **不承载领域逻辑**：业务在 `todo` 中；xtask 只做编排（如调用 `todo` API、执行 `cargo build`、写文件等）。
+与领域库并列，供 **REPL / 脚本 / 测试** 使用：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  cargo-devshell 二进制 → devshell::run_main / run_main_from_args │
+├─────────────────────────────────────────────────────────────┤
+│  repl          │  TTY: rustyline；非 TTY: read_line 循环      │
+│  completion    │  DevShellHelper：命令名 + VFS 路径补全      │
+│  parser        │  Pipeline / SimpleCommand / 重定向          │
+│  command       │  dispatch / builtins / todo_builtin         │
+│  vfs           │  内存树形 Vfs，Unix 风格路径                 │
+│  script        │  .dsh：AST、exec、与 VFS 集成               │
+│  sandbox       │  export VFS → temp → 跑 rustup/cargo → sync │
+│  serialization │  Vfs ↔ .dev_shell.bin（或指定路径）          │
+│  todo_io       │  devshell 内 `todo` 内置 ↔ .todo.json       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+- **不执行任意宿主 shell 命令**；除 **`rustup` / `cargo`** 经 sandbox 显式调用外，仅 **builtin**。
+- **管道**：前一阶段 stdout 写入缓冲，作为下一阶段 stdin；**重定向** 在 builtin 层用 VFS 读写字节。
+
+### 1.5 Xtask 角色
+
+- **编排与 CLI**：解析参数、加载/保存 `.todo.json`、调用 `xtask_todo_lib::TodoList`、格式化输出、JSON/dry-run/退出码。
+- **工具子命令**：fmt、clippy、coverage、clean、run、gh、git、publish 等——**不内嵌 Todo 领域规则**。
+- **入口**：`xtask/src/main.rs` → `xtask::run()` → `run_with(XtaskCmd)`（逻辑在 **`lib.rs`**，便于测试）。
 
 ---
 
 ## 2. 数据流
 
-### 2.1 待办操作数据流（Todo 领域）
-
-调用方（CLI 或测试）通过 todo 的 Public API 操作，API 使用领域模型并委托给 Store 实现。
+### 2.1 Todo 领域数据流
 
 ```mermaid
 flowchart LR
-    subgraph Caller["调用方"]
-        CLI[CLI / 测试]
+    subgraph Callers["调用方"]
+        XtaskTodo[xtask todo 子命令]
+        Tests[单元/集成测试]
+        DevshellTodo[devshell builtin todo]
     end
-    subgraph API["todo Public API"]
-        create[create]
-        list[list]
-        complete[complete]
-        delete[delete]
+    subgraph Lib["xtask_todo_lib"]
+        TL[TodoList + Store]
+        Dom[Todo / 校验 / RepeatRule]
     end
-    subgraph Domain["领域层"]
-        Todo[Todo]
-        Rules[校验规则]
-    end
-    subgraph Store["存储"]
-        Mem[(InMemoryStore)]
-    end
-    CLI --> create
-    CLI --> list
-    CLI --> complete
-    CLI --> delete
-    create --> Rules
-    complete --> Rules
-    delete --> Rules
-    create --> Todo
-    list --> Mem
-    create --> Mem
-    complete --> Mem
-    delete --> Mem
+    XtaskTodo --> TL
+    Tests --> TL
+    DevshellTodo --> todo_io[todo_io 读写文件]
+    todo_io --> TL
+    TL --> Dom
 ```
 
-- **创建**：输入标题 → 校验（非空等）→ 构造 `Todo` → 写入 Store → 返回 id。
-- **列表**：无入参 → 从 Store 读取 → 按约定排序（如创建时间）→ 返回列表。
-- **完成/删除**：输入 id → 校验存在性及权限 → 更新/移除 Store → 返回结果或错误。
+- **xtask**：`todo/io` 读 `.todo.json` → 构造 `TodoList<InMemoryStore>` → 执行子命令 → 写回文件（`--dry-run` 跳过写）。
+- **devshell**：`todo_io` 在 **当前工作目录约定** 下读写 **同一 `.todo.json`**；内置 `todo` 为 **子集**（无 export/import/init-ai），参数为「字符串切片」风格，与 argh 的 xtask 层分离。
 
-### 2.2 Xtask 调用链
-
-开发者执行 `cargo xtask <子命令>` 时，由 Cargo 根据 alias 调用 xtask 二进制，再按子命令分发。
+### 2.2 `cargo xtask` 调用链
 
 ```mermaid
 sequenceDiagram
     participant Dev as 开发者
     participant Cargo as cargo
     participant Xtask as xtask 二进制
-    participant Todo as crates/todo
-    participant System as 系统/文件/cargo
+    participant Lib as xtask_todo_lib
+    participant FS as 文件系统 / 宿主工具
 
-    Dev->>Cargo: cargo xtask run
-    Cargo->>Xtask: run -p xtask -- run
-    Xtask->>Xtask: 解析子命令 (argh)
-    alt run
-        Xtask->>System: 执行主程序 (如 cargo run -p todo-cli)
-        System-->>Xtask: 退出码
-    else 其他子命令 (如 codegen)
-        Xtask->>Todo: 可选：调用 todo API
-        Xtask->>System: 脚本逻辑
-        System-->>Xtask: 结果
-    end
-    Xtask-->>Cargo: exit code
-    Cargo-->>Dev: 输出与退出码
+    Dev->>Cargo: cargo xtask todo list
+    Cargo->>Xtask: run -p xtask -- todo list
+    Xtask->>Xtask: argh → XtaskSub::Todo
+    Xtask->>FS: 读 .todo.json
+    Xtask->>Lib: TodoList 操作
+    Lib-->>Xtask: Vec<Todo> / 错误
+    Xtask->>Xtask: format / --json
+    Xtask->>FS: 写回（若非 dry-run）
+    Xtask-->>Dev: stdout/stderr, exit code
+
+    Dev->>Cargo: cargo xtask clippy
+    Xtask->>FS: cargo clippy …
 ```
 
-- 所有「业务数据」都经由 `todo` 的 API；xtask 只做调用与进程/文件级操作。
+- **退出码**：`RunFailure.code`；仅 **todo** 子命令细分为 **2（参数）/ 3（数据）**；其余失败多为 **1**。
 
-### 2.3 状态与存储
+### 2.3 持久化与序列化
 
-- **crates/todo**：默认 `InMemoryStore`，进程内无持久化；可通过 `Store` 抽象扩展。
-- **cargo xtask todo**：通过 xtask 将待办持久化到项目根目录的 **`.todo.json`**（JSON）。字段：id、title、completed、created_at_secs、completed_at_secs（必选）；description、due_date、priority、tags、repeat_rule、repeat_until、repeat_count（可选，反序列化时缺省为 None/空）。导出可写 JSON 或 CSV（由文件扩展名或 `--format` 指定）；导入支持 JSON/CSV（按扩展名识别）。xtask 启动时加载、操作后写回，与 `TodoList` + `InMemoryStore::from_todos` 配合使用。
+| 数据 | 位置 | 说明 |
+|------|------|------|
+| 待办列表 | **`.todo.json`** | xtask `todo/io`：JSON 数组；字段含 id、title、completed、时间戳（秒）、可选 description/due_date/priority/tags/repeat_*。 |
+| Devshell VFS | **`.dev_shell.bin`**（可 `cargo-devshell <path>` 指定） | `devshell::serialization` 与内存 `Vfs` 双向序列化；REPL 退出或脚本结束保存。 |
 
-### 2.4 列表展示与时间
+### 2.4 列表展示与时间（xtask）
 
-- **列表展示**（如 `cargo xtask todo list`）：支持可选 `--status`/`--priority`/`--tags`/`--due-before`/`--due-after` 过滤及 `--sort` 排序；每条展示创建时间（相对如「Xm/Xh/Xd ago」）；已完成项另展示完成时间与**用时**（完成时间 − 创建时间）。
-- **长时间未完成提醒**：当输出为 TTY 时，创建超过约定阈值（默认 7 天）且未完成的任务以不同颜色（如 ANSI 黄色）展示；非 TTY 时不输出颜色码。
+- **`xtask/src/todo/format.rs`**：`print_todo_list_items`，TTY 检测后决定是否着色；**7 天**未完成的开放任务 **ANSI 黄色**（`AGE_THRESHOLD_DAYS`）。
+- 人类可读：**相对时间** + 已完成项 **用时**（完成时间 − 创建时间）。
+
+### 2.5 Rust 工具链沙箱（devshell）
+
+```mermaid
+flowchart LR
+    VFS[Vfs cwd 子树]
+    Exp[export_vfs_to_temp_dir]
+    Tmp[临时目录 0700]
+    Run[rustup/cargo 子进程]
+    Sync[sync_host_dir_to_vfs]
+    VFS --> Exp --> Tmp
+    Tmp --> Run
+    Run --> Sync --> VFS
+```
+
+- **`sandbox` 模块**：`find_in_path` → `export_vfs_to_temp_dir` → **`host_export_root`** 与 `copy_tree_to_host` 布局一致（导出节点名为宿主子目录，如 `/projects/hello` → `…/hello`）→ `run_in_export_dir` → `sync_host_dir_to_vfs` → 删除临时目录。
+- **错误**：未找到可执行文件、导出/同步失败等映射为 builtin 错误信息。
 
 ---
 
-## 3. 接口
+## 3. 接口与模块映射
 
-### 3.1 Todo 库公开 API（crates/todo）
+### 3.1 Todo 库公开类型（摘要）
 
-以下为面向调用方的类型与函数级接口（具体签名以代码为准，此处约定语义与错误处理）。
+| 类型 | 说明 |
+|------|------|
+| `TodoId` | `NonZeroU64` 封装，0 非法。 |
+| `Todo` | 含 `created_at` / `completed_at`、`description`、`due_date`、`priority`、`tags`、`repeat_rule`、`repeat_until`、`repeat_count`。 |
+| `TodoPatch` | 部分更新；`repeat_rule_clear` 清除重复规则。 |
+| `ListOptions` / `ListFilter` / `ListSort` | 列表过滤与排序。 |
+| `TodoList<S: Store>` | 领域操作门面。 |
+| `Store` / `InMemoryStore` | 存储抽象与默认实现。 |
+| `TodoError` | `InvalidInput`、`NotFound` 等。 |
 
-#### 3.1.1 类型
+具体签名以 **`crates/todo/src/list/mod.rs`** 与 **`model.rs`** 为准。
 
-| 类型        | 说明 |
-|-------------|------|
-| `TodoId`    | 待办唯一标识，对外不透明（如 `uuid` 或 `NonZeroU64`）。 |
-| `Todo`      | 单条待办：`id`, `title`, `completed: bool`, `created_at`, `completed_at: Option<SystemTime>`。扩展（US-T9、US-T13）：可选 `description`, `due_date`, `priority`, `tags`, `repeat_rule`；重复结束条件：`repeat_until: Option<String>`（YYYY-MM-DD）、`repeat_count: Option<u32>`（剩余次数）。 |
-| `TodoList`  | 门面：持有 Store，提供 `create` / `list` / `complete` / `delete`。 |
+### 3.2 Xtask 子命令（`xtask/src/lib.rs`）
 
-#### 3.1.2 行为接口（函数语义）
+| `XtaskSub` | 职责 |
+|------------|------|
+| `Run` | 运行约定主程序/示例。 |
+| `Clean` | 清理构建产物。 |
+| `Clippy` | Clippy（项目策略见 crate lints）。 |
+| `Coverage` | tarpaulin 等覆盖率任务。 |
+| `Fmt` | `cargo fmt`。 |
+| `Gh` | 封装 GitHub CLI（如 `gh log`）。 |
+| `Git` | add / pre-commit / commit 等。 |
+| `Publish` | 发布辅助（见 `docs/publishing.md`）。 |
+| `Todo` | 见下表。 |
 
-| 操作 | 签名语义 | 返回值 | 错误 |
-|------|----------|--------|------|
-| 创建 | `create(&mut self, title: impl AsRef<str>)` | `Result<TodoId, TodoError>` | 标题为空或违反校验规则 |
-| 列表 | `list(&self) -> Vec<Todo>` 或 `list(&self, filter?)` | 按创建时间排序的列表 | - |
-| 完成 | `complete(&mut self, id: TodoId, no_next: bool)` | `Result<(), TodoError>` | id 不存在；no_next 为 true 时不生成重复任务下一实例 |
-| 删除 | `delete(&mut self, id: TodoId)` | `Result<(), TodoError>` | id 不存在（可选：幂等返回 Ok） |
+**`todo` 子命令**由 **`xtask/src/todo/cmd/dispatch.rs`** 分发，参数类型在 **`args.rs`**（`TodoAddArgs`、`TodoListArgs`…），错误在 **`error.rs`**（映射退出码）。
 
-**扩展（US-T7～US-T13、US-A1～US-A4，已实现）**：
+### 3.3 Devshell 对外入口
 
-| 操作 | 签名语义 | 说明 |
-|------|----------|------|
-| 查看单条 | `get(&self, id: TodoId) -> Option<Todo>`；CLI `todo show <id>` | US-T7：返回单条完整信息，不存在为 None 或 Err |
-| 更新 | `update(&mut self, id: TodoId, patch)`；CLI `todo update <id> <title> [--description …] [--clear-repeat-rule]` | US-T8：修改标题及可选描述、截止、优先级、标签、重复规则等（patch 含 repeat_until、repeat_count、repeat_rule_clear）；`--clear-repeat-rule` 将 repeat_rule 置为 None |
-| 列表过滤/排序 | `list_with_options(&self, options: &ListOptions)` | US-T9：按状态、优先级、标签、截止日期过滤与排序 |
-| 搜索 | `search(&self, keyword: &str) -> Vec<Todo>`；CLI `todo search <keyword>` | US-T10：在标题、描述、标签中匹配 |
-| 统计 | `stats(&self) -> (total, incomplete, complete)`；CLI `todo stats` | US-T11：总数、未完成数、已完成数 |
-| 导出/导入 | CLI `todo export <file> [--format json\|csv]` / `todo import <file> [--replace]`；库 `add_todo` 等 | US-T12：格式由扩展名或 `--format` 决定，支持 JSON 与 CSV；merge 或 replace 策略 |
-| 重复规则 | `Todo.repeat_rule` + `repeat_until`/`repeat_count`；`complete(id, no_next)`；CLI `complete --no-next` | US-T13：daily/weekly/monthly/yearly/weekdays、2d/3w、custom(n)；结束条件：repeat_until（截止日）、repeat_count（剩余次数）；完成时按条件生成下一实例 |
-| JSON 输出 | 全局 `--json`，成功 `{ "status":"success", "data": ... }`，失败含 error 与 code | US-A1 |
-| 退出码 | 0 成功，1 一般错误，2 参数错误，3 数据错误（todo 子命令） | US-A2 |
-| init-ai | `todo init-ai [--for-tool cursor] [--output <dir>]`，默认 `.cursor/commands/` | US-A3 |
-| dry-run | 全局 `--dry-run`，add/update/complete/delete 不写 `.todo.json` 且不修改内存列表，仅输出拟执行操作 | US-A4 |
+| 函数 | 用途 |
+|------|------|
+| `devshell::run_main()` | 二进制入口：读 `env::args()`、TTY 检测、stdin/out/err。 |
+| `devshell::run_main_from_args(...)` | 测试与嵌入：`-f` 脚本、`-e`、`[path]`。 |
+| `devshell::run_with(...)` | 简化测试路径（非完整 CLI）。 |
 
-#### 3.1.3 错误类型
+**内置命令**实现在 **`command/dispatch.rs`**（`execute_pipeline`、`run_builtin`），**`todo`** 在 **`command/todo_builtin.rs`**。
 
-- `TodoError`（或等价枚举）：至少包含 `InvalidInput`（如空标题）、`NotFound(TodoId)`，便于调用方与测试断言。
+### 3.4 与需求的对应关系（扩展）
 
-#### 3.1.4 存储抽象（内部接口）
-
-- `Store` trait：提供 `insert`, `get`, `list`, `update`, `remove` 等，由 `InMemoryStore` 实现；后续可增加 `FileStore`、`SqlStore` 等而不改 Public API。
-
-### 3.2 Xtask CLI 接口
-
-| 子命令 | 说明 | 参数（当前/预留） |
-|--------|------|-------------------|
-| `run` | 运行主程序或默认「运行」行为 | 无 |
-| `todo` | 待办管理（数据在 `.todo.json`） | 子命令见下 |
-| （预留）`build` | 构建产物 | 可选 `--release` |
-| （预留）`release` | 发布流程 | 可选版本/目标 |
-
-**todo 子命令（已实现）**：`add "标题" [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …] [--repeat-until …] [--repeat-count …]`；`list [--status completed|incomplete] [--priority …] [--tags …] [--due-before …] [--due-after …] [--sort created-at|due-date|priority|title]`（过滤与排序）；`show <id>`（人类可读输出含描述、截止、优先级、标签、重复规则与结束条件）；`update <id> <title> [--description …] [--due-date …] [--priority …] [--tags …] [--repeat-rule …] [--repeat-until …] [--repeat-count …] [--clear-repeat-rule]`（`--clear-repeat-rule` 用于取消重复规则）；`complete <id> [--no-next]`、`delete <id>`、`search <keyword>`、`stats`、`export <file> [--format json|csv]`（格式也可由文件扩展名推断）、`import <file> [--replace]`（支持 .json/.csv）、`init-ai [--for-tool cursor] [--output <dir>]`。list 输出含创建/完成时间与用时；TTY 下对超过阈值未完成项着色。全局选项：`--json`（统一 JSON 输出）、`--dry-run`（修改类命令不写 `.todo.json` 且不修改内存列表，仅打印拟执行操作）。**日期格式校验**：add/update 的 `--due-date`、`--repeat-until` 与 list 的 `--due-before`、`--due-after` 须为 YYYY-MM-DD（月份 01–12、日 01–31），否则返回参数错误。
-
-- 入口：`cargo xtask [--] <子命令> [子命令参数]`。
-- 帮助：`cargo xtask --help`、`cargo xtask todo --help`。
-- 退出码（US-A2）：xtask 入口返回 `Result<(), RunFailure>`，main 根据 `RunFailure.code` 调用 `std::process::exit(code)`。0 成功，1 一般错误，2 参数错误，3 数据错误（如 id 不存在）；仅 todo 子命令通过 `TodoCliError` 区分 2/3，其余子命令失败统一为 1。
-
-### 3.3 与需求的对应关系
-
-| 需求 | 设计对应 |
+| 需求 | 设计落点 |
 |------|----------|
-| US-T1 创建待办 | `TodoList::create`，校验在 Domain，Store 持久化 |
-| US-T2 列出待办 | `TodoList::list`，Store 提供列表并排序 |
-| US-T3 完成待办 | `TodoList::complete`，Store 更新状态 |
-| US-T4 删除待办 | `TodoList::delete`，Store 移除 |
-| US-X1 通过 cargo xtask 执行 | .cargo/config.toml alias + xtask 二进制 |
-| US-X2 xtask run | xtask 子命令 `run`，内部执行主程序 |
-| US-X3 扩展子命令 | 在 xtask 中新增 argh 子命令与对应 handler |
-| US-T5 时间戳与完成时间 | Todo 的 created_at / completed_at；list 展示创建/完成/用时 |
-| US-T6 长时间未完成提醒 | list 在 TTY 下对超阈值未完成项着色 |
-| US-X4 cargo xtask todo | xtask 子命令 todo add/list/complete/delete，.todo.json 持久化 |
-| US-T7 查看单条 | `TodoList::get(id)` 或 Store::get；CLI `todo show <id>`（扩展） |
-| US-T8 更新任务 | `TodoList::update(id, patch)`；CLI `todo update <id>`（扩展） |
-| US-T9 任务可选属性 | Todo 扩展 description、due_date、priority、tags；add/update 与 list 过滤/排序（扩展） |
-| US-T10 搜索 | `TodoList::search(keyword)`；CLI `todo search <keyword>`（扩展） |
-| US-T11 统计 | `TodoList::stats()`；CLI `todo stats`（扩展） |
-| US-T12 导入导出 | 序列化/反序列化 + 文件 I/O；CLI `todo export|import <file>`（扩展） |
-| US-T13 定期重复任务 | Todo 的 repeat_rule；complete 时可选生成下一实例；CLI `--no-next`、show/update 展示与修改规则（扩展） |
-| US-A1 JSON 输出 | 各子命令 `--json`，统一 JSON 结构（扩展） |
-| US-A2 标准退出码 | 0/1/2/3 约定（扩展） |
-| US-A3 init-ai | `todo init-ai --for <tool>`，生成技能文件到目标目录（扩展） |
-| US-A4 dry-run | 修改类命令 `--dry-run`，不写存储（扩展） |
+| US-T1～T6 | `TodoList`、`Store`、`format.rs` |
+| US-T7～T12 | `list/get/update/search/stats`、xtask `dispatch` + import/export |
+| US-T13 | `repeat.rs` + `complete(..., no_next)` |
+| US-A1～A4 | xtask `todo` 全局 flag、`print_json_error`、`TodoCliError` 退出码 |
+| US-X1～X3 | `lib.rs` `XtaskCmd`、argh 子命令枚举 |
+| US-X4 | `todo/io` + `.todo.json` |
+| devshell（requirements §6） | `devshell::*` 模块树、`sandbox`、`completion`、`repl` |
 
 ---
 
-## 4. 扩展与维护
+## 4. 关键设计决策
 
-- **新增 todo 能力**：在 Domain 与 Public API 增加方法或类型，必要时扩展 `Store` trait 与现有实现；扩展需求见 US-T7～US-T13、US-A1～US-A4（见 3.1.2 与 3.3）。
-- **新增 xtask 子命令**：在 `xtask/src/main.rs` 中增加子命令枚举与实现，保持 `cargo xtask --help` 更新；扩展子命令 show/update/search/stats/export/import/init-ai 及全局选项 --json、--dry-run 见 3.2。
-- **持久化**：新增实现 `Store` 的 crate，在构造 `TodoList` 时注入，不改变本文档中的 Public API 与数据流图。
-- **重复任务**：Domain 中 `RepeatRule` 支持 daily/weekly/monthly/yearly/weekdays、2d/3w 简写及 custom(n)；`Todo` 可选 `repeat_until`（截止日期）、`repeat_count`（剩余次数），complete 时据此决定是否生成下一实例；CLI complete 支持 `--no-next`。
+### 4.1 持久化与领域分离
 
-文档与实现不一致时，以代码为准并同步更新本文档。
+- **文件 I/O 留在 xtask（及 devshell `todo_io`）**，库侧保持 **`TodoList` + `InMemoryStore`**，便于测试与替换存储，避免 lib 绑定单一路径策略。
+
+### 4.2 Devshell 与 xtask 不互相依赖
+
+- **xtask** 依赖 **xtask-todo-lib** 仅用于 **Todo 领域**。
+- **devshell** 在 **同一 lib crate** 中，但 **xtask 二进制不包含 REPL**；用户通过 **`cargo run -p xtask-todo-lib --bin cargo-devshell`** 使用。
+
+### 4.3 Tab 补全
+
+- **`CompletionType::List`**：行为接近 bash（最长公共前缀 + 多义二次 Tab），避免 Circular 在单候选下「还原到补全前」的意外。
+- **路径候选**：`complete_path` 返回 **含目录前缀的整词**（如 `src/main.rs`），与 rustyline 按 `start..pos` 整段替换一致。
+
+### 4.4 脚本与 REPL 变量作用域
+
+- **脚本文件**内变量与控制流 **独立于下一条 REPL 行**（requirements 已说明）；实现上每脚本/每次 `source` 使用脚本执行器的栈帧，不污染全局 REPL 会话（以实现为准）。
+
+---
+
+## 5. 扩展与维护
+
+- **新增 Todo 能力**：改 `model` / `list` / `store`（若需）；同步 xtask `args` + `dispatch` + JSON 形状；更新 **requirements.md** 与本文档。
+- **新增 xtask 子命令**：在 **`XtaskSub`** 增加变体并在 **`run_with`** 分支调用；保持 `--help` 可读。
+- **新增 devshell builtin**：`command/dispatch.rs` 注册 + `completion::BUILTIN_COMMANDS` + 帮助文案。
+- **Rust 沙箱增强**：见 `docs/superpowers/specs/` 下 Rust VM 设计/计划；实现落在 **`sandbox.rs`**。
+
+---
+
+## 6. 参考文档
+
+- [requirements.md](./requirements.md) — 功能需求与验收。
+- [publishing.md](./publishing.md) — crates.io 发布范围（仅 **xtask-todo-lib**）。
+- `docs/superpowers/specs/` — devshell 脚本、gh log、Rust 沙箱等专题设计与计划。

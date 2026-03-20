@@ -203,8 +203,94 @@ fn sync_host_dir_to_vfs_recursive(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{Mutex, OnceLock};
+
     use super::super::vfs::Vfs;
-    use super::{export_vfs_to_temp_dir, sync_host_dir_to_vfs};
+    use super::{
+        export_vfs_to_temp_dir, find_in_path, run_in_export_dir, run_rust_tool,
+        sync_host_dir_to_vfs, SandboxError,
+    };
+
+    fn path_env_lock() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .expect("path env lock")
+    }
+
+    #[test]
+    fn sandbox_error_display() {
+        let e = SandboxError::ExportFailed(std::io::Error::other("e"));
+        assert!(e.to_string().contains("export failed"));
+        let e = SandboxError::CopyFailed(super::super::vfs::VfsError::InvalidPath);
+        assert!(e.to_string().contains("copy to host"));
+        let e = SandboxError::SyncBackFailed(std::io::Error::other("s"));
+        assert!(e.to_string().contains("sync back"));
+    }
+
+    #[test]
+    fn find_in_path_returns_none_when_missing() {
+        let _g = path_env_lock();
+        let old = std::env::var_os("PATH");
+        std::env::set_var("PATH", "/nonexistent_devshell_path_999");
+        assert!(find_in_path("no_such_program_xyz").is_none());
+        match old {
+            Some(p) => std::env::set_var("PATH", p),
+            None => std::env::remove_var("PATH"),
+        }
+    }
+
+    #[test]
+    fn run_in_export_dir_runs_true_on_unix() {
+        #[cfg(unix)]
+        {
+            let _g = path_env_lock();
+            let dir = std::env::temp_dir().join(format!(
+                "devshell_run_in_{}_{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            std::fs::create_dir_all(&dir).unwrap();
+            let true_path = find_in_path("true").expect("true in PATH");
+            let status = run_in_export_dir(&dir, true_path, &[]).unwrap();
+            assert!(status.success());
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+    }
+
+    #[test]
+    fn run_rust_tool_true_on_unix() {
+        #[cfg(unix)]
+        {
+            let _g = path_env_lock();
+            let mut vfs = Vfs::new();
+            let status = run_rust_tool(&mut vfs, "/", "true", &[]).unwrap();
+            assert!(status.success());
+        }
+    }
+
+    #[test]
+    fn run_rust_tool_program_not_found() {
+        let _g = path_env_lock();
+        let mut vfs = Vfs::new();
+        let r = run_rust_tool(&mut vfs, "/", "nonexistent_program_devshell_xyz", &[]);
+        assert!(r.is_err());
+        let err = r.unwrap_err().to_string();
+        assert!(err.contains("not found") || err.contains("PATH"));
+    }
+
+    #[test]
+    fn sync_skips_when_host_export_leaf_missing() {
+        let mut vfs = Vfs::new();
+        let base = std::env::temp_dir().join(format!("devshell_sync_skip_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir(&base).unwrap();
+        sync_host_dir_to_vfs(&base, "/no_such_exported_node", &mut vfs).unwrap();
+        let _ = std::fs::remove_dir(&base);
+    }
 
     #[test]
     fn export_empty_cwd_creates_dir() {
