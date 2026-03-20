@@ -14,8 +14,24 @@ use crate::devshell::host_text;
 use crate::devshell::parser;
 use crate::devshell::vfs::Vfs;
 use crate::devshell::vm::SessionHolder;
+use crate::devshell::workspace::read_logical_file_bytes_rc;
 
 const MAX_SOURCE_DEPTH: u32 = 64;
+
+/// Load script text for `source` / REPL `source` / `. path`: workspace (guest-primary or VFS), then host (design §9).
+#[must_use]
+pub fn read_script_source_text(
+    vfs: &Rc<RefCell<Vfs>>,
+    vm_session: &Rc<RefCell<SessionHolder>>,
+    path: &str,
+) -> Option<String> {
+    if let Ok(bytes) = read_logical_file_bytes_rc(vfs, vm_session, path) {
+        if let Some(t) = host_text::script_text_from_vfs_bytes(&bytes) {
+            return Some(t);
+        }
+    }
+    host_text::read_host_text(Path::new(path)).ok()
+}
 
 /// Error from script execution (parse, command failure with `set_e`, or source failure).
 #[derive(Debug)]
@@ -63,13 +79,7 @@ where
         let _ = writeln!(ctx.stderr, "source: max depth {MAX_SOURCE_DEPTH} exceeded");
         return Err(RunScriptError::Source);
     }
-    let content = ctx
-        .vfs
-        .borrow()
-        .read_file(path)
-        .ok()
-        .and_then(|b| host_text::script_text_from_vfs_bytes(&b))
-        .or_else(|| host_text::read_host_text(Path::new(path)).ok());
+    let content = read_script_source_text(ctx.vfs, &ctx.vm_session, path);
     let Some(content) = content else {
         let _ = writeln!(ctx.stderr, "source: cannot read {path}");
         return Err(RunScriptError::Source);

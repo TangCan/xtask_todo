@@ -7,6 +7,7 @@ use std::io::Write;
 use std::rc::Rc;
 
 mod config;
+mod guest_fs_ops;
 #[cfg(unix)]
 mod lima_diagnostics;
 #[cfg(all(unix, feature = "beta-vm"))]
@@ -17,8 +18,15 @@ mod session_host;
 pub mod sync;
 
 pub use config::{
-    VmConfig, ENV_DEVSHELL_VM, ENV_DEVSHELL_VM_BACKEND, ENV_DEVSHELL_VM_EAGER,
-    ENV_DEVSHELL_VM_LIMA_INSTANCE, ENV_DEVSHELL_VM_SOCKET,
+    workspace_mode_from_env, VmConfig, WorkspaceMode, ENV_DEVSHELL_VM, ENV_DEVSHELL_VM_BACKEND,
+    ENV_DEVSHELL_VM_EAGER, ENV_DEVSHELL_VM_LIMA_INSTANCE, ENV_DEVSHELL_VM_SOCKET,
+    ENV_DEVSHELL_VM_WORKSPACE_MODE,
+};
+#[cfg(unix)]
+pub use guest_fs_ops::LimaGuestFsOps;
+pub use guest_fs_ops::{
+    guest_path_is_under_mount, guest_project_dir_on_guest, normalize_guest_path, GuestFsError,
+    GuestFsOps, MockGuestFsOps,
 };
 #[cfg(unix)]
 pub use lima_diagnostics::ENV_DEVSHELL_VM_LIMA_HINTS;
@@ -177,6 +185,73 @@ impl SessionHolder {
             Self::Gamma(s) => VmExecutionSession::shutdown(s, vfs, vfs_cwd),
             #[cfg(all(unix, feature = "beta-vm"))]
             Self::Beta(s) => VmExecutionSession::shutdown(s, vfs, vfs_cwd),
+        }
+    }
+
+    /// When γ is in guest-primary mode ([`WorkspaceMode::Guest`]), returns the session for direct guest FS ops.
+    ///
+    /// Returns `None` for host sandbox, β, or Mode S γ (push/pull sync).
+    #[cfg(unix)]
+    #[must_use]
+    pub fn guest_primary_gamma_mut(&mut self) -> Option<&mut GammaSession> {
+        match self {
+            Self::Gamma(g) if !g.syncs_vfs_with_host_workspace() => Some(g),
+            _ => None,
+        }
+    }
+
+    /// γ **or** β guest-primary: [`GuestFsOps`] + guest mount for [`logical_path_to_guest`].
+    ///
+    /// Returns `None` for host sandbox, Mode S sync, or non–guest-primary sessions.
+    /// Mount is owned so the returned trait object does not alias a borrow of the session.
+    #[cfg(unix)]
+    #[must_use]
+    pub fn guest_primary_fs_ops_mut(&mut self) -> Option<(&mut dyn GuestFsOps, String)> {
+        match self {
+            Self::Gamma(g) if !g.syncs_vfs_with_host_workspace() => {
+                let mount = g.guest_mount().to_string();
+                Some((g as &mut dyn GuestFsOps, mount))
+            }
+            #[cfg(feature = "beta-vm")]
+            Self::Beta(b) if !b.syncs_vfs_with_host_workspace() => {
+                let mount = b.guest_mount().to_string();
+                Some((b as &mut dyn GuestFsOps, mount))
+            }
+            _ => None,
+        }
+    }
+
+    /// `true` when **any** VM session runs in guest-primary mode (γ or β: no VFS↔host project-tree sync).
+    #[must_use]
+    pub fn is_guest_primary(&self) -> bool {
+        #[cfg(unix)]
+        {
+            match self {
+                Self::Gamma(g) if !g.syncs_vfs_with_host_workspace() => true,
+                #[cfg(feature = "beta-vm")]
+                Self::Beta(b) if !b.syncs_vfs_with_host_workspace() => true,
+                _ => false,
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            false
+        }
+    }
+
+    /// `true` when γ runs in guest-primary mode (no VFS↔host project-tree sync).
+    #[must_use]
+    pub fn is_guest_primary_gamma(&self) -> bool {
+        #[cfg(unix)]
+        {
+            matches!(
+                self,
+                Self::Gamma(g) if !g.syncs_vfs_with_host_workspace()
+            )
+        }
+        #[cfg(not(unix))]
+        {
+            false
         }
     }
 }

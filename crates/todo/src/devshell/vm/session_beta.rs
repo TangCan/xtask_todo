@@ -14,9 +14,12 @@ use std::os::unix::process::ExitStatusExt;
 
 use super::super::vfs::Vfs;
 use super::config::ENV_DEVSHELL_VM_SOCKET;
+use super::guest_fs_ops::{validate_guest_path_under_mount, GuestFsError, GuestFsOps};
 use super::session_gamma::{self, guest_dir_for_vfs_cwd};
 use super::sync::{pull_workspace_to_vfs, push_incremental};
-use super::{VmConfig, VmError, VmExecutionSession};
+use super::{VmConfig, VmError, VmExecutionSession, WorkspaceMode};
+
+use base64::prelude::*;
 
 /// IPC client session (sidecar must be started separately).
 pub struct BetaSession {
@@ -27,6 +30,8 @@ pub struct BetaSession {
     guest_mount: String,
     handshake_ok: bool,
     session_started: bool,
+    /// Same as γ: when `false` ([`WorkspaceMode::Guest`]), skip host↔VFS sync around rust tools.
+    sync_vfs_with_workspace: bool,
 }
 
 impl std::fmt::Debug for BetaSession {
@@ -38,6 +43,7 @@ impl std::fmt::Debug for BetaSession {
             .field("guest_mount", &self.guest_mount)
             .field("handshake_ok", &self.handshake_ok)
             .field("session_started", &self.session_started)
+            .field("sync_vfs_with_workspace", &self.sync_vfs_with_workspace)
             .finish_non_exhaustive()
     }
 }
@@ -70,6 +76,9 @@ impl BetaSession {
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "/workspace".to_string());
 
+        let sync_vfs_with_workspace =
+            matches!(config.workspace_mode_effective(), WorkspaceMode::Sync);
+
         Ok(Self {
             sock_path: PathBuf::from(sock_path),
             stream: None,
@@ -78,6 +87,7 @@ impl BetaSession {
             guest_mount,
             handshake_ok: false,
             session_started: false,
+            sync_vfs_with_workspace,
         })
     }
 
@@ -151,6 +161,66 @@ impl BetaSession {
         self.session_started = true;
         Ok(())
     }
+
+    /// Guest workspace mount (e.g. `/workspace`), same env as γ.
+    #[must_use]
+    pub fn guest_mount(&self) -> &str {
+        &self.guest_mount
+    }
+
+    /// `true` when Mode S (host↔VFS sync around rust tools); `false` in guest-primary ([`WorkspaceMode::Guest`]).
+    #[must_use]
+    pub fn syncs_vfs_with_host_workspace(&self) -> bool {
+        self.sync_vfs_with_workspace
+    }
+
+    fn guest_fs_prep(&mut self) -> Result<(), GuestFsError> {
+        let vfs = Vfs::new();
+        self.ensure_ready(&vfs, "/").map_err(GuestFsError::from)?;
+        self.ensure_session_started().map_err(GuestFsError::from)?;
+        Ok(())
+    }
+
+    fn guest_fs_call(
+        &mut self,
+        operation: &str,
+        guest_path: &str,
+        data: Option<&[u8]>,
+    ) -> Result<serde_json::Value, GuestFsError> {
+        let mount = self.guest_mount();
+        let p = validate_guest_path_under_mount(mount, guest_path)?;
+        self.guest_fs_prep()?;
+        let mut req = serde_json::json!({
+            "op": "guest_fs",
+            "session_id": &self.session_id,
+            "operation": operation,
+            "guest_path": p,
+        });
+        if let Some(bytes) = data {
+            req["content_base64"] = serde_json::Value::String(BASE64_STANDARD.encode(bytes));
+        }
+        let v = self.exchange(&req).map_err(GuestFsError::from)?;
+        match v.get("op").and_then(|x| x.as_str()) {
+            Some("guest_fs_ok") => Ok(v),
+            Some("guest_fs_error") => {
+                let code = v
+                    .get("code")
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("guest_fs_error");
+                let msg = v.get("message").and_then(|x| x.as_str()).unwrap_or(code);
+                Err(match code {
+                    "not_found" => GuestFsError::NotFound(msg.to_string()),
+                    "not_a_directory" => GuestFsError::NotADirectory(msg.to_string()),
+                    "is_a_directory" => GuestFsError::IsADirectory(msg.to_string()),
+                    "invalid_path" => GuestFsError::InvalidPath(msg.to_string()),
+                    _ => GuestFsError::Internal(format!("{code}: {msg}")),
+                })
+            }
+            _ => Err(GuestFsError::Internal(format!(
+                "unexpected guest_fs response: {v}"
+            ))),
+        }
+    }
 }
 
 impl VmExecutionSession for BetaSession {
@@ -196,16 +266,19 @@ impl VmExecutionSession for BetaSession {
         self.ensure_ready(vfs, vfs_cwd)?;
         self.ensure_session_started()?;
 
-        push_incremental(vfs, vfs_cwd, &self.workspace_parent).map_err(VmError::Sync)?;
-
         let leaf = vfs_cwd_leaf(vfs_cwd);
-        let push = serde_json::json!({
-            "op": "sync_request",
-            "session_id": &self.session_id,
-            "direction": "push_to_guest",
-            "vfs_cwd_leaf": &leaf,
-        });
-        self.exchange(&push)?;
+
+        if self.sync_vfs_with_workspace {
+            push_incremental(vfs, vfs_cwd, &self.workspace_parent).map_err(VmError::Sync)?;
+
+            let push = serde_json::json!({
+                "op": "sync_request",
+                "session_id": &self.session_id,
+                "direction": "push_to_guest",
+                "vfs_cwd_leaf": &leaf,
+            });
+            self.exchange(&push)?;
+        }
 
         let mut argv = vec![program.to_string()];
         argv.extend_from_slice(args);
@@ -220,18 +293,20 @@ impl VmExecutionSession for BetaSession {
         let res = self.exchange(&exec)?;
         let code = res.get("exit_code").and_then(|x| x.as_i64()).unwrap_or(1) as i32;
 
-        let pull_req = serde_json::json!({
-            "op": "sync_request",
-            "session_id": &self.session_id,
-            "direction": "pull_from_guest",
-            "vfs_cwd_leaf": &leaf,
-        });
-        let _ = self.exchange(&pull_req);
+        if self.sync_vfs_with_workspace {
+            let pull_req = serde_json::json!({
+                "op": "sync_request",
+                "session_id": &self.session_id,
+                "direction": "pull_from_guest",
+                "vfs_cwd_leaf": &leaf,
+            });
+            let _ = self.exchange(&pull_req);
 
-        if let Err(e) = pull_workspace_to_vfs(&self.workspace_parent, vfs_cwd, vfs) {
-            eprintln!(
-                "dev_shell: warning: vm workspace pull failed after `{program}` (VFS may be stale): {e}"
-            );
+            if let Err(e) = pull_workspace_to_vfs(&self.workspace_parent, vfs_cwd, vfs) {
+                eprintln!(
+                    "dev_shell: warning: vm workspace pull failed after `{program}` (VFS may be stale): {e}"
+                );
+            }
         }
 
         let code_u8 = code.clamp(0, 255) as i32;
@@ -246,9 +321,55 @@ impl VmExecutionSession for BetaSession {
                 "stop_vm": false,
             });
             let _ = self.exchange(&req);
-            let _ = pull_workspace_to_vfs(&self.workspace_parent, vfs_cwd, vfs);
+            if self.sync_vfs_with_workspace {
+                let _ = pull_workspace_to_vfs(&self.workspace_parent, vfs_cwd, vfs);
+            }
         }
         self.stream = None;
+        Ok(())
+    }
+}
+
+impl GuestFsOps for BetaSession {
+    fn list_dir(&mut self, guest_path: &str) -> Result<Vec<String>, GuestFsError> {
+        let v = self.guest_fs_call("list_dir", guest_path, None)?;
+        let arr = v
+            .get("names")
+            .and_then(|x| x.as_array())
+            .ok_or_else(|| GuestFsError::Internal("guest_fs_ok missing names".into()))?;
+        let mut names = Vec::with_capacity(arr.len());
+        for x in arr {
+            let s = x
+                .as_str()
+                .ok_or_else(|| GuestFsError::Internal("names entry not string".into()))?;
+            names.push(s.to_string());
+        }
+        Ok(names)
+    }
+
+    fn read_file(&mut self, guest_path: &str) -> Result<Vec<u8>, GuestFsError> {
+        let v = self.guest_fs_call("read_file", guest_path, None)?;
+        let b64 = v
+            .get("content_base64")
+            .and_then(|x| x.as_str())
+            .ok_or_else(|| GuestFsError::Internal("guest_fs_ok missing content_base64".into()))?;
+        BASE64_STANDARD
+            .decode(b64)
+            .map_err(|e| GuestFsError::Internal(e.to_string()))
+    }
+
+    fn write_file(&mut self, guest_path: &str, data: &[u8]) -> Result<(), GuestFsError> {
+        self.guest_fs_call("write_file", guest_path, Some(data))?;
+        Ok(())
+    }
+
+    fn mkdir(&mut self, guest_path: &str) -> Result<(), GuestFsError> {
+        self.guest_fs_call("mkdir", guest_path, None)?;
+        Ok(())
+    }
+
+    fn remove(&mut self, guest_path: &str) -> Result<(), GuestFsError> {
+        self.guest_fs_call("remove", guest_path, None)?;
         Ok(())
     }
 }

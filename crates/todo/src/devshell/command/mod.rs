@@ -4,5 +4,5 @@ mod dispatch;
 mod todo_builtin;
 mod types;
 
-pub use dispatch::{execute_pipeline, run_builtin};
+pub use dispatch::{execute_pipeline, run_builtin, PIPELINE_INTER_STAGE_MAX_BYTES};
 pub use types::{BuiltinError, ExecContext, RunResult};

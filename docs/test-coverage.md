@@ -10,6 +10,7 @@ Coverage is measured with [cargo-tarpaulin](https://github.com/xd009642/tarpauli
 | **xtask** | **≥95%** | `cargo xtask coverage` or `cargo tarpaulin -p xtask --exclude-files "xtask/src/main.rs" --exclude-files "crates/todo/*" -- --test-threads=1 --include-ignored` |
 
 - **xtask-todo-lib**: `cargo xtask coverage` runs tarpaulin with excludes so the reported rate targets **testable** lib code: the `cargo-devshell` binary, `repl.rs` / `mod.rs` entrypoints, script `exec`/`parse`, VM/Lima (`devshell/vm/*`), host-only sandbox helpers (`linux_mount`, `elf`, `paths`, `run`, `sync`), `host_text`, `command/types`, and `completion.rs` (line-editor branches). Core todo/model/VFS/parser/sandbox export and devshell integration tests cover the rest; see `xtask/src/coverage.rs` for the exact list.
+- **β / `guest_fs` IPC（可选）**：`cargo test -p xtask-todo-lib --features beta-vm` 编译并跑含 **`BetaSession`**、`impl GuestFsOps for BetaSession` 的单元测试；**`crates/devshell-vm`**：`cargo test -p devshell-vm` 覆盖 **`guest_fs`**（无会话桩 + **`session_start`** 后宿主 **`staging_dir`** 映射）。
 - **xtask**: Library logic is covered; `main.rs` is a 4-line entry that calls `xtask::run()` and is excluded from the coverage denominator so the reported rate reflects the testable library code. Integration test `xtask_run_exits_success` runs the binary to verify the entry point.
 
 ## Running coverage

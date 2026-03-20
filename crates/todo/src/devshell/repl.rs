@@ -15,10 +15,10 @@ use rustyline::{CompletionType, Editor};
 
 use super::command::{execute_pipeline, ExecContext, RunResult};
 use super::completion::DevShellHelper;
-use super::host_text;
 use super::parser;
 use super::script;
 use super::serialization;
+use super::session_store;
 use super::vfs::Vfs;
 use super::vm::SessionHolder;
 
@@ -30,7 +30,8 @@ pub enum StepResult {
 }
 
 /// Process one input line: parse, optionally run pipeline, return whether to exit.
-/// Handles `source path` and `. path` by reading the file (VFS or host) and running it as a script.
+/// Handles `source path` and `. path` by loading script text via [`crate::devshell::script::read_script_source_text`]
+/// (workspace guest / VFS, then host) and running it.
 /// Used by both TTY and non-TTY loops; exposed for tests.
 pub fn process_line<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
@@ -57,12 +58,7 @@ where
             let _ = writeln!(stderr, "source: missing path");
             return StepResult::Continue;
         }
-        let content = vfs
-            .borrow()
-            .read_file(path)
-            .ok()
-            .and_then(|b| host_text::script_text_from_vfs_bytes(&b))
-            .or_else(|| host_text::read_host_text(Path::new(path)).ok());
+        let content = script::read_script_source_text(vfs, vm_session, path);
         match content {
             Some(c) => {
                 let _ = script::run_script(
@@ -88,12 +84,7 @@ where
             let _ = writeln!(stderr, ".: missing path");
             return StepResult::Continue;
         }
-        let content = vfs
-            .borrow()
-            .read_file(path)
-            .ok()
-            .and_then(|b| host_text::script_text_from_vfs_bytes(&b))
-            .or_else(|| host_text::read_host_text(Path::new(path)).ok());
+        let content = script::read_script_source_text(vfs, vm_session, path);
         match content {
             Some(c) => {
                 let _ = script::run_script(
@@ -187,7 +178,19 @@ fn save_on_exit<W2: Write>(
             let _ = writeln!(stderr, "dev_shell: session shutdown: {e}");
         }
     }
-    if let Err(e) = serialization::save_to_file(&vfs.borrow(), bin_path) {
+    if vm_session.borrow().is_guest_primary() {
+        let _ = writeln!(
+            stderr,
+            "dev_shell: guest-primary mode: skipping legacy .dev_shell.bin save (design §10; guest workspace is authoritative)"
+        );
+        if let Err(e) = session_store::save_guest_primary(bin_path, vfs.borrow().cwd()) {
+            let _ = writeln!(
+                stderr,
+                "dev_shell: failed to write guest-primary session {}: {e}",
+                session_store::session_path_for_bin(bin_path).display()
+            );
+        }
+    } else if let Err(e) = serialization::save_to_file(&vfs.borrow(), bin_path) {
         let _ = writeln!(stderr, "save on exit failed: {e}");
     }
 }
@@ -211,7 +214,7 @@ where
     // Default rustyline `Circular` cycles candidates and then restores the pre-Tab line,
     // so e.g. `cat s` → Tab → `cat src` → Tab → `cat s` again (surprising vs shells).
     editor.set_completion_type(CompletionType::List);
-    editor.set_helper(Some(DevShellHelper::new(vfs.clone())));
+    editor.set_helper(Some(DevShellHelper::new(vfs.clone(), vm_session.clone())));
 
     loop {
         let prompt = format!("{} $ ", vfs.borrow().cwd());

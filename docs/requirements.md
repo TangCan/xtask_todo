@@ -174,7 +174,7 @@
 | `pwd` / `cd` / `ls` / `mkdir` | 目录导航与列出。 |
 | `cat` / `touch` / `echo` | 文件与输出；`cat` 可无参数读 stdin。 |
 | `save [path]` | 将 VFS 保存到 bin。 |
-| `export-readonly [path]` | 将 VFS 子树导出到宿主临时目录（只读用途）。 |
+| `export-readonly [path]` | **Mode S：**将 VFS 子树导出到宿主临时目录（只读用途）。**Mode P：**将 guest 上对应逻辑路径子树**镜像**到进程内 VFS 路径 `/.__export_ro_<ms>/…`（stdout 打印该逻辑路径），**不**写入宿主临时目录（设计 §8.1）。 |
 | `todo …` | **子集**：`list`、`add`、`show`、`update`、`complete`、`delete`、`search`、`stats`（无 `export` / `import` / `init-ai`）；与 `cargo xtask todo` 共用 **`.todo.json`** 约定。 |
 | `rustup [args…]` / `cargo [args…]` | 导出 cwd 对应 VFS 子树 → 在宿主临时目录中执行 `PATH` 内的 `rustup`/`cargo` → 同步回 VFS → 删除临时目录。**不得**内建调用 `podman`/`docker` 等 OCI 运行时。Linux 可选 `DEVSHELL_RUST_MOUNT_NAMESPACE`（独立 mount namespace，libc）；详见 [dev-container.md](./dev-container.md)。**Unix γ（`cargo devshell` 默认）：** 未设置 `DEVSHELL_VM` 时视为开启 VM；未设置 `DEVSHELL_VM_BACKEND` 时 Unix 默认为 `lima`，经 Lima 在 VM 内执行；`DEVSHELL_VM=off` 或 `DEVSHELL_VM_BACKEND=host`/`auto` 回退宿主 sandbox。工作区挂载见 [devshell-vm-gamma.md](./devshell-vm-gamma.md)。 |
 | `exit` / `quit` | 结束 REPL。 |
@@ -204,10 +204,17 @@
 - **TTY** 下使用 **rustyline**，补全类型为 **`CompletionType::List`**（类似 bash：最长公共前缀 + 多义时第二次 Tab 列清单），**非**默认的 Circular（避免唯一补全后再次 Tab 退回半截词）。
 - **路径补全**：候选为**整词替换串**，须保留已输入的目录前缀（例如 `cat src/` → `cat src/main.rs`，不得变为 `cat main.rs`）。
 
-### 6.8 设计与扩展
+### 6.8 Mode P（guest-primary）与 VM 工作区
+
+当 **`DEVSHELL_VM_WORKSPACE_MODE=guest`** 且 VM 已启用、后端为 **`lima`（γ）** 或 **`beta`（β）** 时（无效组合会按设计降级为 Mode S），工程树**真源**在 guest：内置 **`cat` / `touch` / `ls` / `mkdir`、重定向、**`source` / `.`**、路径 Tab 补全等经 **`GuestFsOps`**（γ：`limactl shell`；β：侧车 **`devshell-vm`** JSON-lines IPC，含 **`guest_fs`** 操作）。**β** 需使用 **`cargo build -p xtask-todo-lib --features beta-vm`**，并运行 **`devshell-vm --serve-socket <path>`**，设置 **`DEVSHELL_VM_SOCKET`** 等；详见 **`docs/devshell-vm-gamma.md`**。
+
+- **退出 REPL**：guest-primary（γ 或 β）下**不**写入 legacy **`.dev_shell.bin`**（stderr 有一行说明）；改为写入 **`{与 bin 同 stem}.session.json`**（如 `.dev_shell.bin` → `.dev_shell.session.json`），仅含 **`logical_cwd`** 等元数据（设计 §10）。Mode S 仍按 §6.1 保存 bin。
+- **`export-readonly`**：见上表；guest-primary 下为 VFS 内只读镜像，非宿主目录导出。
+
+### 6.9 设计与扩展
 
 - Rust 沙箱隔离的进一步设计见：`docs/superpowers/specs/2026-03-20-devshell-rust-vm-design.md` 及对应实现计划（可选更强隔离后端等）。
-- 会话级 microVM（γ Lima + β 侧车）见：`docs/superpowers/specs/2026-03-11-devshell-microvm-session-design.md`、IPC 草案 `docs/superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md`；侧车占位 crate **`crates/devshell-vm`**（`cargo run -p devshell-vm`）。
+- 会话级 microVM（γ Lima + β 侧车）见：`docs/superpowers/specs/2026-03-11-devshell-microvm-session-design.md`、IPC 草案 `docs/superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md`（含 **`guest_fs`** 扩展）；侧车 crate **`crates/devshell-vm`**（`cargo run -p devshell-vm`）。
 
 **US-D1**：开发者可通过 devshell 在隔离 VFS 中演练文件操作与脚本。  
 **US-D2**：开发者可在 VFS 内使用宿主 `rustup`/`cargo` 并看到产物写回 VFS（在 PATH 满足前提下）。

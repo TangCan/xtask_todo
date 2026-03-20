@@ -3,7 +3,7 @@ name = "devshell-vm"
 version = "0.0.0"
 edition = "2021"
 publish = false
-description = "Devshell VM sidecar (β): lifecycle + IPC; currently a stub binary"
+description = "Devshell VM sidecar (β): JSON-lines IPC; guest_fs can map to host staging dir after session_start"
 readme = "../../README.md"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/TangCan/xtask_todo"
@@ -13,6 +13,7 @@ name = "devshell-vm"
 path = "src/main.rs"
 
 [dependencies]
+base64 = "0.22"
 serde_json = "1"
 
 [lints.clippy]

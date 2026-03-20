@@ -1,4 +1,7 @@
-//! File I/O for todo list (.todo.json). Same format as xtask so `dev_shell` and `cargo xtask todo` share data.
+//! File I/O for todo list (`.todo.json`). Same format as xtask so `dev_shell` and `cargo xtask todo` share data.
+//!
+//! **Mode P / guest-primary:** paths stay on the **host** current directory (design §11 **A**); they are
+//! **not** mapped into the guest project tree.
 
 use std::path::PathBuf;
 use std::str::FromStr;

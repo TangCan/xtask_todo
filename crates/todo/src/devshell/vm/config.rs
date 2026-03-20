@@ -25,6 +25,32 @@ pub const ENV_DEVSHELL_VM_LIMA_INSTANCE: &str = "DEVSHELL_VM_LIMA_INSTANCE";
 /// Unix socket path for β client ↔ `devshell-vm --serve-socket` (see IPC draft).
 pub const ENV_DEVSHELL_VM_SOCKET: &str = "DEVSHELL_VM_SOCKET";
 
+/// `DEVSHELL_VM_WORKSPACE_MODE` — **`sync`** (default) or **`guest`** (Mode P; guest filesystem as source of truth).
+///
+/// **`guest`** is effective only when the VM is enabled and the backend is **`lima`** or **`beta`**; otherwise
+/// [`VmConfig::workspace_mode_effective`] returns [`WorkspaceMode::Sync`] (design `2026-03-20-devshell-guest-primary-design.md` §6).
+///
+/// **Unset** (including **`cfg(test)`**): [`WorkspaceMode::Sync`].
+pub const ENV_DEVSHELL_VM_WORKSPACE_MODE: &str = "DEVSHELL_VM_WORKSPACE_MODE";
+
+/// How the devshell workspace is backed: memory VFS + push/pull (**[`Sync`]**) vs guest-primary (**[`Guest`]**, planned).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkspaceMode {
+    /// Mode S: in-memory `Vfs` authority; `cargo`/`rustup` sync with guest when using γ.
+    Sync,
+    /// Mode P: guest mount is the source of truth for the project tree (incremental implementation).
+    Guest,
+}
+
+/// Read [`ENV_DEVSHELL_VM_WORKSPACE_MODE`] from the environment.
+#[must_use]
+pub fn workspace_mode_from_env() -> WorkspaceMode {
+    match std::env::var(ENV_DEVSHELL_VM_WORKSPACE_MODE) {
+        Ok(s) if s.trim().eq_ignore_ascii_case("guest") => WorkspaceMode::Guest,
+        _ => WorkspaceMode::Sync,
+    }
+}
+
 /// Parsed VM-related environment.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VmConfig {
@@ -137,6 +163,41 @@ impl VmConfig {
         let b = self.backend.to_ascii_lowercase();
         b == "host" || b == "auto" || b.is_empty()
     }
+
+    /// Effective workspace mode after combining [`workspace_mode_from_env`] with VM availability (guest-primary design §6).
+    ///
+    /// Returns [`WorkspaceMode::Guest`] only when the user requested **`guest`**, [`VmConfig::enabled`] is true,
+    /// [`VmConfig::use_host_sandbox`] is false, and the backend is **`lima`** or **`beta`**. Otherwise returns
+    /// [`WorkspaceMode::Sync`] without erroring.
+    #[must_use]
+    pub fn workspace_mode_effective(&self) -> WorkspaceMode {
+        let requested = workspace_mode_from_env();
+        if matches!(requested, WorkspaceMode::Sync) {
+            return WorkspaceMode::Sync;
+        }
+
+        let effective = if !self.enabled || self.use_host_sandbox() {
+            WorkspaceMode::Sync
+        } else {
+            let b = self.backend.to_ascii_lowercase();
+            if b == "lima" || b == "beta" {
+                WorkspaceMode::Guest
+            } else {
+                WorkspaceMode::Sync
+            }
+        };
+
+        if matches!(requested, WorkspaceMode::Guest)
+            && matches!(effective, WorkspaceMode::Sync)
+            && !cfg!(test)
+        {
+            eprintln!(
+                "dev_shell: DEVSHELL_VM_WORKSPACE_MODE=guest requires VM enabled and backend lima or beta; using sync mode."
+            );
+        }
+
+        effective
+    }
 }
 
 #[cfg(test)]
@@ -198,6 +259,74 @@ mod tests {
         let mut c = VmConfig::disabled();
         c.backend = "lima".to_string();
         assert!(!c.use_host_sandbox());
+    }
+
+    #[test]
+    fn workspace_mode_from_env_unset_defaults_sync() {
+        let _g = vm_env_lock();
+        let old = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_MODE).ok();
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, None);
+        assert_eq!(workspace_mode_from_env(), WorkspaceMode::Sync);
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, old.as_deref());
+    }
+
+    #[test]
+    fn workspace_mode_from_env_guest() {
+        let _g = vm_env_lock();
+        let old = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_MODE).ok();
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, Some("guest"));
+        assert_eq!(workspace_mode_from_env(), WorkspaceMode::Guest);
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, Some("GUEST"));
+        assert_eq!(workspace_mode_from_env(), WorkspaceMode::Guest);
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, old.as_deref());
+    }
+
+    #[test]
+    fn workspace_mode_effective_guest_plus_host_sandbox_forces_sync() {
+        let _g = vm_env_lock();
+        let old_w = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_MODE).ok();
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, Some("guest"));
+        let mut c = VmConfig::disabled();
+        c.enabled = true;
+        c.backend = "host".to_string();
+        assert_eq!(c.workspace_mode_effective(), WorkspaceMode::Sync);
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, old_w.as_deref());
+    }
+
+    #[test]
+    fn workspace_mode_effective_guest_vm_off_forces_sync() {
+        let _g = vm_env_lock();
+        let old_w = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_MODE).ok();
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, Some("guest"));
+        let mut c = VmConfig::disabled();
+        c.enabled = false;
+        c.backend = "lima".to_string();
+        assert_eq!(c.workspace_mode_effective(), WorkspaceMode::Sync);
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, old_w.as_deref());
+    }
+
+    #[test]
+    fn workspace_mode_effective_guest_lima_enabled() {
+        let _g = vm_env_lock();
+        let old_w = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_MODE).ok();
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, Some("guest"));
+        let mut c = VmConfig::disabled();
+        c.enabled = true;
+        c.backend = "lima".to_string();
+        assert_eq!(c.workspace_mode_effective(), WorkspaceMode::Guest);
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, old_w.as_deref());
+    }
+
+    #[test]
+    fn workspace_mode_effective_sync_env_ignores_backend() {
+        let _g = vm_env_lock();
+        let old_w = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_MODE).ok();
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, Some("sync"));
+        let mut c = VmConfig::disabled();
+        c.enabled = true;
+        c.backend = "lima".to_string();
+        assert_eq!(c.workspace_mode_effective(), WorkspaceMode::Sync);
+        set_env(ENV_DEVSHELL_VM_WORKSPACE_MODE, old_w.as_deref());
     }
 
     #[cfg(unix)]

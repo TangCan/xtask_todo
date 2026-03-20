@@ -1,4 +1,5 @@
 //! Built-in `todo` subcommands (shared `.todo.json` with `cargo xtask todo`).
+//! Storage path is host [`crate::devshell::todo_io`] (design §11 **A**; unchanged in Mode P).
 
 use std::io::Write;
 

@@ -7,9 +7,11 @@ pub mod parser;
 pub mod sandbox;
 pub mod script;
 pub mod serialization;
+pub mod session_store;
 pub mod todo_io;
 pub mod vfs;
 pub mod vm;
+pub mod workspace;
 
 mod repl;
 
@@ -103,6 +105,13 @@ where
         let Ok(vm_session) = vm::try_session_rc(stderr) else {
             return Err(Box::new(std::io::Error::other("vm session")));
         };
+        if vm_session.borrow().is_guest_primary() {
+            if let Err(e) =
+                session_store::apply_guest_primary_startup(&mut vfs.borrow_mut(), bin_path)
+            {
+                let _ = writeln!(stderr, "dev_shell: guest-primary session: {e}");
+            }
+        }
         script::run_script(
             &vfs,
             &vm_session,
@@ -140,6 +149,12 @@ where
         let Ok(vm_session) = vm::try_session_rc(stderr) else {
             return Err(Box::new(std::io::Error::other("vm session")));
         };
+        if vm_session.borrow().is_guest_primary() {
+            if let Err(e) = session_store::apply_guest_primary_startup(&mut vfs.borrow_mut(), path)
+            {
+                let _ = writeln!(stderr, "dev_shell: guest-primary session: {e}");
+            }
+        }
         repl::run(&vfs, &vm_session, is_tty, path, stdin, stdout, stderr).map_err(|()| {
             Box::new(std::io::Error::other("repl error")) as Box<dyn std::error::Error>
         })?;
@@ -173,6 +188,11 @@ where
     let vfs = serialization::load_from_file(path).unwrap_or_default();
     let vfs = Rc::new(RefCell::new(vfs));
     let vm_session = vm::try_session_rc(stderr).map_err(|()| RunWithError::ReplFailed)?;
+    if vm_session.borrow().is_guest_primary() {
+        if let Err(e) = session_store::apply_guest_primary_startup(&mut vfs.borrow_mut(), path) {
+            let _ = writeln!(stderr, "dev_shell: guest-primary session: {e}");
+        }
+    }
     repl::run(&vfs, &vm_session, false, path, stdin, stdout, stderr)
         .map_err(|()| RunWithError::ReplFailed)
 }

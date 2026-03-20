@@ -9,9 +9,121 @@ use super::super::parser::{Pipeline, SimpleCommand};
 use super::super::sandbox;
 use super::super::serialization;
 use super::super::vfs::Vfs;
+#[cfg(unix)]
+use super::super::vm::GuestFsOps;
+use super::super::vm::SessionHolder;
 use super::super::vm::VmError;
 use super::todo_builtin::run_todo_cmd;
 use super::types::{BuiltinError, ExecContext, RunResult};
+
+/// Maximum bytes buffered for a **non-terminal** pipeline stage’s stdout (host memory; design §8.2).
+pub const PIPELINE_INTER_STAGE_MAX_BYTES: usize = 16 * 1024 * 1024;
+
+#[inline]
+const fn check_pipeline_inter_stage_size(len: usize) -> Result<(), BuiltinError> {
+    if len > PIPELINE_INTER_STAGE_MAX_BYTES {
+        return Err(BuiltinError::PipelineInterStageBufferExceeded {
+            limit: PIPELINE_INTER_STAGE_MAX_BYTES,
+            actual: len,
+        });
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+use crate::devshell::workspace::logical_path_to_guest;
+#[cfg(unix)]
+use crate::devshell::workspace::WorkspaceBackendError;
+
+use crate::devshell::workspace::read_logical_file_bytes;
+use crate::devshell::workspace::WorkspaceReadError;
+
+fn map_workspace_to_builtin(e: WorkspaceBackendError) -> BuiltinError {
+    match e {
+        WorkspaceBackendError::PathOutsideWorkspace => BuiltinError::WorkspacePathOutside,
+        WorkspaceBackendError::Guest(err) => BuiltinError::GuestFsOpFailed(err.to_string()),
+        _ => BuiltinError::GuestFsOpFailed(e.to_string()),
+    }
+}
+
+fn map_workspace_read_err(e: WorkspaceReadError) -> BuiltinError {
+    match e {
+        WorkspaceReadError::Vfs(_) => BuiltinError::CatFailed,
+        WorkspaceReadError::Guest(err) => BuiltinError::GuestFsOpFailed(err.to_string()),
+        WorkspaceReadError::PathOutsideWorkspace => BuiltinError::WorkspacePathOutside,
+        WorkspaceReadError::Backend(err) => map_workspace_to_builtin(err),
+    }
+}
+
+fn workspace_read_file(
+    vfs: &mut Vfs,
+    vm_session: &mut SessionHolder,
+    path: &str,
+) -> Result<Vec<u8>, BuiltinError> {
+    read_logical_file_bytes(vfs, vm_session, path).map_err(map_workspace_read_err)
+}
+
+fn workspace_write_file(
+    vfs: &mut Vfs,
+    vm_session: &mut SessionHolder,
+    path: &str,
+    data: &[u8],
+) -> Result<(), BuiltinError> {
+    #[cfg(unix)]
+    if let Some((ops, mount)) = vm_session.guest_primary_fs_ops_mut() {
+        let gp =
+            logical_path_to_guest(&mount, vfs.cwd(), path).map_err(map_workspace_to_builtin)?;
+        return GuestFsOps::write_file(ops, &gp, data)
+            .map_err(|e| BuiltinError::GuestFsOpFailed(e.to_string()));
+    }
+    vfs.write_file(path, data)
+        .map_err(|_| BuiltinError::RedirectWrite)
+}
+
+fn workspace_list_dir(
+    vfs: &Vfs,
+    vm_session: &mut SessionHolder,
+    path: &str,
+) -> Result<Vec<String>, BuiltinError> {
+    #[cfg(unix)]
+    if let Some((ops, mount)) = vm_session.guest_primary_fs_ops_mut() {
+        let gp =
+            logical_path_to_guest(&mount, vfs.cwd(), path).map_err(map_workspace_to_builtin)?;
+        return GuestFsOps::list_dir(ops, &gp)
+            .map_err(|e| BuiltinError::GuestFsOpFailed(e.to_string()));
+    }
+    vfs.list_dir(path).map_err(|_| BuiltinError::LsFailed)
+}
+
+fn workspace_mkdir(
+    vfs: &mut Vfs,
+    vm_session: &mut SessionHolder,
+    path: &str,
+) -> Result<(), BuiltinError> {
+    #[cfg(unix)]
+    if let Some((ops, mount)) = vm_session.guest_primary_fs_ops_mut() {
+        let gp =
+            logical_path_to_guest(&mount, vfs.cwd(), path).map_err(map_workspace_to_builtin)?;
+        return GuestFsOps::mkdir(ops, &gp)
+            .map_err(|e| BuiltinError::GuestFsOpFailed(e.to_string()));
+    }
+    vfs.mkdir(path).map_err(|_| BuiltinError::MkdirFailed)
+}
+
+fn workspace_touch(
+    vfs: &mut Vfs,
+    vm_session: &mut SessionHolder,
+    path: &str,
+) -> Result<(), BuiltinError> {
+    #[cfg(unix)]
+    if let Some((ops, mount)) = vm_session.guest_primary_fs_ops_mut() {
+        let gp =
+            logical_path_to_guest(&mount, vfs.cwd(), path).map_err(map_workspace_to_builtin)?;
+        return GuestFsOps::write_file(ops, &gp, &[])
+            .map_err(|e| BuiltinError::GuestFsOpFailed(e.to_string()));
+    }
+    vfs.touch(path).map_err(|_| BuiltinError::TouchFailed)
+}
 
 /// Run a single command with given streams. Redirects override the provided stdin/stdout/stderr.
 fn run_builtin_with_streams(
@@ -34,9 +146,7 @@ fn run_builtin_with_streams(
     for r in redirects {
         match r.fd {
             0 => {
-                let content = vfs
-                    .read_file(&r.path)
-                    .map_err(|_| BuiltinError::RedirectRead)?;
+                let content = workspace_read_file(vfs, vm_session, &r.path)?;
                 stdin_override = Some(Cursor::new(content));
             }
             1 => {
@@ -65,14 +175,12 @@ fn run_builtin_with_streams(
 
     if let Some(path) = stdout_redirect_path {
         if let Some(buf) = &stdout_override {
-            vfs.write_file(&path, buf)
-                .map_err(|_| BuiltinError::RedirectWrite)?;
+            workspace_write_file(vfs, vm_session, &path, buf)?;
         }
     }
     if let Some(path) = stderr_redirect_path {
         if let Some(buf) = &stderr_override {
-            vfs.write_file(&path, buf)
-                .map_err(|_| BuiltinError::RedirectWrite)?;
+            workspace_write_file(vfs, vm_session, &path, buf)?;
         }
     }
 
@@ -97,6 +205,9 @@ pub fn run_builtin(ctx: &mut ExecContext<'_>, cmd: &SimpleCommand) -> Result<(),
 
 /// Execute a pipeline: run each command with stdin from previous stage (or `ctx.stdin` for first),
 /// stdout to a buffer; last command's stdout is written to `ctx.stdout`. Redirects override pipe.
+///
+/// Non-final stages buffer **all** stdout in host memory; size is capped at
+/// [`PIPELINE_INTER_STAGE_MAX_BYTES`] (design §8.2).
 ///
 /// # Errors
 /// Returns `BuiltinError` if any command or redirect fails.
@@ -145,6 +256,7 @@ pub fn execute_pipeline(
         run_builtin_with_streams(ctx.vfs, ctx.vm_session, stdin, stdout, ctx.stderr, cmd)?;
 
         if !is_last {
+            check_pipeline_inter_stage_size(next_buffer.len())?;
             prev_output = Some(next_buffer);
         }
     }
@@ -175,7 +287,7 @@ fn run_builtin_help(stdout: &mut dyn Write) -> Result<(), BuiltinError> {
         .map_err(|_| BuiltinError::RedirectWrite)?;
     writeln!(
         stdout,
-        "  export-readonly [path]  copy VFS subtree to host temp dir (read-only)"
+        "  export-readonly [path]  Mode S: copy VFS subtree to host temp dir; Mode P: mirror guest tree under a logical path in VFS"
     )
     .map_err(|_| BuiltinError::RedirectWrite)?;
     writeln!(stdout, "  todo [list|add|show|update|complete|delete|search|stats] ...  todo list (shares .todo.json with cargo xtask todo)")
@@ -198,10 +310,18 @@ fn run_builtin_help(stdout: &mut dyn Write) -> Result<(), BuiltinError> {
 }
 
 fn run_builtin_export_readonly(
-    vfs: &Vfs,
+    vfs: &mut Vfs,
+    vm_session: &mut SessionHolder,
     stdout: &mut dyn Write,
     path: &str,
 ) -> Result<(), BuiltinError> {
+    #[cfg(unix)]
+    if vm_session.is_guest_primary() {
+        let dest = crate::devshell::workspace::guest_export_readonly_to_vfs(vfs, vm_session, path)
+            .map_err(|e| BuiltinError::GuestFsOpFailed(e.to_string()))?;
+        writeln!(stdout, "{dest}").map_err(|_| BuiltinError::RedirectWrite)?;
+        return Ok(());
+    }
     let temp_base = sandbox::devshell_export_parent_dir();
     std::fs::create_dir_all(&temp_base).map_err(|_| BuiltinError::ExportFailed)?;
     let subdir_name = format!(
@@ -298,7 +418,7 @@ fn run_builtin_core(
         }
         "ls" => {
             let path = argv.get(1).map_or(".", String::as_str);
-            let names = vfs.list_dir(path).map_err(|_| BuiltinError::LsFailed)?;
+            let names = workspace_list_dir(vfs, vm_session, path)?;
             for n in names {
                 writeln!(stdout, "{n}").map_err(|_| BuiltinError::RedirectWrite)?;
             }
@@ -306,7 +426,7 @@ fn run_builtin_core(
         }
         "mkdir" => {
             let path = argv.get(1).ok_or(BuiltinError::MkdirFailed)?;
-            vfs.mkdir(path).map_err(|_| BuiltinError::MkdirFailed)?;
+            workspace_mkdir(vfs, vm_session, path)?;
             Ok(())
         }
         "cat" => {
@@ -314,7 +434,7 @@ fn run_builtin_core(
                 std::io::copy(stdin, stdout).map_err(|_| BuiltinError::CatFailed)?;
             } else {
                 for path in argv.iter().skip(1) {
-                    let content = vfs.read_file(path).map_err(|_| BuiltinError::CatFailed)?;
+                    let content = workspace_read_file(vfs, vm_session, path)?;
                     stdout
                         .write_all(&content)
                         .map_err(|_| BuiltinError::RedirectWrite)?;
@@ -324,7 +444,7 @@ fn run_builtin_core(
         }
         "touch" => {
             let path = argv.get(1).ok_or(BuiltinError::TouchFailed)?;
-            vfs.touch(path).map_err(|_| BuiltinError::TouchFailed)?;
+            workspace_touch(vfs, vm_session, path)?;
             Ok(())
         }
         "echo" => {
@@ -334,7 +454,7 @@ fn run_builtin_core(
         }
         "export-readonly" | "export_readonly" => {
             let path = argv.get(1).map_or(".", String::as_str);
-            run_builtin_export_readonly(&*vfs, stdout, path)
+            run_builtin_export_readonly(vfs, vm_session, stdout, path)
         }
         "save" => {
             let path = argv.get(1).map_or(".dev_shell.bin", String::as_str);
@@ -349,6 +469,24 @@ fn run_builtin_core(
         _ => {
             writeln!(stderr, "unknown command: {name}").map_err(|_| BuiltinError::RedirectWrite)?;
             Err(BuiltinError::UnknownCommand(name.to_string()))
+        }
+    }
+}
+
+#[cfg(test)]
+mod pipeline_limit_tests {
+    use super::*;
+
+    #[test]
+    fn pipeline_inter_stage_limit_boundary() {
+        assert!(check_pipeline_inter_stage_size(PIPELINE_INTER_STAGE_MAX_BYTES).is_ok());
+        let e = check_pipeline_inter_stage_size(PIPELINE_INTER_STAGE_MAX_BYTES + 1).unwrap_err();
+        match e {
+            BuiltinError::PipelineInterStageBufferExceeded { limit, actual } => {
+                assert_eq!(limit, PIPELINE_INTER_STAGE_MAX_BYTES);
+                assert_eq!(actual, PIPELINE_INTER_STAGE_MAX_BYTES + 1);
+            }
+            _ => panic!("expected PipelineInterStageBufferExceeded"),
         }
     }
 }

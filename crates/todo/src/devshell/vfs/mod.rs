@@ -117,31 +117,7 @@ impl Vfs {
     /// 相对路径先与 cwd 拼接再归一化，这样 ".." 能正确退到上级目录。
     #[must_use]
     pub fn resolve_to_absolute(&self, path: &str) -> String {
-        let path = path.trim();
-        let path_normalized = normalize_path(path);
-        // 绝对路径：直接归一化后返回
-        if path_normalized.starts_with('/') {
-            return path_normalized;
-        }
-        if path_normalized == "/" {
-            return self.cwd.clone();
-        }
-        // 相对路径：先与 cwd 拼接再归一化，避免单独 ".." 被归一成 "." 导致无法退回根目录
-        let base = self.cwd.trim_end_matches('/');
-        let p = path.trim_start_matches('/');
-        let combined = if base.is_empty() {
-            format!("/{p}")
-        } else {
-            format!("{base}/{p}")
-        };
-        let result = normalize_path(&combined);
-        if result.is_empty() || result == "." {
-            "/".to_string()
-        } else if result.starts_with('/') {
-            result
-        } else {
-            format!("/{result}")
-        }
+        resolve_path_with_cwd(&self.cwd, path)
     }
 
     /// Create directory at path (`mkdir_all` style). Creates any missing parent directories.
@@ -334,6 +310,36 @@ fn copy_node_to_host(node: &Node, host_path: &Path) -> Result<(), VfsError> {
             std::fs::write(&file_path, content).map_err(VfsError::Io)?;
             Ok(())
         }
+    }
+}
+
+/// Resolve `path` against `cwd` to an absolute logical path (same rules as [`Vfs::resolve_to_absolute`]).
+#[must_use]
+pub fn resolve_path_with_cwd(cwd: &str, path: &str) -> String {
+    let path = path.trim();
+    let path_normalized = normalize_path(path);
+    // 绝对路径：直接归一化后返回
+    if path_normalized.starts_with('/') {
+        return path_normalized;
+    }
+    if path_normalized == "/" {
+        return cwd.to_string();
+    }
+    // 相对路径：先与 cwd 拼接再归一化，避免单独 ".." 被归一成 "." 导致无法退回根目录
+    let base = cwd.trim_end_matches('/');
+    let p = path.trim_start_matches('/');
+    let combined = if base.is_empty() {
+        format!("/{p}")
+    } else {
+        format!("{base}/{p}")
+    };
+    let result = normalize_path(&combined);
+    if result.is_empty() || result == "." {
+        "/".to_string()
+    } else if result.starts_with('/') {
+        result
+    } else {
+        format!("/{result}")
     }
 }
 

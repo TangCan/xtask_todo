@@ -4,6 +4,16 @@
 
 β 阶段会改为侧车进程 + IPC；γ 依赖本机安装的 `limactl`。
 
+### 架构方向：guest 为唯一真源（规划中）
+
+**Mode S（默认 `DEVSHELL_VM_WORKSPACE_MODE=sync` 或未设置）：** **内存 VFS** 为 REPL 工程树真源，**`cargo`/`rustup`** 经 **push → VM → pull** 同步。
+
+**Mode P（`guest` 且 VM + `lima`/`beta` 有效）：** γ 下 **`ls`/`cat`/`mkdir`/`touch`、重定向读写** 已走访客 **`GuestFsOps`（`GammaSession`）**；**`pwd`/`cd`** 仍更新内存 VFS 的逻辑 cwd（与 `logical_path_to_guest` 一致）。路径补全在 guest-primary 下走 **`GuestFsOps::list_dir`**。**β**（`--features beta-vm`）在 guest-primary 下同样经 **`GuestFsOps`（IPC `guest_fs`）**；侧车在 **`session_start`** 之后可将 **`guest_path`** 映射到宿主 **`staging_dir`**（见 `crates/devshell-vm`）。
+
+总览与细节：**[总览](superpowers/specs/2026-03-20-devshell-vm-primary-guest-filesystem.md)**、**[详细设计](superpowers/specs/2026-03-20-devshell-guest-primary-design.md)**。
+
+**管道（§8.2）：** 多段管道时，**非最后一段** 的标准输出在**宿主内存**中整段缓冲；单段上限为 **`PIPELINE_INTER_STAGE_MAX_BYTES`（16 MiB，见 `xtask_todo_lib::devshell::command::PIPELINE_INTER_STAGE_MAX_BYTES`）**，超出则报错并中止该管线。
+
 ---
 
 ## 前置条件
@@ -110,6 +120,7 @@ limactl shell --workdir / devshell-rust -- cargo --version
 | `DEVSHELL_VM_GUEST_WORKSPACE` | Guest 挂载点（默认 `/workspace`）。 |
 | `DEVSHELL_VM_STOP_ON_EXIT=1` | 会话结束（REPL exit / 脚本结束）时执行 `limactl stop`（默认不 stop，便于多终端共用实例）。 |
 | `DEVSHELL_VM_LIMA_HINTS=0` | 关闭 γ 的 **Lima 配置/故障提示**（默认开启）：首次 `cargo`/`rustup` 前会做一次 guest 探测；`cargo`/`rustup` 非零退出或 **`limactl start` 失败** 时会打印与 `lima.yaml`、挂载、KVM、`cargo` PATH 相关的建议。 |
+| `DEVSHELL_VM_WORKSPACE_MODE` | **`sync`**（默认）= 内存 VFS + push/pull（Mode S）。**`guest`** = 请求 **guest 真源**（Mode P，仍分阶段落地）。若 **`DEVSHELL_VM=off`** 或 **`DEVSHELL_VM_BACKEND=host`/`auto`**，则 **仍按 `sync` 生效**（不报错）；仅当 VM 开启且后端为 **`lima`** 或 **`beta`** 时 **`guest`** 才可能生效。详见 [`2026-03-20-devshell-guest-primary-design.md`](superpowers/specs/2026-03-20-devshell-guest-primary-design.md) §6。 |
 
 ---
 
@@ -119,6 +130,8 @@ limactl shell --workdir / devshell-rust -- cargo --version
 2. 在 VM 内：`limactl shell --workdir <guest 工程目录> <实例> -- cargo …`
 3. 每次命令后：**pull** 主机工作区 → VFS（即使命令非零退出也会尝试 pull，与实现计划一致）。
 4. 退出 devshell：再 **pull** 一次；若设置了 `DEVSHELL_VM_STOP_ON_EXIT` 则 `limactl stop`。
+
+**`DEVSHELL_VM_WORKSPACE_MODE=guest`**（且 VM + `lima`/`beta` 有效，见上表）：**不**做上述 push/pull（guest 工程树为真源）。**γ**：REPL 文件类 builtin 已接 **guest**（见上文「Mode P」）。**Mode P 退出**：**不**写 legacy **`.dev_shell.bin`**，改存 **`{stem}.session.json`**（仅元数据如 `logical_cwd`）。**β**：guest-primary 下 builtin 经 **`guest_fs`**；不发送 **`sync_request`** push/pull IPC。
 
 ---
 
@@ -146,6 +159,7 @@ limactl shell --workdir / devshell-rust -- cargo --version
 | 后端 | **`DEVSHELL_VM_BACKEND=beta`**（`DEVSHELL_VM` 二进制默认已开启，一般不必再设 `on`） |
 | 套接字 | **`DEVSHELL_VM_SOCKET`**：Unix 域套接字路径（与 `ENV_DEVSHELL_VM_SOCKET` 一致） |
 | 侧车 | `devshell-vm --serve-socket <path>` 在 `<path>` 上 `listen` + 逐行 JSON 处理（见 IPC 草案） |
+| **`guest_fs`** | **`session_start`** 提供 **`staging_dir`**（与客户端一致）后，**`guest_path`** 在 **`guest_workspace`**（默认 `/workspace`）下的相对部分映射到该宿主目录；无会话时仍为固定桩响应（单测）。 |
 | 测试 | 若 `exec` 的 argv 含 **`--devshell-vm-test-fail`**，桩返回退出码 **1** |
 
 与 γ 相同：工作区父目录仍用 `DEVSHELL_VM_WORKSPACE_PARENT` / 默认缓存布局；**pull 失败**时仅警告，仍以 **guest 工具退出码** 为准。

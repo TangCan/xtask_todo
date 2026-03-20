@@ -54,6 +54,15 @@ pub enum BuiltinError {
     VmWorkspaceSyncFailed,
     /// VM backend unavailable or misconfigured at startup
     VmSessionError(String),
+    /// Logical path escapes the guest workspace (Mode P).
+    WorkspacePathOutside,
+    /// Guest FS operation failed (Mode P).
+    GuestFsOpFailed(String),
+    /// Intermediate pipeline stage produced more bytes than allowed (host memory cap; design §8.2).
+    PipelineInterStageBufferExceeded {
+        limit: usize,
+        actual: usize,
+    },
 }
 
 impl std::fmt::Display for BuiltinError {
@@ -82,7 +91,12 @@ impl std::fmt::Display for BuiltinError {
                 None => write!(f, "{program} exited with non-zero status"),
             },
             Self::VmWorkspaceSyncFailed => f.write_str("vm workspace sync failed"),
-            Self::VmSessionError(msg) => write!(f, "{msg}"),
+            Self::WorkspacePathOutside => f.write_str("path outside workspace"),
+            Self::VmSessionError(msg) | Self::GuestFsOpFailed(msg) => write!(f, "{msg}"),
+            Self::PipelineInterStageBufferExceeded { limit, actual } => write!(
+                f,
+                "pipeline stage output too large ({actual} bytes; max {limit} bytes per stage)"
+            ),
         }
     }
 }

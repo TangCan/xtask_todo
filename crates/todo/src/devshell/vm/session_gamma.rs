@@ -12,7 +12,7 @@ use super::super::sandbox;
 use super::super::vfs::Vfs;
 use super::lima_diagnostics;
 use super::sync::{pull_workspace_to_vfs, push_incremental};
-use super::{VmConfig, VmError, VmExecutionSession};
+use super::{VmConfig, VmError, VmExecutionSession, WorkspaceMode};
 
 /// Override path to `limactl` (default: `PATH`).
 pub const ENV_DEVSHELL_VM_LIMACTL: &str = "DEVSHELL_VM_LIMACTL";
@@ -38,6 +38,8 @@ pub struct GammaSession {
     vm_started: bool,
     /// After first successful `limactl start`, run one guest/yaml diagnostic pass.
     lima_hints_checked: bool,
+    /// When `true` (Mode S), push/pull VFS around each `cargo`/`rustup`. When `false` ([`WorkspaceMode::Guest`]), guest tree is authoritative — no sync (see guest-primary design §1c).
+    sync_vfs_with_workspace: bool,
 }
 
 fn truthy_env(key: &str) -> bool {
@@ -95,18 +97,11 @@ pub(crate) fn workspace_parent_for_instance(instance: &str) -> PathBuf {
 #[cfg_attr(not(feature = "beta-vm"), allow(dead_code))]
 #[must_use]
 pub(crate) fn guest_dir_for_vfs_cwd(guest_mount: &str, vfs_cwd: &str) -> String {
-    guest_dir_for_cwd_inner(guest_mount, vfs_cwd)
+    super::guest_fs_ops::guest_project_dir_on_guest(guest_mount, vfs_cwd)
 }
 
 fn guest_dir_for_cwd_inner(guest_mount: &str, vfs_cwd: &str) -> String {
-    let trimmed = vfs_cwd.trim_matches('/');
-    let base = guest_mount.trim_end_matches('/');
-    if trimmed.is_empty() {
-        base.to_string()
-    } else {
-        let last = trimmed.split('/').next_back().unwrap_or(".");
-        format!("{base}/{last}")
-    }
+    super::guest_fs_ops::guest_project_dir_on_guest(guest_mount, vfs_cwd)
 }
 
 impl GammaSession {
@@ -123,6 +118,9 @@ impl GammaSession {
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "/workspace".to_string());
 
+        let sync_vfs_with_workspace =
+            matches!(config.workspace_mode_effective(), WorkspaceMode::Sync);
+
         Ok(Self {
             lima_instance: config.lima_instance.clone(),
             workspace_parent,
@@ -130,7 +128,14 @@ impl GammaSession {
             limactl,
             vm_started: false,
             lima_hints_checked: false,
+            sync_vfs_with_workspace,
         })
+    }
+
+    /// Whether this session push/pulls the in-memory VFS around rust tools (Mode S). `false` = guest-primary ([`WorkspaceMode::Guest`]).
+    #[must_use]
+    pub fn syncs_vfs_with_host_workspace(&self) -> bool {
+        self.sync_vfs_with_workspace
     }
 
     fn limactl_ensure_running(&mut self) -> Result<(), VmError> {
@@ -188,6 +193,70 @@ impl GammaSession {
         Ok(st)
     }
 
+    /// Run `limactl shell … -- program args` with captured stdout/stderr (for guest FS ops / Mode P).
+    ///
+    /// Starts the VM on first use (same as interactive `limactl shell`).
+    pub(crate) fn limactl_shell_output(
+        &mut self,
+        guest_workdir: &str,
+        program: &str,
+        args: &[String],
+    ) -> Result<std::process::Output, VmError> {
+        self.limactl_ensure_running()?;
+        Command::new(&self.limactl)
+            .arg("shell")
+            .arg("--workdir")
+            .arg(guest_workdir)
+            .arg(&self.lima_instance)
+            .arg("--")
+            .arg(program)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .map_err(|e| VmError::Lima(format!("limactl shell: {e}")))
+    }
+
+    /// Pipe `stdin_data` to a guest process stdin (e.g. `dd of=…`).
+    pub(crate) fn limactl_shell_stdin(
+        &mut self,
+        guest_workdir: &str,
+        program: &str,
+        args: &[String],
+        stdin_data: &[u8],
+    ) -> Result<std::process::Output, VmError> {
+        self.limactl_ensure_running()?;
+        use std::io::Write;
+        let mut child = Command::new(&self.limactl)
+            .arg("shell")
+            .arg("--workdir")
+            .arg(guest_workdir)
+            .arg(&self.lima_instance)
+            .arg("--")
+            .arg(program)
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| VmError::Lima(format!("limactl shell: {e}")))?;
+        if let Some(mut stdin) = child.stdin.take() {
+            stdin
+                .write_all(stdin_data)
+                .map_err(|e| VmError::Lima(format!("limactl shell: write stdin: {e}")))?;
+        }
+        child
+            .wait_with_output()
+            .map_err(|e| VmError::Lima(format!("limactl shell: {e}")))
+    }
+
+    /// Guest mount point (e.g. `/workspace`).
+    #[must_use]
+    pub fn guest_mount(&self) -> &str {
+        &self.guest_mount
+    }
+
     fn limactl_stop(&self) -> Result<(), VmError> {
         let st = Command::new(&self.limactl)
             .args(["stop", &self.lima_instance])
@@ -226,7 +295,9 @@ impl VmExecutionSession for GammaSession {
         args: &[String],
     ) -> Result<ExitStatus, VmError> {
         self.limactl_ensure_running()?;
-        push_incremental(vfs, vfs_cwd, &self.workspace_parent).map_err(VmError::Sync)?;
+        if self.sync_vfs_with_workspace {
+            push_incremental(vfs, vfs_cwd, &self.workspace_parent).map_err(VmError::Sync)?;
+        }
 
         let guest_dir = guest_dir_for_cwd_inner(&self.guest_mount, vfs_cwd);
         if !self.lima_hints_checked {
@@ -254,17 +325,19 @@ impl VmExecutionSession for GammaSession {
             );
         }
 
-        if let Err(e) = pull_workspace_to_vfs(&self.workspace_parent, vfs_cwd, vfs) {
-            eprintln!(
-                "dev_shell: warning: vm workspace pull failed after `{program}` (VFS may be stale): {e}"
-            );
+        if self.sync_vfs_with_workspace {
+            if let Err(e) = pull_workspace_to_vfs(&self.workspace_parent, vfs_cwd, vfs) {
+                eprintln!(
+                    "dev_shell: warning: vm workspace pull failed after `{program}` (VFS may be stale): {e}"
+                );
+            }
         }
 
         Ok(status)
     }
 
     fn shutdown(&mut self, vfs: &mut Vfs, vfs_cwd: &str) -> Result<(), VmError> {
-        if self.vm_started {
+        if self.vm_started && self.sync_vfs_with_workspace {
             if let Err(e) = pull_workspace_to_vfs(&self.workspace_parent, vfs_cwd, vfs) {
                 return Err(VmError::Sandbox(e));
             }
@@ -296,5 +369,57 @@ mod tests {
     #[test]
     fn sanitize_instance_replaces_dots() {
         assert_eq!(sanitize_instance_segment("a.b"), "a_b");
+    }
+
+    /// When `DEVSHELL_VM_WORKSPACE_MODE=guest` and γ is available, push/pull is disabled for rust tools.
+    #[cfg(unix)]
+    #[test]
+    fn gamma_session_sync_flag_follows_workspace_mode() {
+        use std::sync::{Mutex, OnceLock};
+
+        use crate::devshell::sandbox;
+        use crate::devshell::vm::{
+            GammaSession, VmConfig, ENV_DEVSHELL_VM, ENV_DEVSHELL_VM_BACKEND,
+            ENV_DEVSHELL_VM_WORKSPACE_MODE,
+        };
+
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        let _g = LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+
+        if sandbox::find_in_path("limactl").is_none() {
+            return;
+        }
+
+        let old_wm = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_MODE).ok();
+        let old_vm = std::env::var(ENV_DEVSHELL_VM).ok();
+        let old_b = std::env::var(ENV_DEVSHELL_VM_BACKEND).ok();
+
+        std::env::set_var(ENV_DEVSHELL_VM, "1");
+        std::env::set_var(ENV_DEVSHELL_VM_BACKEND, "lima");
+        std::env::set_var(ENV_DEVSHELL_VM_WORKSPACE_MODE, "guest");
+        let c = VmConfig::from_env();
+        let g = GammaSession::new(&c).expect("gamma");
+        assert!(
+            !g.syncs_vfs_with_host_workspace(),
+            "guest mode should skip VFS sync"
+        );
+
+        std::env::set_var(ENV_DEVSHELL_VM_WORKSPACE_MODE, "sync");
+        let c2 = VmConfig::from_env();
+        let g2 = GammaSession::new(&c2).expect("gamma");
+        assert!(g2.syncs_vfs_with_host_workspace());
+
+        match old_wm {
+            Some(ref v) => std::env::set_var(ENV_DEVSHELL_VM_WORKSPACE_MODE, v),
+            None => std::env::remove_var(ENV_DEVSHELL_VM_WORKSPACE_MODE),
+        }
+        match old_vm {
+            Some(ref v) => std::env::set_var(ENV_DEVSHELL_VM, v),
+            None => std::env::remove_var(ENV_DEVSHELL_VM),
+        }
+        match old_b {
+            Some(ref v) => std::env::set_var(ENV_DEVSHELL_VM_BACKEND, v),
+            None => std::env::remove_var(ENV_DEVSHELL_VM_BACKEND),
+        }
     }
 }
