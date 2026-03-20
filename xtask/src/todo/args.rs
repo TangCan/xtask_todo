@@ -3,6 +3,33 @@
 use argh::FromArgs;
 use std::path::PathBuf;
 
+/// Top-level CLI for the standalone **`todo`** binary (`cargo build -p xtask --bin todo`).
+///
+/// Same flags and subcommands as `cargo xtask todo` (see [`TodoArgs`]).
+#[derive(FromArgs, Clone)]
+#[argh(name = "todo")]
+/// Todo list: add, list, complete, delete (data in .todo.json)
+pub struct TodoStandaloneArgs {
+    #[argh(subcommand)]
+    pub sub: TodoSub,
+    #[argh(switch)]
+    /// output JSON only (unified structure)
+    pub json: bool,
+    #[argh(switch)]
+    /// do not persist; show intended operation only
+    pub dry_run: bool,
+}
+
+impl From<TodoStandaloneArgs> for TodoArgs {
+    fn from(s: TodoStandaloneArgs) -> Self {
+        Self {
+            sub: s.sub,
+            json: s.json,
+            dry_run: s.dry_run,
+        }
+    }
+}
+
 #[derive(FromArgs, Clone)]
 #[argh(subcommand, name = "todo")]
 /// Todo list: add, list, complete, delete (data in .todo.json)

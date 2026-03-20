@@ -19,6 +19,25 @@ fn sanitize_instance_replaces_dots() {
     assert_eq!(super::helpers::sanitize_instance_segment("a.b"), "a_b");
 }
 
+#[test]
+fn guest_dir_for_host_path_under_workspace_maps_relative() {
+    let tmp = std::env::temp_dir().join(format!(
+        "lima_guest_map_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::UNIX_EPOCH
+            .elapsed()
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    ));
+    let _ = std::fs::remove_dir_all(&tmp);
+    std::fs::create_dir_all(tmp.join("proj")).unwrap();
+    let ws = tmp.canonicalize().unwrap();
+    let host = ws.join("proj").canonicalize().unwrap();
+    let g = super::helpers::guest_dir_for_host_path_under_workspace(&ws, "/workspace", &host);
+    assert_eq!(g.as_deref(), Some("/workspace/proj"));
+    let _ = std::fs::remove_dir_all(&tmp);
+}
+
 /// When `DEVSHELL_VM_WORKSPACE_MODE=guest` and γ is available, push/pull is disabled for rust tools.
 #[cfg(unix)]
 #[test]

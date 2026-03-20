@@ -6,9 +6,10 @@ mod coverage;
 mod fmt;
 mod gh;
 mod git;
+mod lima_todo;
 mod publish;
 mod run;
-mod todo;
+pub mod todo;
 
 #[cfg(test)]
 mod tests;
@@ -22,6 +23,7 @@ use coverage::CoverageArgs;
 use fmt::FmtArgs;
 use gh::GhArgs;
 use git::GitArgs;
+use lima_todo::LimaTodoArgs;
 use publish::PublishArgs;
 use run::RunArgs;
 
@@ -58,6 +60,7 @@ pub fn run_with(cmd: XtaskCmd) -> Result<(), RunFailure> {
         XtaskSub::Gh(args) => gh::cmd_gh(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Git(args) => git::cmd_git(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Publish(args) => publish::cmd_publish(&args).map_err(|e| to_run_failure(&*e)),
+        XtaskSub::LimaTodo(args) => lima_todo::cmd_lima_todo(args),
         XtaskSub::Todo(args) => {
             let json = args.json;
             match todo::cmd_todo(args) {
@@ -101,5 +104,6 @@ pub enum XtaskSub {
     Gh(GhArgs),
     Git(GitArgs),
     Publish(PublishArgs),
+    LimaTodo(LimaTodoArgs),
     Todo(TodoArgs),
 }

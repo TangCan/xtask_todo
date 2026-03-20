@@ -7,10 +7,35 @@
 ### 简单心智模型（与交互 REPL 统一）
 
 1. **启动 `cargo-devshell` 时（Unix）**：进程会按当前 Lima 实例名解析 **主机工作区父目录**（与 Lima 里挂载到 guest `/workspace` 的目录一致），**`create_dir_all` 后** 把其 **规范绝对路径** 写入环境变量 **`DEVSHELL_WORKSPACE_ROOT`**。
-2. **交互式 + TTY + γ Lima 已启用（默认）**：不再进入进程内 rustyline REPL，而是在 **`ensure_ready`（必要时 `limactl start`）之后** 直接 **`exec limactl shell --workdir <guest 挂载点> <实例> -- bash -l`**，你在 **真实 shell** 里工作；工程树与 VM 共用同一套主机目录。
-3. **需要进程内 REPL**（调试补全/内置命令）：设置 **`DEVSHELL_VM_INTERNAL_REPL=1`**。
-4. **VM 未启用或回退到宿主会话**（`DEVSHELL_VM=off` / `DEVSHELL_VM_BACKEND=host` / γ 初始化失败等）：内置的 **`ls`/`cat`/`mkdir`/`todo` 等** 改为 **直接操作 `DEVSHELL_WORKSPACE_ROOT` 下的真实目录**（不再依赖单独的 `.dev_shell.bin` 树与之分叉）。退出时 **跳过** 写 `.dev_shell.bin`。
-5. **`-f` 脚本模式**、**非 TTY**（如管道/CI）：仍走进程内实现；宿主-only 时同样使用 **`DEVSHELL_WORKSPACE_ROOT`** 作为 VFS 根。
+2. **交互式 + TTY + γ Lima 已启用（默认）**：不再进入进程内 rustyline REPL，而是在 **`ensure_ready`（必要时 `limactl start`）之后** 直接 **`exec limactl shell --workdir <guest 挂载点> <实例> -- bash -l`**，你在 **真实 shell** 里工作；工程树与 VM 共用同一套主机目录。**此时没有 devshell 内置命令**（例如 **`pwd`** 等与 REPL 集成的那套）；guest 里误输入 **`todo`** 会走系统 PATH，**不要**安装 APT 里无关的 **`devtodo`**。待办数据见下 **「`todo` / `.todo.json`」**。
+3. **在 guest 里管理待办**：在 **挂载的仓库目录**（例如 **`/workspace/<项目名>`**）执行 **`cargo xtask todo …`**。`.todo.json` 写在 **该挂载目录下的真实磁盘上**（与宿主看到的是 **同一文件**，因 Lima 挂载），**不是** devshell 内存 VFS。详见 **`docs/superpowers/specs/2026-03-20-devshell-guest-primary-design.md` §11 A**。
+4. **需要进程内 REPL**（调试补全、内置 **`todo`** 等）：设置 **`DEVSHELL_VM_INTERNAL_REPL=1`**。内置 **`todo`** 仍走 **`todo_io`**（宿主 `current_dir()` + `.todo.json`），**不**走 VFS；与 `cargo xtask todo` 共用格式，见 §11。
+5. **VM 未启用或回退到宿主会话**（`DEVSHELL_VM=off` / `DEVSHELL_VM_BACKEND=host` / γ 初始化失败等）：**`ls`/`cat`/`mkdir` 等** 在 **Unix** 上可对 **`DEVSHELL_WORKSPACE_ROOT`** 做 **host-backed** 真实目录操作；**`todo`** 仍只通过 **`todo_io`** 读写 **进程当前目录**下的 **`.todo.json`**（与 VFS 逻辑 cwd **解耦**，见 §11）。退出时 **跳过** 写 `.dev_shell.bin`（host-backed 时）。
+6. **`-f` 脚本模式**、**非 TTY**（如管道/CI）：仍走进程内实现；宿主-only 时 VFS 根同上。
+
+#### `todo` / `.todo.json`（设计 §11 **A**）
+
+- **持久化始终在宿主真实文件系统**（`todo_io`），**不**存放在 devshell **虚拟文件系统**（`.dev_shell.bin` / 内存树）里。
+- **进程内 REPL**：`todo` 使用 **`std::env::current_dir()`** 下的 **`.todo.json`**；REPL 里的 **`cd`** 只更新 VFS 逻辑路径，**不**必然改变 `current_dir()`（与 **`docs/design.md`**、**`2026-03-20-devshell-guest-primary-design.md` §11** 一致）。
+- **`limactl shell`**：无内置 `todo`。可选用 **`cargo xtask todo`**（需 guest 内有 **`cargo`**）；或见下 **「独立 `todo` 二进制 + 挂载」**，一进 shell 即可执行 **`todo`**，仍读写当前目录下 **`.todo.json`**（在挂载的工作区里即与宿主同文件）。
+
+##### 自动 `PATH`（默认，无需改 `lima.yaml`）
+
+若 **宿主**上已在 **Lima `workspace_parent` 目录之下** 克隆/放置本仓库（例如 `…/vm-workspace/<实例>/xtask_todo`），且已存在 **`target/release/todo`**（可先执行 **`cargo build -p xtask --release --bin todo`**），则 **`cargo-devshell`** 在 **`exec limactl shell`** 时会检测并在 guest 里 **自动 `export PATH=<guest>/…/target/release:$PATH`**，**`todo`** 可直接运行。关闭：**`DEVSHELL_VM_AUTO_TODO_PATH=0`**。
+
+若仓库在 **挂载根之外**（例如 `~/proj` 而挂载仅为 `~/.cache/.../vm-workspace/...`），则 **不会**自动生效，请用下面 **「独立 `todo` + 挂载」** 或把工程移入挂载树。
+
+##### 独立 `todo` 二进制 + 挂载（可选）
+
+1. **一键合并挂载并编译 `todo`**（在**仓库根**执行）：
+   ```bash
+   cargo xtask lima-todo
+   ```
+   会 **`cargo build -p xtask --release --bin todo`**，并把宿主 **`target/release`** 的只读挂载与 **`env.PATH`** **自动合并**进 **`~/.lima/<实例>/lima.yaml`**（默认实例名同 **`DEVSHELL_VM_LIMA_INSTANCE`**，一般为 **`devshell-rust`**；原文件备份为 **`lima.yaml.bak`**），然后 **`limactl stop` / `limactl start -y`** 重启实例。若已编译过：**`cargo xtask lima-todo --no-build`**；若只改配置、不重启 VM：**`--no-restart`**。仅打印可粘贴片段、**不**改 **`lima.yaml`**（旧行为）：**`--print-only`**。自定义 guest 挂载点：**`--guest-mount /my-bin`**。指定实例或路径：**`--instance <名>`**、**`--lima-yaml /path/to/lima.yaml`**。写入片段到文件（多与 **`--print-only`** 同用）：**`--write /tmp/lima-todo-fragment.yaml`**。
+
+2. **手动**：在宿主（与 guest **同 CPU 架构**）执行 **`cargo build -p xtask --release --bin todo`**，行为与 **`cargo xtask todo`** 一致（**`xtask/src/bin/todo.rs`**）。把宿主 **`…/target/release`** 只读挂到 guest（如 **`/host-todo-bin`**），并合并 **`env.PATH`**（与 **`cargo xtask lima-todo`** 输出一致）。参考片段：**[snippets/lima-devshell-todo-bin-mount.yaml](snippets/lima-devshell-todo-bin-mount.yaml)**。
+
+3. **在 guest** 里 **`cd`** 到挂载的项目目录（如 **`/workspace/项目名`**）后执行 **`todo list`**，**`.todo.json`** 落在该挂载目录下，与宿主一致。
 
 下文表格中的 **`DEVSHELL_VM_WORKSPACE_MODE=guest`**、push/pull、guest-primary 等仍适用于 **`cargo`/`rustup` 子命令** 与 **Mode P** 细节；与上表不冲突。
 
@@ -132,6 +157,8 @@ sudo apt install -y build-essential
 
 非 Debian 系 guest 请用对应包管理器安装 **`gcc`** 与 **binutils**（例如 Fedora：`sudo dnf install -y gcc gcc-c++ make`）；当前自动安装**仅支持 apt**。
 
+**`todo` 二进制（默认提示）：** 在 **`ensure_ready`**（与上节同一阶段）中，guest 会探测 **`command -v todo`**，若已配置自动 **`PATH`** 则同时检测挂载树下的 **`…/target/release/todo`**。若仍不可用，在**宿主终端**打印说明：**不要**安装 APT 里的 **`devtodo`**（与本项目无关），并给出 **`cargo build -p xtask --release --bin todo`**、**`cargo xtask lima-todo`**（仓库在挂载树外时；该命令会**自动合并** **`lima.yaml`** 并重启 VM，除非 **`--print-only`**）、以及在 guest 内 **`cd` 到挂载工程目录后 `cargo build …`** 等命令。可选 **`DEVSHELL_VM_AUTO_BUILD_TODO_GUEST=1`**：当 Cargo 工作区在挂载树内时，在 guest 内尝试执行上述 **`cargo build`**（需 guest 已有 **`cargo`**，较慢）。关闭探测与提示：**`DEVSHELL_VM_GUEST_TODO_HINT=0`**。
+
 备忘片段（与本文一致）：**[snippets/lima-devshell-host-cc-mount.yaml](snippets/lima-devshell-host-cc-mount.yaml)**。
 
 ---
@@ -153,6 +180,10 @@ sudo apt install -y build-essential
 | `DEVSHELL_VM_LIMA_HINTS=0` | 关闭 γ 的 **Lima 配置/故障提示**（默认开启）：首次 `cargo`/`rustup` 前会做一次 guest 探测；`cargo`/`rustup` 非零退出或 **`limactl start` 失败** 时会打印与 `lima.yaml`、挂载、KVM、`cargo` PATH 相关的建议。 |
 | `DEVSHELL_VM_WORKSPACE_MODE` | **`sync`**（默认）= 内存 VFS + push/pull（Mode S）。**`guest`** = 请求 **guest 真源**（Mode P，仍分阶段落地）。若 **`DEVSHELL_VM=off`** 或 **`DEVSHELL_VM_BACKEND=host`/`auto`**，则 **仍按 `sync` 生效**（不报错）；仅当 VM 开启且后端为 **`lima`** 或 **`beta`** 时 **`guest`** 才可能生效。详见 [`2026-03-20-devshell-guest-primary-design.md`](superpowers/specs/2026-03-20-devshell-guest-primary-design.md) §6。 |
 | `DEVSHELL_VM_AUTO_BUILD_ESSENTIAL` | **默认开启：** VM 就绪后若 guest 无 **`gcc`**，尝试用 **`apt-get`** 非交互安装 **`build-essential`**（需 **`sudo` 免密**）。设为 **`0`/`false`/`no`/`off`** 则跳过。非 apt 系 guest 仍须手动安装 C 工具链。 |
+| `DEVSHELL_VM_AUTO_TODO_PATH` | **默认开启：** 若宿主当前目录下 **`cargo metadata`** 得到的 **`target/release/todo`** 存在，且该路径落在 **Lima 挂载的 `workspace_parent`** 树内，则在 **`exec limactl shell`** 时自动为 guest 注入 **`PATH`**（无需改 **`lima.yaml`**）。若工程在挂载树**外**，仍须 **`cargo xtask lima-todo`** 或把仓库放进挂载目录。设为 **`0`/`false`/`no`/`off`** 则关闭。 |
+| `DEVSHELL_VM_GUEST_HOST_DIR` | **默认** `host_dir`：当宿主 **`current_dir()`** 在 **`workspace_parent`** 树内时，**`exec limactl shell`** 会把 **`--workdir`** 设为对应 guest 工程路径，并在登录 shell 里 **`cd`** 到该目录，且 **`ln -sfn`** 将 **`$HOME/host_dir`** 指到该目录、**`~/.todo.json`** 指到 **`~/host_dir/.todo.json`**（与宿主工程树为同一挂载）。设为 **`0`/`false`/`off`/`no`** 则只做 **`cd`**，不建符号链接；可改为其它 **ASCII 名**（仅字母数字、`_`、`-`）作为 **`$HOME/<名>`** 链接名。若宿主 cwd **不在** `workspace_parent` 下，无法自动「新挂载」宿主路径，请把仓库放进挂载树或 **`lima.yaml`** 增加 **`mounts:`**。 |
+| `DEVSHELL_VM_GUEST_TODO_HINT` | **默认开启：** VM 就绪后探测 guest 是否已有 **`todo`**；缺失时在宿主终端打印安装说明（**勿**用 **`apt install devtodo`**）。设为 **`0`/`false`/`no`/`off`** 则跳过探测与提示。 |
+| `DEVSHELL_VM_AUTO_BUILD_TODO_GUEST` | 默认关闭；设为 **`1`/`true`/`yes`** 时，在上一项探测失败且 Cargo 工作区在挂载树内时，于 guest 内执行 **`cargo build -p xtask --release --bin todo`**（需 **`cargo`**，可能较慢）。 |
 
 ---
 

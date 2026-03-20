@@ -33,6 +33,8 @@ pub use lima_diagnostics::ENV_DEVSHELL_VM_LIMA_HINTS;
 #[cfg(unix)]
 pub use session_gamma::{
     workspace_parent_for_instance, GammaSession, ENV_DEVSHELL_VM_AUTO_BUILD_ESSENTIAL,
+    ENV_DEVSHELL_VM_AUTO_BUILD_TODO_GUEST, ENV_DEVSHELL_VM_AUTO_TODO_PATH,
+    ENV_DEVSHELL_VM_GUEST_HOST_DIR, ENV_DEVSHELL_VM_GUEST_TODO_HINT,
     ENV_DEVSHELL_VM_GUEST_WORKSPACE, ENV_DEVSHELL_VM_LIMACTL, ENV_DEVSHELL_VM_STOP_ON_EXIT,
     ENV_DEVSHELL_VM_WORKSPACE_PARENT,
 };
@@ -107,6 +109,34 @@ pub enum SessionHolder {
     /// β: JSON-lines over Unix socket to `devshell-vm` (Unix + `beta-vm` feature).
     #[cfg(all(unix, feature = "beta-vm"))]
     Beta(session_beta::BetaSession),
+}
+
+/// Single-quoted POSIX shell word (safe for `export PATH=…`).
+#[cfg(unix)]
+pub(crate) fn bash_single_quoted(s: &str) -> String {
+    let mut o = String::from("'");
+    for c in s.chars() {
+        if c == '\'' {
+            o.push_str("'\"'\"'");
+        } else {
+            o.push(c);
+        }
+    }
+    o.push('\'');
+    o
+}
+
+#[cfg(all(unix, test))]
+mod bash_single_quoted_tests {
+    use super::bash_single_quoted;
+
+    #[test]
+    fn wraps_plain_path() {
+        assert_eq!(
+            bash_single_quoted("/workspace/p/target/release"),
+            "'/workspace/p/target/release'"
+        );
+    }
 }
 
 impl SessionHolder {
@@ -270,15 +300,20 @@ impl SessionHolder {
         use std::os::unix::process::CommandExt;
         use std::process::Command;
         match self {
-            Self::Gamma(g) => Command::new(g.limactl_path())
-                .arg("shell")
-                .arg("--workdir")
-                .arg(g.guest_mount())
-                .arg(g.lima_instance_name())
-                .arg("--")
-                .arg("bash")
-                .arg("-l")
-                .exec(),
+            Self::Gamma(g) => {
+                let (workdir, inner) = g.lima_interactive_shell_workdir_and_inner();
+                Command::new(g.limactl_path())
+                    .arg("shell")
+                    .arg("-y")
+                    .arg("--workdir")
+                    .arg(workdir)
+                    .arg(g.lima_instance_name())
+                    .arg("--")
+                    .arg("bash")
+                    .arg("-lc")
+                    .arg(inner)
+                    .exec()
+            }
             _ => std::io::Error::other("exec_lima_interactive_shell: not a Lima gamma session"),
         }
     }

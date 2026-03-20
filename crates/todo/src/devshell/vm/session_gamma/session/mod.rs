@@ -1,16 +1,18 @@
 //! [`GammaSession`] struct and Lima `limactl` helpers.
 
+mod exec;
+
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 
-use super::super::super::vfs::Vfs;
+use super::super::bash_single_quoted;
 use super::super::lima_diagnostics;
-use super::super::sync::{pull_workspace_to_vfs, push_incremental};
-use super::super::{VmConfig, VmError, VmExecutionSession, WorkspaceMode};
+use super::super::{VmConfig, VmError, WorkspaceMode};
 use super::env::ENV_DEVSHELL_VM_GUEST_WORKSPACE;
 use super::helpers::{
-    auto_build_essential_enabled, guest_dir_for_cwd_inner, resolve_limactl,
-    workspace_parent_for_instance,
+    guest_dir_for_host_path_under_workspace, guest_host_dir_link_name,
+    guest_todo_release_dir_for_cwd, resolve_limactl, workspace_parent_for_instance,
 };
 
 /// Lima-backed session: sync VFS ↔ host workspace, run tools inside the VM.
@@ -27,6 +29,8 @@ pub struct GammaSession {
     lima_hints_checked: bool,
     /// After first `ensure_ready`, skip repeating guest C toolchain probe/install.
     guest_build_essential_done: bool,
+    /// After first `ensure_ready`, skip repeating guest `todo` probe / install hints.
+    guest_todo_hint_done: bool,
     /// When `true` (Mode S), push/pull VFS around each `cargo`/`rustup`. When `false` ([`WorkspaceMode::Guest`]), guest tree is authoritative — no sync (see guest-primary design §1c).
     sync_vfs_with_workspace: bool,
 }
@@ -56,6 +60,7 @@ impl GammaSession {
             vm_started: false,
             lima_hints_checked: false,
             guest_build_essential_done: false,
+            guest_todo_hint_done: false,
             sync_vfs_with_workspace,
         })
     }
@@ -123,72 +128,6 @@ impl GammaSession {
             .map_err(|e| VmError::Lima(format!("limactl shell: {e}")))
     }
 
-    /// If guest has no `gcc`, try Debian/Ubuntu `apt-get install -y build-essential` (non-interactive sudo).
-    fn maybe_ensure_guest_build_essential(&mut self) -> Result<(), VmError> {
-        if self.guest_build_essential_done {
-            return Ok(());
-        }
-
-        if !auto_build_essential_enabled() {
-            self.guest_build_essential_done = true;
-            return Ok(());
-        }
-
-        let probe = self.limactl_shell_script_sh("/", "command -v gcc >/dev/null 2>&1")?;
-        if probe.status.success() {
-            self.guest_build_essential_done = true;
-            return Ok(());
-        }
-
-        eprintln!("dev_shell: guest: no C compiler (gcc) in PATH; attempting apt install build-essential…");
-
-        let has_apt =
-            self.limactl_shell_script_sh("/", "test -x /usr/bin/apt-get && test -x /usr/bin/dpkg")?;
-        if !has_apt.status.success() {
-            eprintln!(
-                "dev_shell: guest: no apt-get/dpkg; install gcc + binutils manually (see docs/devshell-vm-gamma.md)."
-            );
-            self.guest_build_essential_done = true;
-            return Ok(());
-        }
-
-        // `sudo -n` fails if a password is required (no TTY here).
-        const INSTALL_SH: &str = r"set -e
-export DEBIAN_FRONTEND=noninteractive
-if ! sudo -n true 2>/dev/null; then
-  echo 'dev_shell: guest: sudo needs a password; run in the VM: sudo apt update && sudo apt install -y build-essential' >&2
-  exit 1
-fi
-sudo apt-get update -qq
-sudo apt-get install -y -qq build-essential
-";
-
-        let out = self.limactl_shell_script_sh("/", INSTALL_SH)?;
-        if out.status.success() {
-            eprintln!(
-                "dev_shell: guest: build-essential installed (gcc available for cargo link)."
-            );
-        } else {
-            let stderr = String::from_utf8_lossy(&out.stderr);
-            let stdout = String::from_utf8_lossy(&out.stdout);
-            eprintln!(
-                "dev_shell: guest: automatic build-essential install failed (exit {:?}).",
-                out.status.code()
-            );
-            if !stdout.trim().is_empty() {
-                eprintln!("dev_shell: guest stdout: {stdout}");
-            }
-            if !stderr.trim().is_empty() {
-                eprintln!("dev_shell: guest stderr: {stderr}");
-            }
-            eprintln!(
-                "dev_shell: hint: in the guest shell: sudo apt update && sudo apt install -y build-essential"
-            );
-        }
-        self.guest_build_essential_done = true;
-        Ok(())
-    }
-
     fn limactl_shell(
         &self,
         guest_workdir: &str,
@@ -245,7 +184,6 @@ sudo apt-get install -y -qq build-essential
         stdin_data: &[u8],
     ) -> Result<std::process::Output, VmError> {
         self.limactl_ensure_running()?;
-        use std::io::Write;
         let mut child = Command::new(&self.limactl)
             .arg("shell")
             .arg("--workdir")
@@ -310,76 +248,74 @@ sudo apt-get install -y -qq build-essential
     pub fn lima_instance_name(&self) -> &str {
         &self.lima_instance
     }
-}
 
-impl VmExecutionSession for GammaSession {
-    fn ensure_ready(&mut self, _vfs: &Vfs, _vfs_cwd: &str) -> Result<(), VmError> {
-        self.limactl_ensure_running()?;
-        self.maybe_ensure_guest_build_essential()?;
-        Ok(())
+    /// If host `cwd` has `target/release/todo` under [`Self::workspace_parent`], return guest path
+    /// to that `release` dir for `PATH` (see [`super::helpers::guest_todo_release_dir_for_cwd`]).
+    #[must_use]
+    pub fn guest_todo_release_path_for_shell(&self) -> Option<String> {
+        let cwd = std::env::current_dir().ok()?;
+        guest_todo_release_dir_for_cwd(&self.workspace_parent, &self.guest_mount, &cwd)
     }
 
-    fn run_rust_tool(
-        &mut self,
-        vfs: &mut Vfs,
-        vfs_cwd: &str,
-        program: &str,
-        args: &[String],
-    ) -> Result<ExitStatus, VmError> {
-        self.limactl_ensure_running()?;
-        if self.sync_vfs_with_workspace {
-            push_incremental(vfs, vfs_cwd, &self.workspace_parent).map_err(VmError::Sync)?;
-        }
+    /// Guest `--workdir` and `bash -lc` body for [`super::super::SessionHolder::exec_lima_interactive_shell`]:
+    /// `cd` to the host `current_dir` project under the Lima workspace mount, optional `$HOME/host_dir` symlink,
+    /// and `~/.todo.json` → `~/host_dir/.todo.json`.
+    #[must_use]
+    pub fn lima_interactive_shell_workdir_and_inner(&self) -> (String, String) {
+        let cwd = std::env::current_dir().ok();
+        let guest_proj = cwd.as_ref().and_then(|c| {
+            guest_dir_for_host_path_under_workspace(&self.workspace_parent, &self.guest_mount, c)
+        });
 
-        let guest_dir = guest_dir_for_cwd_inner(&self.guest_mount, vfs_cwd);
-        if !self.lima_hints_checked {
-            self.lima_hints_checked = true;
-            lima_diagnostics::warn_if_guest_misconfigured(
-                &self.limactl,
-                &self.lima_instance,
-                &self.workspace_parent,
-                &self.guest_mount,
-                &guest_dir,
-            );
-        }
-
-        let status = self.limactl_shell(&guest_dir, program, args)?;
-
-        if !status.success() && (program == "cargo" || program == "rustup") {
-            lima_diagnostics::emit_tool_failure_hints(
-                &self.limactl,
-                &self.lima_instance,
-                &self.workspace_parent,
-                &self.guest_mount,
-                &guest_dir,
-                program,
-                &status,
-            );
-        }
-
-        if self.sync_vfs_with_workspace {
-            if let Err(e) = pull_workspace_to_vfs(&self.workspace_parent, vfs_cwd, vfs) {
-                eprintln!(
-                    "dev_shell: warning: vm workspace pull failed after `{program}` (VFS may be stale): {e}"
+        if guest_proj.is_none() {
+            if let Some(ref c) = cwd {
+                let _ = writeln!(
+                    std::io::stderr(),
+                    "dev_shell: lima: host cwd {} is outside {} — shell starts at {}; clone or symlink the repo under the workspace mount, or add a `lima.yaml` mount for this path.",
+                    c.display(),
+                    self.workspace_parent.display(),
+                    self.guest_mount
                 );
             }
         }
 
-        Ok(status)
-    }
+        let workdir = guest_proj
+            .clone()
+            .unwrap_or_else(|| self.guest_mount.clone());
 
-    fn shutdown(&mut self, vfs: &mut Vfs, vfs_cwd: &str) -> Result<(), VmError> {
-        use super::env::ENV_DEVSHELL_VM_STOP_ON_EXIT;
-        use super::helpers::truthy_env;
+        let mut inner = String::new();
+        if let Some(p) = self.guest_todo_release_path_for_shell() {
+            let _ = writeln!(
+                std::io::stderr(),
+                "dev_shell: prepending guest PATH with {p} (host todo under Lima workspace mount)"
+            );
+            inner.push_str(&format!("export PATH={}:$PATH; ", bash_single_quoted(&p)));
+        }
 
-        if self.vm_started && self.sync_vfs_with_workspace {
-            if let Err(e) = pull_workspace_to_vfs(&self.workspace_parent, vfs_cwd, vfs) {
-                return Err(VmError::Sandbox(e));
+        if let Some(ref gp) = guest_proj {
+            match guest_host_dir_link_name() {
+                Some(hd) => {
+                    inner.push_str(&format!(
+                        "export GUEST_PROJ={}; export HD={}; \
+if [ -d \"$GUEST_PROJ\" ]; then cd \"$GUEST_PROJ\" || true; \
+  ln -sfn \"$GUEST_PROJ\" \"$HOME/$HD\" 2>/dev/null || true; \
+  ln -sf \"$HOME/$HD/.todo.json\" \"$HOME/.todo.json\" 2>/dev/null || true; \
+fi; ",
+                        bash_single_quoted(gp),
+                        bash_single_quoted(&hd)
+                    ));
+                }
+                None => {
+                    inner.push_str(&format!(
+                        "export GUEST_PROJ={}; \
+if [ -d \"$GUEST_PROJ\" ]; then cd \"$GUEST_PROJ\" || true; fi; ",
+                        bash_single_quoted(gp)
+                    ));
+                }
             }
         }
-        if truthy_env(ENV_DEVSHELL_VM_STOP_ON_EXIT) {
-            let _ = self.limactl_stop();
-        }
-        Ok(())
+
+        inner.push_str("exec bash -l");
+        (workdir, inner)
     }
 }

@@ -1,0 +1,19 @@
+# 推荐：在仓库根自动合并到 ~/.lima/<实例>/lima.yaml（含 release 构建 todo）：
+#   cargo xtask lima-todo
+# 仅打印片段、不修改 lima.yaml（旧行为）：
+#   cargo xtask lima-todo --print-only
+# 跳过编译、不重启 VM：
+#   cargo xtask lima-todo --no-build --no-restart
+# 或写入片段到文件（可与 --print-only 同用）：
+#   cargo xtask lima-todo --print-only --write /tmp/lima-todo-fragment.yaml
+#
+# 手动挂载时，把宿主 target/release 挂到 guest，并合并 env.PATH，例如：
+#
+# - location: "/ABS/PATH/TO/REPO/target/release"
+#   mountPoint: /host-todo-bin
+#   writable: false
+#
+# env: 中 PATH 前置（若已有 host-cargo，串在同一行）：
+#   PATH: "/host-todo-bin:/host-cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+#
+# limactl stop/start -y <实例> 后，guest 内：cd /workspace/<项目> && todo list
