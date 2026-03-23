@@ -2,7 +2,7 @@
 
 本报告由 `cargo xtask acceptance` 生成，与 [acceptance.md](./acceptance.md) 对照。
 
-- **生成时间（UTC）**: 2026-03-23T02:04:27Z
+- **生成时间（UTC）**: 2026-03-23T04:22:28Z
 - **仓库根**: `/ssd_211032807004/richard/2026/pvm_2/xtask_todo`
 
 ## 1. 自动化检查结果

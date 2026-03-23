@@ -12,7 +12,8 @@ pub const ENV_DEVSHELL_VM: &str = "DEVSHELL_VM";
 /// Backend selector: `host`, `auto`, `lima`, `beta`, …
 ///
 /// **Release / binary default on Unix:** `lima` (γ) when this variable is unset.
-/// **Non-Unix** default: `host` (Lima not available).
+/// **Windows** default: **`beta`** (with **`beta-vm`** feature). Use **`DEVSHELL_VM_BACKEND=host`** for host-only sandbox.
+/// **Other non-Unix (non-Windows):** `host`.
 /// **`cfg(test)`:** unset → `auto` (host sandbox) for the same reason as `ENV_DEVSHELL_VM`.
 pub const ENV_DEVSHELL_VM_BACKEND: &str = "DEVSHELL_VM_BACKEND";
 
@@ -90,6 +91,22 @@ fn falsy(s: &str) -> bool {
         || s.eq_ignore_ascii_case("false")
         || s.eq_ignore_ascii_case("no")
         || s.eq_ignore_ascii_case("off")
+}
+
+/// Walk parents from [`std::env::current_dir`] looking for `containers/devshell-vm/Containerfile` (xtask_todo repo).
+#[cfg(all(windows, feature = "beta-vm"))]
+pub(crate) fn devshell_repo_root_with_containerfile() -> Option<std::path::PathBuf> {
+    let mut dir = std::env::current_dir().ok()?;
+    loop {
+        let cf = dir.join("containers/devshell-vm/Containerfile");
+        if cf.is_file() {
+            return Some(dir);
+        }
+        if !dir.pop() {
+            break;
+        }
+    }
+    None
 }
 
 fn default_backend_for_release() -> String {

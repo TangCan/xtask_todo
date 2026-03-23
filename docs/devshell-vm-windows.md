@@ -1,15 +1,16 @@
 # Devshell VM：Windows（β / Podman）
 
-**γ（Lima）** 仅在 **Unix** 上可用。在 **Windows** 上，`cargo-devshell`（默认启用 **`beta-vm`**）会把 **β 后端** 设为默认，并在首次需要连接侧车时尽量 **自动**：
+**γ（Lima）** 仅在 **Unix** 上可用。在 **Windows** 上，未设置 **`DEVSHELL_VM_BACKEND`** 时默认 **`beta`**（库默认 **`beta-vm`**）。首次需要连接侧车时会尽量 **自动检测 Podman**、尝试 **`winget install Podman.Podman`**、尝试 **`podman machine start`**，并在失败时把 **具体命令** 打到 stderr，便于你手动安装与排障。
 
 1. 若 **`127.0.0.1:9847`** 已有进程监听 → 直接连接。  
-2. 否则若已安装 **Podman** → 在仓库根发现 **`containers/devshell-vm/Containerfile`** 时 **构建镜像**（仅首次）并 **`podman run`** 挂载当前工作区到容器 **`/workspace`**，端口 **9847**。  
+2. 否则若 **`podman --version`** 可用 → 必要时 **`podman machine start`**，再若能从当前目录向上找到 **`containers/devshell-vm/Containerfile`** → **构建镜像**（仅首次）并 **`podman run`**。  
 3. 成功启动容器后，进程内会设置 **`DEVSHELL_VM_BETA_SESSION_STAGING=/workspace`**（若你未事先设置）。  
-4. 若未安装 Podman → 尝试 **`winget install -e --id Podman.Podman`**（可能需管理员权限；失败时请手动安装 [podman.io](https://podman.io/)）。  
+4. 若当前目录**不在** `xtask_todo` 克隆内（找不到 Containerfile）→ 不会自动 `podman run`，stderr 会提示：**cd 到仓库根**、或**手动 build/run**、或 **`DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP=1`**、或 **`DEVSHELL_VM_BACKEND=host`**。  
+5. 若 **`podman`** 仍不可用 → stderr 含 **`winget install -e --id Podman.Podman`**、**`podman version`**、文档链接与 **`DEVSHELL_VM_BACKEND=host`** 说明。
 
-**一般用法**：在 **`xtask_todo` 仓库根** 打开终端，直接 **`cargo run -p xtask-todo-lib --bin cargo-devshell`**，无需再手写一长串环境变量。
+**一般用法**：在 **`xtask_todo` 仓库根** 打开终端运行 **`cargo-devshell`**，自动侧车最省事。
 
-**若通过 `cargo install xtask-todo-lib` 使用**：当前工作目录里通常**没有** `containers/devshell-vm/Containerfile`，自动构建会失败。请任选：**①** 在本仓库克隆目录运行；**②** 自行 `podman build` / `podman run` 侧车并设置 **`DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP=1`**；**③** 使用 **`DEVSHELL_VM_BACKEND=host`** 不连 VM。
+**若通过 `cargo install` 使用且不在本仓库目录**：请按 stderr 提示操作，或 **`set DEVSHELL_VM_BACKEND=host`** 仅用宿主沙箱。
 
 ### 默认与 Linux 对齐的语义
 

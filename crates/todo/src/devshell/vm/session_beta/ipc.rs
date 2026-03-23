@@ -106,8 +106,15 @@ pub(super) fn connect_ipc(spec: &SocketSpec) -> Result<IpcStream, VmError> {
             ))
         }),
         SocketSpec::Tcp(addr) => TcpStream::connect(addr).map(IpcStream::Tcp).map_err(|e| {
+            let suffix = if cfg!(windows) {
+                "\nIf nothing is listening: install Podman (winget install -e --id Podman.Podman), \
+                 run podman machine start, or cd to xtask_todo repo for auto-start. \
+                 Host-only: set DEVSHELL_VM_BACKEND=host"
+            } else {
+                ""
+            };
             VmError::Ipc(format!(
-                "connect tcp {addr}: {e}; start: devshell-vm --serve-tcp {addr}"
+                "connect tcp {addr}: {e}; start: devshell-vm --serve-tcp {addr}{suffix}"
             ))
         }),
     }
