@@ -1,30 +1,35 @@
-//! β client: JSON-lines over a Unix socket to `devshell-vm --serve-socket <path>`.
+//! β client: JSON-lines over **Unix socket** (Unix) or **TCP** (all platforms, required on Windows) to
+//! `devshell-vm --serve-socket <path>` / `devshell-vm --serve-tcp <addr>`.
 //!
-//! Build: `cargo build -p xtask-todo-lib --features beta-vm`. Env: `DEVSHELL_VM_SOCKET`, same workspace
-//! layout as γ (`session_gamma::workspace_parent_for_instance`).
+//! Build: `cargo build -p xtask-todo-lib --features beta-vm`. Env: `DEVSHELL_VM_SOCKET`.
+//! - **Unix:** path to socket, or `tcp:127.0.0.1:9847` / `tcp://127.0.0.1:9847`
+//! - **Windows:** `tcp:127.0.0.1:9847` (see `docs/devshell-vm-windows.md`)
 
 #![allow(clippy::pedantic, clippy::nursery)]
+
+mod ipc;
 
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::ExitStatus;
 
-use std::os::unix::net::UnixStream;
-use std::os::unix::process::ExitStatusExt;
-
 use super::super::vfs::Vfs;
-use super::config::ENV_DEVSHELL_VM_SOCKET;
+use super::config::{ENV_DEVSHELL_VM_BETA_SESSION_STAGING, ENV_DEVSHELL_VM_SOCKET};
 use super::guest_fs_ops::{validate_guest_path_under_mount, GuestFsError, GuestFsOps};
-use super::session_gamma::{self, guest_dir_for_vfs_cwd};
 use super::sync::{pull_workspace_to_vfs, push_incremental};
+use super::workspace_host::{guest_dir_for_vfs_cwd, workspace_parent_for_instance};
 use super::{VmConfig, VmError, VmExecutionSession, WorkspaceMode};
 
 use base64::prelude::*;
 
+use ipc::{connect_ipc, exit_status_from_code, parse_devshell_vm_socket, IpcStream, SocketSpec};
+
+const ENV_GUEST_WORKSPACE: &str = "DEVSHELL_VM_GUEST_WORKSPACE";
+
 /// IPC client session (sidecar must be started separately).
 pub struct BetaSession {
-    sock_path: PathBuf,
-    stream: Option<UnixStream>,
+    spec: SocketSpec,
+    stream: Option<IpcStream>,
     session_id: String,
     workspace_parent: PathBuf,
     guest_mount: String,
@@ -37,7 +42,7 @@ pub struct BetaSession {
 impl std::fmt::Debug for BetaSession {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BetaSession")
-            .field("sock_path", &self.sock_path)
+            .field("spec", &self.spec)
             .field("session_id", &self.session_id)
             .field("workspace_parent", &self.workspace_parent)
             .field("guest_mount", &self.guest_mount)
@@ -58,19 +63,26 @@ fn vfs_cwd_leaf(vfs_cwd: &str) -> String {
 }
 
 impl BetaSession {
-    /// New β session; requires `DEVSHELL_VM_SOCKET` pointing at the sidecar listening path.
+    /// New β session; `DEVSHELL_VM_SOCKET` is a Unix path (Unix) or `tcp:HOST:PORT` (all platforms).
     pub fn new(config: &VmConfig) -> Result<Self, VmError> {
-        let sock_path = std::env::var(ENV_DEVSHELL_VM_SOCKET).map_err(|_| {
-            VmError::Ipc(format!(
-                "{ENV_DEVSHELL_VM_SOCKET} is not set (start sidecar: devshell-vm --serve-socket <path>)"
-            ))
-        })?;
-        let sock_path = sock_path.trim();
-        if sock_path.is_empty() {
-            return Err(VmError::Ipc(format!("{ENV_DEVSHELL_VM_SOCKET} is empty")));
-        }
-        let workspace_parent = session_gamma::workspace_parent_for_instance(&config.lima_instance);
-        let guest_mount = std::env::var(session_gamma::ENV_DEVSHELL_VM_GUEST_WORKSPACE)
+        let sock_raw = match std::env::var(ENV_DEVSHELL_VM_SOCKET) {
+            Ok(s) if !s.trim().is_empty() => s,
+            _ => {
+                #[cfg(all(windows, feature = "beta-vm"))]
+                {
+                    "tcp:127.0.0.1:9847".to_string()
+                }
+                #[cfg(not(all(windows, feature = "beta-vm")))]
+                {
+                    return Err(VmError::Ipc(format!(
+                        "{ENV_DEVSHELL_VM_SOCKET} is not set (start sidecar: devshell-vm --serve-socket <path> or --serve-tcp <addr>)"
+                    )));
+                }
+            }
+        };
+        let spec = parse_devshell_vm_socket(&sock_raw)?;
+        let workspace_parent = workspace_parent_for_instance(&config.lima_instance);
+        let guest_mount = std::env::var(ENV_GUEST_WORKSPACE)
             .ok()
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
@@ -80,7 +92,7 @@ impl BetaSession {
             matches!(config.workspace_mode_effective(), WorkspaceMode::Sync);
 
         Ok(Self {
-            sock_path: PathBuf::from(sock_path),
+            spec,
             stream: None,
             session_id: format!("pid-{}", std::process::id()),
             workspace_parent,
@@ -91,15 +103,15 @@ impl BetaSession {
         })
     }
 
-    fn conn(&mut self) -> Result<&mut UnixStream, VmError> {
+    fn conn(&mut self) -> Result<&mut IpcStream, VmError> {
         if self.stream.is_none() {
-            let s = UnixStream::connect(&self.sock_path).map_err(|e| {
-                VmError::Ipc(format!(
-                    "connect {}: {e}; start sidecar with: devshell-vm --serve-socket {}",
-                    self.sock_path.display(),
-                    self.sock_path.display()
-                ))
-            })?;
+            #[cfg(all(windows, feature = "beta-vm"))]
+            {
+                if std::env::var(super::config::ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP).is_err() {
+                    super::podman_sidecar::ensure(&self.workspace_parent)?;
+                }
+            }
+            let s = connect_ipc(&self.spec)?;
             self.stream = Some(s);
         }
         Ok(self.stream.as_mut().expect("set above"))
@@ -131,6 +143,22 @@ impl BetaSession {
         Ok(v)
     }
 
+    /// Path sent to the sidecar as `staging_dir` in `session_start` (must match the sidecar OS view).
+    fn session_staging_dir_for_ipc(&self) -> Result<String, VmError> {
+        if let Ok(s) = std::env::var(ENV_DEVSHELL_VM_BETA_SESSION_STAGING) {
+            let t = s.trim();
+            if !t.is_empty() {
+                return Ok(t.to_string());
+            }
+        }
+        let staging = std::fs::canonicalize(&self.workspace_parent)
+            .map_err(|e| VmError::Ipc(format!("canonicalize staging: {e}")))?;
+        staging
+            .to_str()
+            .ok_or_else(|| VmError::Ipc("workspace path is not valid UTF-8".to_string()))
+            .map(ToString::to_string)
+    }
+
     fn ensure_session_started(&mut self) -> Result<(), VmError> {
         if self.session_started {
             return Ok(());
@@ -141,11 +169,7 @@ impl BetaSession {
                 self.workspace_parent.display()
             ))
         })?;
-        let staging = std::fs::canonicalize(&self.workspace_parent)
-            .map_err(|e| VmError::Ipc(format!("canonicalize staging: {e}")))?;
-        let staging_str = staging
-            .to_str()
-            .ok_or_else(|| VmError::Ipc("workspace path is not valid UTF-8".to_string()))?;
+        let staging_str = self.session_staging_dir_for_ipc()?;
         let req = serde_json::json!({
             "op": "session_start",
             "session_id": &self.session_id,
@@ -309,8 +333,7 @@ impl VmExecutionSession for BetaSession {
             }
         }
 
-        let code_u8 = code.clamp(0, 255) as i32;
-        Ok(ExitStatusExt::from_raw(code_u8 << 8))
+        Ok(exit_status_from_code(code))
     }
 
     fn shutdown(&mut self, vfs: &mut Vfs, vfs_cwd: &str) -> Result<(), VmError> {

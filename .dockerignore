@@ -1,0 +1,3 @@
+# Smaller Podman/Docker build context for `containers/devshell-vm/Containerfile`
+/target
+.git

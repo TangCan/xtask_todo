@@ -30,10 +30,22 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        Some("--serve-tcp") => {
+            let addr = args.next().unwrap_or_default();
+            if addr.is_empty() {
+                eprintln!("usage: devshell-vm --serve-tcp <host:port>");
+                std::process::exit(2);
+            }
+            if let Err(e) = server::serve_tcp(&addr) {
+                eprintln!("devshell-vm: {e}");
+                std::process::exit(1);
+            }
+        }
         _ => {
             println!("devshell-vm {}", env!("CARGO_PKG_VERSION"));
+            eprintln!("β server (TCP): devshell-vm --serve-tcp 127.0.0.1:9847");
             #[cfg(unix)]
-            eprintln!("β server (Unix): devshell-vm --serve-socket /path/to.sock");
+            eprintln!("β server (Unix socket): devshell-vm --serve-socket /path/to.sock");
         }
     }
 }

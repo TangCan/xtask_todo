@@ -8,13 +8,13 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::devshell::vfs::{Vfs, VfsError};
-#[cfg(unix)]
+#[cfg(any(unix, feature = "beta-vm"))]
 use crate::devshell::vm::GuestFsOps;
 use crate::devshell::vm::{GuestFsError, SessionHolder};
 
 #[cfg(unix)]
 use crate::devshell::vm::GammaSession;
-#[cfg(unix)]
+#[cfg(any(unix, feature = "beta-vm"))]
 use crate::devshell::workspace::logical_path_to_guest;
 use crate::devshell::workspace::WorkspaceBackendError;
 
@@ -65,7 +65,7 @@ pub fn read_logical_file_bytes(
     vm_session: &mut SessionHolder,
     path: &str,
 ) -> Result<Vec<u8>, WorkspaceReadError> {
-    #[cfg(unix)]
+    #[cfg(any(unix, feature = "beta-vm"))]
     {
         if let Some((ops, mount)) = vm_session.guest_primary_fs_ops_mut() {
             let gp = match logical_path_to_guest(&mount, vfs.cwd(), path) {
@@ -78,7 +78,7 @@ pub fn read_logical_file_bytes(
             return GuestFsOps::read_file(ops, &gp).map_err(WorkspaceReadError::Guest);
         }
     }
-    #[cfg(not(unix))]
+    #[cfg(not(any(unix, feature = "beta-vm")))]
     let _ = vm_session;
     vfs.read_file(path).map_err(WorkspaceReadError::Vfs)
 }

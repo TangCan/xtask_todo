@@ -1,0 +1,22 @@
+# β sidecar image (Linux). Build from repository root:
+#   podman build -f containers/devshell-vm/Containerfile -t devshell-vm:local .
+#
+# Run (see docs/devshell-vm-windows.md):
+#   podman run --rm -p 9847:9847 -v <HOST_WORKSPACE>:/workspace devshell-vm:local
+
+FROM docker.io/library/rust:1-bookworm AS builder
+WORKDIR /src
+COPY Cargo.toml Cargo.lock ./
+COPY crates/devshell-vm crates/devshell-vm
+COPY crates/todo crates/todo
+COPY xtask xtask
+RUN cargo build --release -p devshell-vm
+
+FROM docker.io/library/debian:bookworm-slim
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /src/target/release/devshell-vm /usr/local/bin/devshell-vm
+EXPOSE 9847
+ENTRYPOINT ["/usr/local/bin/devshell-vm"]
+CMD ["--serve-tcp", "0.0.0.0:9847"]

@@ -10,17 +10,20 @@ mod config;
 mod guest_fs_ops;
 #[cfg(unix)]
 mod lima_diagnostics;
-#[cfg(all(unix, feature = "beta-vm"))]
+#[cfg(all(windows, feature = "beta-vm"))]
+mod podman_sidecar;
+#[cfg(feature = "beta-vm")]
 mod session_beta;
 #[cfg(unix)]
 mod session_gamma;
 mod session_host;
 pub mod sync;
+mod workspace_host;
 
 pub use config::{
     workspace_mode_from_env, VmConfig, WorkspaceMode, ENV_DEVSHELL_VM, ENV_DEVSHELL_VM_BACKEND,
-    ENV_DEVSHELL_VM_EAGER, ENV_DEVSHELL_VM_LIMA_INSTANCE, ENV_DEVSHELL_VM_SOCKET,
-    ENV_DEVSHELL_VM_WORKSPACE_MODE,
+    ENV_DEVSHELL_VM_BETA_SESSION_STAGING, ENV_DEVSHELL_VM_EAGER, ENV_DEVSHELL_VM_LIMA_INSTANCE,
+    ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP, ENV_DEVSHELL_VM_SOCKET, ENV_DEVSHELL_VM_WORKSPACE_MODE,
 };
 #[cfg(unix)]
 pub use guest_fs_ops::LimaGuestFsOps;
@@ -32,14 +35,15 @@ pub use guest_fs_ops::{
 pub use lima_diagnostics::ENV_DEVSHELL_VM_LIMA_HINTS;
 #[cfg(unix)]
 pub use session_gamma::{
-    workspace_parent_for_instance, GammaSession, ENV_DEVSHELL_VM_AUTO_BUILD_ESSENTIAL,
-    ENV_DEVSHELL_VM_AUTO_BUILD_TODO_GUEST, ENV_DEVSHELL_VM_AUTO_TODO_PATH,
-    ENV_DEVSHELL_VM_GUEST_HOST_DIR, ENV_DEVSHELL_VM_GUEST_TODO_HINT,
-    ENV_DEVSHELL_VM_GUEST_WORKSPACE, ENV_DEVSHELL_VM_LIMACTL, ENV_DEVSHELL_VM_STOP_ON_EXIT,
-    ENV_DEVSHELL_VM_WORKSPACE_PARENT, ENV_DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT,
+    GammaSession, ENV_DEVSHELL_VM_AUTO_BUILD_ESSENTIAL, ENV_DEVSHELL_VM_AUTO_BUILD_TODO_GUEST,
+    ENV_DEVSHELL_VM_AUTO_TODO_PATH, ENV_DEVSHELL_VM_GUEST_HOST_DIR,
+    ENV_DEVSHELL_VM_GUEST_TODO_HINT, ENV_DEVSHELL_VM_GUEST_WORKSPACE, ENV_DEVSHELL_VM_LIMACTL,
+    ENV_DEVSHELL_VM_STOP_ON_EXIT, ENV_DEVSHELL_VM_WORKSPACE_PARENT,
+    ENV_DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT,
 };
 pub use session_host::HostSandboxSession;
 pub use sync::{pull_workspace_to_vfs, push_full, push_incremental, VmSyncError};
+pub use workspace_host::workspace_parent_for_instance;
 
 use std::process::ExitStatus;
 
@@ -106,8 +110,8 @@ pub enum SessionHolder {
     /// γ: Lima + host workspace sync (Unix only).
     #[cfg(unix)]
     Gamma(GammaSession),
-    /// β: JSON-lines over Unix socket to `devshell-vm` (Unix + `beta-vm` feature).
-    #[cfg(all(unix, feature = "beta-vm"))]
+    /// β: JSON-lines IPC to `devshell-vm` (Unix socket or TCP; `beta-vm` feature).
+    #[cfg(feature = "beta-vm")]
     Beta(session_beta::BetaSession),
 }
 
@@ -152,14 +156,14 @@ impl SessionHolder {
         if config.use_host_sandbox() {
             return Ok(Self::Host(HostSandboxSession::new()));
         }
-        #[cfg(all(unix, feature = "beta-vm"))]
+        #[cfg(feature = "beta-vm")]
         if config.backend.eq_ignore_ascii_case("beta") {
             return session_beta::BetaSession::new(config).map(SessionHolder::Beta);
         }
-        #[cfg(not(all(unix, feature = "beta-vm")))]
+        #[cfg(not(feature = "beta-vm"))]
         if config.backend.eq_ignore_ascii_case("beta") {
             return Err(VmError::BackendNotImplemented(
-                "DEVSHELL_VM_BACKEND=beta requires Unix and building xtask-todo-lib with `--features beta-vm`",
+                "DEVSHELL_VM_BACKEND=beta requires building xtask-todo-lib with `--features beta-vm`",
             ));
         }
         #[cfg(unix)]
@@ -188,7 +192,7 @@ impl SessionHolder {
             Self::Host(s) => VmExecutionSession::ensure_ready(s, vfs, vfs_cwd),
             #[cfg(unix)]
             Self::Gamma(s) => VmExecutionSession::ensure_ready(s, vfs, vfs_cwd),
-            #[cfg(all(unix, feature = "beta-vm"))]
+            #[cfg(feature = "beta-vm")]
             Self::Beta(s) => VmExecutionSession::ensure_ready(s, vfs, vfs_cwd),
         }
     }
@@ -204,7 +208,7 @@ impl SessionHolder {
             Self::Host(s) => VmExecutionSession::run_rust_tool(s, vfs, vfs_cwd, program, args),
             #[cfg(unix)]
             Self::Gamma(s) => VmExecutionSession::run_rust_tool(s, vfs, vfs_cwd, program, args),
-            #[cfg(all(unix, feature = "beta-vm"))]
+            #[cfg(feature = "beta-vm")]
             Self::Beta(s) => VmExecutionSession::run_rust_tool(s, vfs, vfs_cwd, program, args),
         }
     }
@@ -214,7 +218,7 @@ impl SessionHolder {
             Self::Host(s) => VmExecutionSession::shutdown(s, vfs, vfs_cwd),
             #[cfg(unix)]
             Self::Gamma(s) => VmExecutionSession::shutdown(s, vfs, vfs_cwd),
-            #[cfg(all(unix, feature = "beta-vm"))]
+            #[cfg(feature = "beta-vm")]
             Self::Beta(s) => VmExecutionSession::shutdown(s, vfs, vfs_cwd),
         }
     }
@@ -235,10 +239,10 @@ impl SessionHolder {
     ///
     /// Returns `None` for host sandbox, Mode S sync, or non–guest-primary sessions.
     /// Mount is owned so the returned trait object does not alias a borrow of the session.
-    #[cfg(unix)]
     #[must_use]
     pub fn guest_primary_fs_ops_mut(&mut self) -> Option<(&mut dyn GuestFsOps, String)> {
         match self {
+            #[cfg(unix)]
             Self::Gamma(g) if !g.syncs_vfs_with_host_workspace() => {
                 let mount = g.guest_mount().to_string();
                 Some((g as &mut dyn GuestFsOps, mount))
@@ -255,18 +259,12 @@ impl SessionHolder {
     /// `true` when **any** VM session runs in guest-primary mode (γ or β: no VFS↔host project-tree sync).
     #[must_use]
     pub fn is_guest_primary(&self) -> bool {
-        #[cfg(unix)]
-        {
-            match self {
-                Self::Gamma(g) if !g.syncs_vfs_with_host_workspace() => true,
-                #[cfg(feature = "beta-vm")]
-                Self::Beta(b) if !b.syncs_vfs_with_host_workspace() => true,
-                _ => false,
-            }
-        }
-        #[cfg(not(unix))]
-        {
-            false
+        match self {
+            #[cfg(unix)]
+            Self::Gamma(g) if !g.syncs_vfs_with_host_workspace() => true,
+            #[cfg(feature = "beta-vm")]
+            Self::Beta(b) if !b.syncs_vfs_with_host_workspace() => true,
+            _ => false,
         }
     }
 

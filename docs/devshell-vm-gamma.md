@@ -4,7 +4,7 @@
 
 在 **Linux / macOS** 上，可将 `rustup` / `cargo` 放到 **Lima** 虚拟机里执行，同时在内存 **VFS** 与主机工作区之间做 **增量 push / pull**（见规格 `docs/superpowers/specs/2026-03-11-devshell-microvm-session-design.md` §3）。
 
-β 阶段会改为侧车进程 + IPC；γ 依赖本机安装的 `limactl`。
+β 阶段为侧车进程 + IPC（Unix 上可用 **Unix socket** 或 **TCP**；**Windows** 上仅 **TCP**，见 **`docs/devshell-vm-windows.md`**）。γ 依赖本机安装的 `limactl`。
 
 ### 简单心智模型（与交互 REPL 统一）
 

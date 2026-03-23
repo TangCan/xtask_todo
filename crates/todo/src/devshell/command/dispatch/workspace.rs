@@ -1,6 +1,6 @@
 //! Workspace / guest-primary path mapping for builtins.
 
-#[cfg(unix)]
+#[cfg(any(unix, feature = "beta-vm"))]
 use crate::devshell::workspace::logical_path_to_guest;
 use crate::devshell::workspace::WorkspaceBackendError;
 
@@ -8,7 +8,7 @@ use crate::devshell::workspace::read_logical_file_bytes;
 use crate::devshell::workspace::WorkspaceReadError;
 
 use super::super::super::vfs::Vfs;
-#[cfg(unix)]
+#[cfg(any(unix, feature = "beta-vm"))]
 use super::super::super::vm::GuestFsOps;
 use super::super::super::vm::SessionHolder;
 use super::super::types::BuiltinError;
@@ -44,9 +44,9 @@ pub(super) fn workspace_write_file(
     path: &str,
     data: &[u8],
 ) -> Result<(), BuiltinError> {
-    #[cfg(not(unix))]
+    #[cfg(not(any(unix, feature = "beta-vm")))]
     let _ = vm_session;
-    #[cfg(unix)]
+    #[cfg(any(unix, feature = "beta-vm"))]
     if let Some((ops, mount)) = vm_session.guest_primary_fs_ops_mut() {
         let gp =
             logical_path_to_guest(&mount, vfs.cwd(), path).map_err(map_workspace_to_builtin)?;
@@ -62,9 +62,9 @@ pub(super) fn workspace_list_dir(
     vm_session: &mut SessionHolder,
     path: &str,
 ) -> Result<Vec<String>, BuiltinError> {
-    #[cfg(not(unix))]
+    #[cfg(not(any(unix, feature = "beta-vm")))]
     let _ = vm_session;
-    #[cfg(unix)]
+    #[cfg(any(unix, feature = "beta-vm"))]
     if let Some((ops, mount)) = vm_session.guest_primary_fs_ops_mut() {
         let gp =
             logical_path_to_guest(&mount, vfs.cwd(), path).map_err(map_workspace_to_builtin)?;
@@ -79,9 +79,9 @@ pub(super) fn workspace_mkdir(
     vm_session: &mut SessionHolder,
     path: &str,
 ) -> Result<(), BuiltinError> {
-    #[cfg(not(unix))]
+    #[cfg(not(any(unix, feature = "beta-vm")))]
     let _ = vm_session;
-    #[cfg(unix)]
+    #[cfg(any(unix, feature = "beta-vm"))]
     if let Some((ops, mount)) = vm_session.guest_primary_fs_ops_mut() {
         let gp =
             logical_path_to_guest(&mount, vfs.cwd(), path).map_err(map_workspace_to_builtin)?;
@@ -96,9 +96,9 @@ pub(super) fn workspace_touch(
     vm_session: &mut SessionHolder,
     path: &str,
 ) -> Result<(), BuiltinError> {
-    #[cfg(not(unix))]
+    #[cfg(not(any(unix, feature = "beta-vm")))]
     let _ = vm_session;
-    #[cfg(unix)]
+    #[cfg(any(unix, feature = "beta-vm"))]
     if let Some((ops, mount)) = vm_session.guest_primary_fs_ops_mut() {
         let gp =
             logical_path_to_guest(&mount, vfs.cwd(), path).map_err(map_workspace_to_builtin)?;

@@ -8,8 +8,10 @@ use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
 
+#[cfg(any(unix, feature = "beta-vm"))]
+use super::VmError;
 #[cfg(unix)]
-use super::{GammaSession, VmConfig, VmError};
+use super::{GammaSession, VmConfig};
 
 /// Errors from [`GuestFsOps`] (guest path / remote command).
 #[derive(Debug)]
@@ -24,8 +26,8 @@ pub enum GuestFsError {
     IsADirectory(String),
     /// Guest command failed (non-zero exit).
     GuestCommand { status: Option<i32>, stderr: String },
-    /// VM / `limactl` failure.
-    #[cfg(unix)]
+    /// VM / `limactl` (Unix γ) or β IPC failure.
+    #[cfg(any(unix, feature = "beta-vm"))]
     Vm(VmError),
     /// I/O or UTF-8 issues in the mock implementation.
     Internal(String),
@@ -39,7 +41,7 @@ impl fmt::Display for GuestFsError {
             Self::NotADirectory(s) => write!(f, "not a directory: {s}"),
             Self::IsADirectory(s) => write!(f, "is a directory: {s}"),
             Self::GuestCommand { stderr, .. } => write!(f, "guest command failed: {stderr}"),
-            #[cfg(unix)]
+            #[cfg(any(unix, feature = "beta-vm"))]
             Self::Vm(e) => write!(f, "{e}"),
             Self::Internal(s) => write!(f, "{s}"),
         }
@@ -49,14 +51,14 @@ impl fmt::Display for GuestFsError {
 impl std::error::Error for GuestFsError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            #[cfg(unix)]
+            #[cfg(any(unix, feature = "beta-vm"))]
             Self::Vm(e) => Some(e),
             _ => None,
         }
     }
 }
 
-#[cfg(unix)]
+#[cfg(any(unix, feature = "beta-vm"))]
 impl From<VmError> for GuestFsError {
     fn from(e: VmError) -> Self {
         Self::Vm(e)
@@ -274,7 +276,6 @@ impl GuestFsOps for MockGuestFsOps {
 // --- Lima (Unix): γ [`GammaSession`] + `limactl shell` -----------------------
 
 /// Validate `guest_path` is absolute and under `mount` (γ/β shared).
-#[cfg(unix)]
 pub(crate) fn validate_guest_path_under_mount(
     mount: &str,
     guest_path: &str,

@@ -22,10 +22,3 @@ pub use env::{
 };
 pub use helpers::workspace_parent_for_instance;
 pub use session::GammaSession;
-
-/// Guest working directory for VFS cwd (mount + last path segment).
-#[cfg_attr(not(feature = "beta-vm"), allow(dead_code))]
-#[must_use]
-pub(crate) fn guest_dir_for_vfs_cwd(guest_mount: &str, vfs_cwd: &str) -> String {
-    helpers::guest_dir_for_vfs_cwd(guest_mount, vfs_cwd)
-}

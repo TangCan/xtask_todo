@@ -25,6 +25,18 @@ pub const ENV_DEVSHELL_VM_LIMA_INSTANCE: &str = "DEVSHELL_VM_LIMA_INSTANCE";
 /// Unix socket path for β client ↔ `devshell-vm --serve-socket` (see IPC draft).
 pub const ENV_DEVSHELL_VM_SOCKET: &str = "DEVSHELL_VM_SOCKET";
 
+/// When set (non-empty), β **`session_start`** sends this string as **`staging_dir`** to the sidecar instead of
+/// `canonicalize(DEVSHELL_VM_WORKSPACE_PARENT / …)`. Use a **POSIX path** visible to the sidecar process
+/// (e.g. **`/workspace`** inside a Podman/WSL Linux container) while **`DEVSHELL_VM_WORKSPACE_PARENT`** on the
+/// host remains the real Windows path for push/pull. See **`docs/devshell-vm-windows.md`** (Podman).
+///
+/// On Windows, if **`cargo-devshell`** starts the Podman sidecar itself, it sets this to **`/workspace`** for
+/// that process (unless you already exported a value).
+pub const ENV_DEVSHELL_VM_BETA_SESSION_STAGING: &str = "DEVSHELL_VM_BETA_SESSION_STAGING";
+
+/// When set (any value), skip automatic Podman image build / `podman run` on Windows (tests or manual sidecar).
+pub const ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP: &str = "DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP";
+
 /// `DEVSHELL_VM_WORKSPACE_MODE` — **`sync`** (default) or **`guest`** (Mode P; guest filesystem as source of truth).
 ///
 /// **`guest`** is effective only when the VM is enabled and the backend is **`lima`** or **`beta`**; otherwise
@@ -81,11 +93,15 @@ fn falsy(s: &str) -> bool {
 }
 
 fn default_backend_for_release() -> String {
+    #[cfg(all(windows, feature = "beta-vm"))]
+    {
+        return "beta".to_string();
+    }
     #[cfg(unix)]
     {
         "lima".to_string()
     }
-    #[cfg(not(unix))]
+    #[cfg(not(any(unix, all(windows, feature = "beta-vm"))))]
     {
         "host".to_string()
     }
@@ -390,9 +406,10 @@ mod tests {
         );
     }
 
-    #[cfg(not(unix))]
+    /// Without `beta-vm` (e.g. `cargo test -p xtask-todo-lib --no-default-features`), `beta` backend is unavailable.
+    #[cfg(all(not(unix), not(feature = "beta-vm")))]
     #[test]
-    fn try_from_config_beta_errors_on_non_unix() {
+    fn try_from_config_beta_errors_without_beta_vm_feature() {
         use super::super::{SessionHolder, VmError};
 
         let mut c = VmConfig::disabled();

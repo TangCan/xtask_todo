@@ -32,7 +32,7 @@
 | 维度 | 说明 |
 |------|------|
 | **`xtask-todo-lib` / `cargo install`** | **Linux、macOS、Windows（MSVC）** 均可编译与安装；**`rustyline`** 为通用依赖，REPL 在 Windows 上可用。详见 **`crates/todo/README.md`**（含 Windows 安装说明）。 |
-| **VM / Lima / β / Mode P / Linux mount-namespace sandbox** | 以 **Unix（Linux/macOS）** 为主；**Windows** 上无 Lima 编排等价路径，devshell 以 **内存 VFS** 与 **宿主** `rustup`/`cargo` 为主（与 **`DEVSHELL_VM`** 等回退行为一致）。 |
+| **VM / Lima / β / Mode P / Linux mount-namespace sandbox** | **γ（Lima）** 以 **Unix** 为主。**Windows** 默认 **`DEVSHELL_VM_BACKEND=beta`**（库默认 **`beta-vm`**），首次连接可 **自动 Podman** 起侧车；也可用 **`DEVSHELL_VM=off`** / **`DEVSHELL_VM_BACKEND=host`** 仅用宿主沙箱。详见 **`docs/devshell-vm-windows.md`**。 |
 | **交叉编译自检** | 仓库 **pre-commit**（见 **§4**、**§7.2**）对 **`xtask-todo-lib`** 执行 **`x86_64-pc-windows-msvc` 目标 `cargo check`**，避免仅 Linux 开发时引入不可在 Windows 上编译的代码。 |
 
 ---

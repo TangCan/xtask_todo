@@ -6,9 +6,9 @@ use std::rc::Rc;
 use super::super::vfs::Vfs;
 use super::super::vm::SessionHolder;
 
-#[cfg(unix)]
+#[cfg(any(unix, feature = "beta-vm"))]
 use super::super::vm::GuestFsOps;
-#[cfg(unix)]
+#[cfg(any(unix, feature = "beta-vm"))]
 use crate::devshell::workspace::logical_path_to_guest;
 
 /// Built-in command names for tab completion (must match command.rs).
@@ -77,7 +77,7 @@ pub fn list_dir_names_for_completion(
     vm_session: &Rc<RefCell<SessionHolder>>,
     abs_parent: &str,
 ) -> Vec<String> {
-    #[cfg(unix)]
+    #[cfg(any(unix, feature = "beta-vm"))]
     {
         let cwd = vfs.borrow().cwd().to_string();
         let mut session = vm_session.borrow_mut();
@@ -89,7 +89,7 @@ pub fn list_dir_names_for_completion(
             }
         }
     }
-    #[cfg(not(unix))]
+    #[cfg(not(any(unix, feature = "beta-vm")))]
     {
         let _ = vm_session;
     }

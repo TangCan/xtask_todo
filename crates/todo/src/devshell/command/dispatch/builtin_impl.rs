@@ -63,9 +63,9 @@ pub(super) fn run_builtin_export_readonly(
     stdout: &mut dyn Write,
     path: &str,
 ) -> Result<(), BuiltinError> {
-    #[cfg(not(unix))]
+    #[cfg(not(any(unix, feature = "beta-vm")))]
     let _ = vm_session;
-    #[cfg(unix)]
+    #[cfg(any(unix, feature = "beta-vm"))]
     if vm_session.is_guest_primary() {
         let dest = crate::devshell::workspace::guest_export_readonly_to_vfs(vfs, vm_session, path)
             .map_err(|e| BuiltinError::GuestFsOpFailed(e.to_string()))?;
