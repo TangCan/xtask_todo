@@ -5,3 +5,4 @@ Cargo.lock
 .env.*
 /.cursor/skills/superpowers/
 /*.log
+/xtask/target
