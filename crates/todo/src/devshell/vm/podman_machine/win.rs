@@ -352,6 +352,12 @@ fn spawn_podman_run_stdio(
     workspace_root: &Path,
     image: &str,
 ) -> Result<std::process::Child, VmError> {
+    std::fs::create_dir_all(workspace_root).map_err(|e| {
+        VmError::Ipc(format!(
+            "create workspace dir {} for podman run: {e}",
+            workspace_root.display()
+        ))
+    })?;
     let ws = workspace_root.canonicalize().map_err(|e| {
         VmError::Ipc(format!(
             "canonicalize workspace {} for podman run: {e}",

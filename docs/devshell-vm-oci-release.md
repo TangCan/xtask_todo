@@ -82,11 +82,12 @@ OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
 uses: docker/login-action@v3
 with:
   registry: ghcr.io
-  username: ${{ github.actor }}
+  username: ${{ steps.ver.outputs.owner }}
   password: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 - 使用 **`GITHUB_TOKEN`**，无需额外配置 **Personal Access Token**（在默认仓库权限下即可 **`packages: write`**）。
+- **`username`** 使用 **`steps.ver.outputs.owner`**（与 **`ghcr.io/${owner}/...`** 一致），避免与 **`github.actor`** 不一致时推送/包归属与后续 **`PATCH`** 期望不符。
 
 ### 4.5 构建并推送
 
@@ -112,7 +113,7 @@ ghcr.io/tangcan/xtask_todo/devshell-vm:v0.1.22
 推送成功后，工作流会再执行一步 **`Set GHCR package visibility to public`**：通过 GitHub REST API 对包 **`xtask_todo/devshell-vm`** 执行 **`PATCH`**，将 **`visibility`** 设为 **`public`**。
 
 - **组织仓库**：`PATCH /orgs/{owner}/packages/container/xtask_todo%2Fdevshell-vm`
-- **个人账号仓库**：`PATCH /user/packages/container/xtask_todo%2Fdevshell-vm`（由 `gh api` 根据 `orgs/{owner}` 是否存在自动选择）
+- **个人账号仓库**：`PATCH /users/{owner}/packages/container/xtask_todo%2Fdevshell-vm`（**不要**用 `/user/packages/...`：`GITHUB_TOKEN` 对应的 API 用户不是仓库所有者，会对他人名下的包返回 **404**）
 
 这样 **`podman pull`** 无需登录即可使用（见 **§6**）。若该步骤失败（例如权限不足），请查看 Job 日志，并仍可按 **§6.3** 在网页上手动设为 Public。
 

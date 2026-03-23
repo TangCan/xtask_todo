@@ -79,7 +79,9 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          # Use repository owner (not github.actor) so pushes are tied to the account namespace
+          # that matches ghcr.io/${{ steps.ver.outputs.owner }}/... and GITHUB_TOKEN can admin the package.
+          username: ${{ steps.ver.outputs.owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push devshell-vm
@@ -103,6 +105,8 @@ jobs:
             echo "PATCH orgs/${OWNER}/packages/container/${PKG_NAME} -> visibility=public"
             gh api --method PATCH "orgs/${OWNER}/packages/container/${PKG_NAME}" -f visibility=public
           else
-            echo "PATCH user/packages/container/${PKG_NAME} -> visibility=public"
-            gh api --method PATCH "user/packages/container/${PKG_NAME}" -f visibility=public
+            # /user/packages/... targets the token's API user (not the repo owner), so it 404s for
+            # user-owned packages published under ${{ github.repository_owner }}. Patch the owner's package.
+            echo "PATCH users/${OWNER}/packages/container/${PKG_NAME} -> visibility=public"
+            gh api --method PATCH "users/${OWNER}/packages/container/${PKG_NAME}" -f visibility=public
           fi
