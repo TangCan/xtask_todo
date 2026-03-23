@@ -1,6 +1,6 @@
 [package]
 name = "xtask-todo-lib"
-version = "0.1.21"
+version = "0.1.22"
 edition = "2021"
 description = "Todo workspace library and cargo devshell subcommand"
 readme = "README.md"
