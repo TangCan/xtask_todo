@@ -28,9 +28,15 @@
 
 - **`DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP=1`**：不执行 build/run；请自行保证 **`DEVSHELL_VM_SOCKET`** 可达，必要时设置 **`DEVSHELL_VM_BETA_SESSION_STAGING`**。
 
-### `known_hosts` 被保护或损坏时
+### `known_hosts` 被保护、锁定或内容损坏时
 
-自动 Podman 启动 **`podman`** 子进程时，会设置临时 **`HOME`**（含可写的空 **`%HOME%\.ssh\known_hosts`**），避免 Podman 内嵌 SSH 去读 **`%USERPROFILE%\.ssh\known_hosts`**。若需恢复默认行为（仍读用户目录下的 `known_hosts`）：**`set DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME=1`**。
+Podman 在 Windows 上走内嵌 SSH 时，**Go 的 `UserHomeDir()` 读的是 `%USERPROFILE%`，不是 `HOME`**。仅改 `HOME` 仍会访问 **`%USERPROFILE%\.ssh\known_hosts`**。
+
+**默认行为（绕开该文件，等价于空 `known_hosts`）：** `cargo-devshell` 在拉起 **`podman`** 时会把 **`USERPROFILE` 与 `HOME`** 指到临时目录 **`%TEMP%\cargo-devshell-ssh-home`**，并在其中放置 **可写的空** `.ssh\known_hosts`。若你本机已有 Podman Machine，会尽量把 **`%USERPROFILE%\.local\share\containers\podman`** **符号链接**到该临时配置下，以免找不到已有机器（需 **Windows 开发者模式** 或具备创建符号链接的权限；失败时 stderr 会提示）。
+
+**恢复使用真实用户目录下的 `known_hosts`：** **`set DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME=1`**（此时若 `known_hosts` 仍无效，需自行修复或解锁该文件）。
+
+**在 CMD 里手动运行 `podman`** 时不会自动套用上述隔离；可先在同一终端执行与 `scripts/windows/devshell-vm-podman.ps1` 相同的 **`USERPROFILE` 临时目录**逻辑，或修复系统上的 `known_hosts`。
 
 ### 手动脚本（可选）
 

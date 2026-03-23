@@ -40,10 +40,49 @@ Do one of:
      and ensure DEVSHELL_VM_SOCKET=tcp:127.0.0.1:9847 reaches devshell-vm; or
   D) Host-only:  set DEVSHELL_VM_BACKEND=host";
 
-/// Podman’s Go/SSH stack resolves `~/.ssh/known_hosts` from the process “home”. On Windows, **`HOME`**
-/// overrides **`USERPROFILE`** for that purpose. We set **`HOME`** to a temp dir with a writable empty
-/// **`known_hosts`**, so a locked/invalid **`%USERPROFILE%\.ssh\known_hosts`** is not read. Podman Machine
-/// keys under **`%USERPROFILE%\.local\share\containers\podman`** are unchanged (absolute paths).
+/// Podman’s Go/SSH stack resolves `~/.ssh/known_hosts` via **`os.UserHomeDir()`**.
+/// - On **Unix**, that is typically **`$HOME`**.
+/// - On **Windows**, **`UserHomeDir()` uses `%USERPROFILE%` first**, not `HOME`. So we must set
+///   **`USERPROFILE`** (and **`HOME`** for POSIX-style tools) to a stable temp “profile” directory with a
+///   **writable empty** `.ssh/known_hosts`, so a **locked, protected, or invalid**
+///   **`%USERPROFILE%\.ssh\known_hosts`** is never read — effectively “default empty known_hosts”.
+///
+/// Podman Machine stores state under **`%USERPROFILE%\.local\share\containers\podman`**. When we point
+/// `USERPROFILE` at the temp dir, we **symlink** that subtree from the **real** profile when it exists,
+/// so existing machines keep working.
+#[cfg(windows)]
+fn link_podman_machine_into_ssh_home(ssh_home: &Path) -> std::io::Result<()> {
+    let real_profile = match std::env::var("USERPROFILE") {
+        Ok(s) if !s.trim().is_empty() => PathBuf::from(s.trim()),
+        _ => return Ok(()),
+    };
+    let real_podman = real_profile
+        .join(".local")
+        .join("share")
+        .join("containers")
+        .join("podman");
+    if !real_podman.is_dir() {
+        return Ok(());
+    }
+    let link = ssh_home
+        .join(".local")
+        .join("share")
+        .join("containers")
+        .join("podman");
+    if link.exists() {
+        return Ok(());
+    }
+    if let Some(parent) = link.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::os::windows::fs::symlink_dir(&real_podman, &link)
+}
+
+#[cfg(not(windows))]
+fn link_podman_machine_into_ssh_home(_ssh_home: &Path) -> std::io::Result<()> {
+    Ok(())
+}
+
 fn ssh_home_for_podman() -> std::io::Result<PathBuf> {
     let home = std::env::temp_dir().join("cargo-devshell-ssh-home");
     let ssh = home.join(".ssh");
@@ -52,7 +91,31 @@ fn ssh_home_for_podman() -> std::io::Result<PathBuf> {
     if !kh.exists() {
         std::fs::write(&kh, "")?;
     }
+    link_podman_machine_into_ssh_home(&home).unwrap_or_else(|e| {
+        eprintln!(
+            "dev_shell: could not symlink %USERPROFILE%\\.local\\share\\containers\\podman into isolated profile (SSH workaround): {e}\n\
+             Podman may not see an existing machine until you enable Windows Developer Mode (symlinks) or run elevated once.\n\
+             Or set {}=1 to use your real profile (and fix or unlock .ssh\\known_hosts).",
+            ENV_DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME
+        );
+    });
     Ok(home)
+}
+
+#[cfg(windows)]
+fn apply_windows_podman_profile_env(cmd: &mut Command, home: &Path) {
+    cmd.env("USERPROFILE", home);
+    cmd.env("HOME", home);
+    // Some Windows APIs / legacy code use HOMEDRIVE + HOMEPATH when USERPROFILE is odd.
+    if let Some(s) = home.to_str() {
+        let b = s.as_bytes();
+        if b.len() >= 2 && b[1] == b':' {
+            if let (Some(drive), Some(rest)) = (s.get(..2), s.get(2..)) {
+                cmd.env("HOMEDRIVE", drive);
+                cmd.env("HOMEPATH", rest);
+            }
+        }
+    }
 }
 
 fn apply_podman_ssh_home_env(cmd: &mut Command) {
@@ -61,7 +124,10 @@ fn apply_podman_ssh_home_env(cmd: &mut Command) {
     }
     match ssh_home_for_podman() {
         Ok(home) => {
-            cmd.env("HOME", home);
+            #[cfg(windows)]
+            apply_windows_podman_profile_env(cmd, &home);
+            #[cfg(not(windows))]
+            cmd.env("HOME", &home);
         }
         Err(e) => {
             eprintln!("dev_shell: could not create temp HOME for podman (SSH known_hosts workaround): {e}");
