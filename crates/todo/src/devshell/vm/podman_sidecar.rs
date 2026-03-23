@@ -3,13 +3,13 @@
 #![allow(clippy::pedantic, clippy::nursery)]
 
 use std::net::{SocketAddr, TcpStream};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
 use super::config::{
     devshell_repo_root_with_containerfile, ENV_DEVSHELL_VM_BETA_SESSION_STAGING,
-    ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP,
+    ENV_DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME, ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP,
 };
 use super::VmError;
 
@@ -40,9 +40,45 @@ Do one of:
      and ensure DEVSHELL_VM_SOCKET=tcp:127.0.0.1:9847 reaches devshell-vm; or
   D) Host-only:  set DEVSHELL_VM_BACKEND=host";
 
-fn command_succeeds(cmd: &str, args: &[&str]) -> bool {
-    Command::new(cmd)
-        .args(args)
+/// Podman’s Go/SSH stack resolves `~/.ssh/known_hosts` from the process “home”. On Windows, **`HOME`**
+/// overrides **`USERPROFILE`** for that purpose. We set **`HOME`** to a temp dir with a writable empty
+/// **`known_hosts`**, so a locked/invalid **`%USERPROFILE%\.ssh\known_hosts`** is not read. Podman Machine
+/// keys under **`%USERPROFILE%\.local\share\containers\podman`** are unchanged (absolute paths).
+fn ssh_home_for_podman() -> std::io::Result<PathBuf> {
+    let home = std::env::temp_dir().join("cargo-devshell-ssh-home");
+    let ssh = home.join(".ssh");
+    std::fs::create_dir_all(&ssh)?;
+    let kh = ssh.join("known_hosts");
+    if !kh.exists() {
+        std::fs::write(&kh, "")?;
+    }
+    Ok(home)
+}
+
+fn apply_podman_ssh_home_env(cmd: &mut Command) {
+    if std::env::var(ENV_DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME).is_ok() {
+        return;
+    }
+    match ssh_home_for_podman() {
+        Ok(home) => {
+            cmd.env("HOME", home);
+        }
+        Err(e) => {
+            eprintln!("dev_shell: could not create temp HOME for podman (SSH known_hosts workaround): {e}");
+        }
+    }
+}
+
+/// `podman` subprocess with optional Windows `HOME` workaround for SSH `known_hosts`.
+fn podman_command() -> Command {
+    let mut c = Command::new("podman");
+    apply_podman_ssh_home_env(&mut c);
+    c
+}
+
+fn podman_version_succeeds() -> bool {
+    podman_command()
+        .args(["--version"])
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
@@ -67,7 +103,12 @@ fn wait_for_sidecar(timeout: Duration) -> bool {
 }
 
 fn try_install_podman_via_winget() {
-    if !command_succeeds("winget", &["--version"]) {
+    if !Command::new("winget")
+        .args(["--version"])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+    {
         eprintln!("dev_shell: winget not found — install Podman manually from https://podman.io/ or use Chocolatey/choco install podman.");
         return;
     }
@@ -95,7 +136,7 @@ fn try_install_podman_via_winget() {
 
 /// Podman on Windows often needs a running machine before `podman run` works.
 fn try_podman_engine_ready() {
-    if Command::new("podman")
+    if podman_command()
         .args(["info"])
         .output()
         .map(|o| o.status.success())
@@ -104,16 +145,20 @@ fn try_podman_engine_ready() {
         return;
     }
     eprintln!("dev_shell: podman info failed — trying: podman machine start");
-    let _ = Command::new("podman").args(["machine", "start"]).status();
+    let _ = podman_command().args(["machine", "start"]).status();
     std::thread::sleep(Duration::from_secs(2));
 }
 
 fn podman_image_exists(image: &str) -> bool {
-    command_succeeds("podman", &["image", "exists", image])
+    podman_command()
+        .args(["image", "exists", image])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
 
 fn podman_build(repo_root: &Path, image: &str) -> Result<(), VmError> {
-    let st = Command::new("podman")
+    let st = podman_command()
         .args([
             "build",
             "-f",
@@ -136,9 +181,7 @@ fn podman_build(repo_root: &Path, image: &str) -> Result<(), VmError> {
 }
 
 fn podman_rm_force() {
-    let _ = Command::new("podman")
-        .args(["rm", "-f", CONTAINER_NAME])
-        .output();
+    let _ = podman_command().args(["rm", "-f", CONTAINER_NAME]).output();
 }
 
 /// Ensure `127.0.0.1:9847` accepts TCP: if nothing listens, try Podman build + run.
@@ -150,10 +193,10 @@ pub fn ensure(workspace_parent: &Path) -> Result<(), VmError> {
         return Ok(());
     }
 
-    if !command_succeeds("podman", &["--version"]) {
+    if !podman_version_succeeds() {
         try_install_podman_via_winget();
     }
-    if !command_succeeds("podman", &["--version"]) {
+    if !podman_version_succeeds() {
         return Err(VmError::Ipc(MSG_PODMAN_INSTALL.to_string()));
     }
 
@@ -176,7 +219,7 @@ pub fn ensure(workspace_parent: &Path) -> Result<(), VmError> {
 
     let ws = workspace_parent.as_os_str().to_string_lossy();
     let vol = format!("{ws}:/workspace");
-    let st = Command::new("podman")
+    let st = podman_command()
         .args([
             "run",
             "-d",

@@ -26,6 +26,26 @@ use ipc::{connect_ipc, exit_status_from_code, parse_devshell_vm_socket, IpcStrea
 
 const ENV_GUEST_WORKSPACE: &str = "DEVSHELL_VM_GUEST_WORKSPACE";
 
+fn read_one_json_line(reader: &mut impl BufRead) -> Result<serde_json::Value, VmError> {
+    let mut out = String::new();
+    let n = reader
+        .read_line(&mut out)
+        .map_err(|e| VmError::Ipc(e.to_string()))?;
+    if n == 0 || out.trim().is_empty() {
+        return Err(VmError::Ipc(
+            "beta sidecar sent no JSON line (connection closed or empty response). \
+             Check 127.0.0.1:9847 is devshell-vm, podman logs, or set DEVSHELL_VM_BACKEND=host."
+                .into(),
+        ));
+    }
+    serde_json::from_str(out.trim()).map_err(|e| {
+        VmError::Ipc(format!(
+            "beta sidecar response is not JSON ({e}); first line prefix: {:?}",
+            out.chars().take(80).collect::<String>()
+        ))
+    })
+}
+
 /// IPC client session (sidecar must be started separately).
 pub struct BetaSession {
     spec: SocketSpec,
@@ -127,12 +147,7 @@ impl BetaSession {
                 .try_clone()
                 .map_err(|e| VmError::Ipc(format!("stream clone: {e}")))?,
         );
-        let mut out = String::new();
-        reader
-            .read_line(&mut out)
-            .map_err(|e| VmError::Ipc(e.to_string()))?;
-        let v: serde_json::Value =
-            serde_json::from_str(out.trim()).map_err(|e| VmError::Ipc(e.to_string()))?;
+        let v = read_one_json_line(&mut reader)?;
         if v.get("op").and_then(|x| x.as_str()) == Some("error") {
             let msg = v
                 .get("message")
@@ -267,12 +282,7 @@ impl VmExecutionSession for BetaSession {
                 .try_clone()
                 .map_err(|e| VmError::Ipc(format!("stream clone: {e}")))?,
         );
-        let mut out = String::new();
-        reader
-            .read_line(&mut out)
-            .map_err(|e| VmError::Ipc(e.to_string()))?;
-        let v: serde_json::Value =
-            serde_json::from_str(out.trim()).map_err(|e| VmError::Ipc(e.to_string()))?;
+        let v = read_one_json_line(&mut reader)?;
         if v.get("op").and_then(|x| x.as_str()) != Some("handshake_ok") {
             return Err(VmError::Ipc(format!("handshake: unexpected {v}")));
         }

@@ -28,6 +28,10 @@
 
 - **`DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP=1`**：不执行 build/run；请自行保证 **`DEVSHELL_VM_SOCKET`** 可达，必要时设置 **`DEVSHELL_VM_BETA_SESSION_STAGING`**。
 
+### `known_hosts` 被保护或损坏时
+
+自动 Podman 启动 **`podman`** 子进程时，会设置临时 **`HOME`**（含可写的空 **`%HOME%\.ssh\known_hosts`**），避免 Podman 内嵌 SSH 去读 **`%USERPROFILE%\.ssh\known_hosts`**。若需恢复默认行为（仍读用户目录下的 `known_hosts`）：**`set DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME=1`**。
+
 ### 手动脚本（可选）
 
 仍可使用 **`scripts/windows/devshell-vm-podman.ps1`** 仅构建并前台运行容器；详见 **`containers/devshell-vm/README.md`**。

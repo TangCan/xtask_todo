@@ -38,6 +38,11 @@ pub const ENV_DEVSHELL_VM_BETA_SESSION_STAGING: &str = "DEVSHELL_VM_BETA_SESSION
 /// When set (any value), skip automatic Podman image build / `podman run` on Windows (tests or manual sidecar).
 pub const ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP: &str = "DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP";
 
+/// When set (any value), do **not** set a temporary **`HOME`** for `podman` subprocesses (Windows).
+/// By default we set **`HOME`** to a writable temp dir with an empty **`%HOME%\.ssh\known_hosts`** so Podman’s
+/// embedded SSH stack does not read a locked or invalid **`%USERPROFILE%\.ssh\known_hosts`**.
+pub const ENV_DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME: &str = "DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME";
+
 /// `DEVSHELL_VM_WORKSPACE_MODE` — **`sync`** (default) or **`guest`** (Mode P; guest filesystem as source of truth).
 ///
 /// **`guest`** is effective only when the VM is enabled and the backend is **`lima`** or **`beta`**; otherwise
