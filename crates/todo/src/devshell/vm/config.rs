@@ -46,7 +46,7 @@ pub const ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP: &str = "DEVSHELL_VM_SKIP_PODMAN
 /// **Unset** (including **`cfg(test)`**): [`WorkspaceMode::Sync`].
 pub const ENV_DEVSHELL_VM_WORKSPACE_MODE: &str = "DEVSHELL_VM_WORKSPACE_MODE";
 
-/// How the devshell workspace is backed: memory VFS + push/pull (**[`Sync`]**) vs guest-primary (**[`Guest`]**, planned).
+/// How the devshell workspace is backed: memory VFS + push/pull (**[`WorkspaceMode::Sync`]**) vs guest-primary (**[`WorkspaceMode::Guest`]**, planned).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkspaceMode {
     /// Mode S: in-memory `Vfs` authority; `cargo`/`rustup` sync with guest when using γ.

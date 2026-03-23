@@ -235,7 +235,7 @@ impl SessionHolder {
         }
     }
 
-    /// γ **or** β guest-primary: [`GuestFsOps`] + guest mount for [`logical_path_to_guest`].
+    /// γ **or** β guest-primary: [`GuestFsOps`] + guest mount for [`crate::devshell::workspace::logical_path_to_guest`].
     ///
     /// Returns `None` for host sandbox, Mode S sync, or non–guest-primary sessions.
     /// Mount is owned so the returned trait object does not alias a borrow of the session.
@@ -332,7 +332,7 @@ pub fn try_session_rc(stderr: &mut dyn Write) -> Result<Rc<RefCell<SessionHolder
 }
 
 /// Like [`try_session_rc`], but on failure uses [`SessionHolder::Host`] so the REPL can run against
-/// [`session_gamma::workspace_parent_for_instance`] (same tree as the Lima mount).
+/// [`workspace_parent_for_instance`] (same tree as the Lima mount).
 pub fn try_session_rc_or_host(stderr: &mut dyn Write) -> Rc<RefCell<SessionHolder>> {
     match try_session_rc(stderr) {
         Ok(s) => s,

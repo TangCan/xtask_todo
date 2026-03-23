@@ -6,7 +6,7 @@ use std::process::Command;
 
 use crate::clippy::status_to_result;
 
-/// Runs the same checks as `.githooks/pre-commit` (fmt, clippy, .rs line limit, test,
+/// Runs the same checks as `.githooks/pre-commit` (fmt, clippy, rustdoc, .rs line limit, test,
 /// `xtask-todo-lib` Windows MSVC cross-compile) without committing.
 fn run_pre_commit_checks() -> Result<(), Box<dyn std::error::Error>> {
     let root = Command::new("git")
@@ -49,7 +49,7 @@ pub enum GitSub {
 
 #[derive(FromArgs, Clone)]
 #[argh(subcommand, name = "pre-commit")]
-/// Run the same checks as the pre-commit hook (fmt, clippy, .rs line limit, test,
+/// Run the same checks as the pre-commit hook (fmt, clippy, rustdoc, .rs line limit, test,
 /// `cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`) without committing
 pub struct GitPreCommitArgs {}
 

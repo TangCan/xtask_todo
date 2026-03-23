@@ -127,7 +127,7 @@
 | NF-3 | 主版本 CLI 稳定性                               | CHANGELOG / 评审 | 破坏性变更有说明   |     |
 | NF-4 | `--help` 与 README 一致                      | 文档             | 同步         |     |
 | NF-5 | **`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`** 通过（与 **requirements §7.2**、pre-commit 一致） | 安装 **`rustup target`** 后执行；或跑 **`cargo xtask git pre-commit`** | 成功 **0**     |     |
-| NF-6 | **`.githooks/pre-commit`** 含 fmt、行数、clippy、test、**MSVC 交叉 check** | 读脚本或执行 **pre-commit** | 与 **requirements §4** 表一致   |     |
+| NF-6 | **`.githooks/pre-commit`** 含 fmt、行数、clippy、**`cargo doc --no-deps`**（与 CI 一致）、test、**MSVC 交叉 check** | 读脚本或执行 **pre-commit** | 与 **requirements §4** 表一致   |     |
 
 
 ---
@@ -173,7 +173,7 @@ cargo xtask acceptance
 |------|----------|
 | 读根 **`Cargo.toml`** 是否含 **`crates/todo`**、**`xtask`** | **NF-1** |
 | 读 **`.cargo/config.toml`** 是否含 **`cargo xtask`** 别名 | **NF-2** |
-| 读 **`.githooks/pre-commit`** 是否含 **MSVC** 交叉 **`cargo check`** | **NF-6** |
+| 读 **`.githooks/pre-commit`** 是否含 **`cargo doc --no-deps`**、**MSVC** 交叉 **`cargo check`** 等 | **NF-6** |
 | **`cargo test -p xtask-todo-lib`**、**`-p xtask`**、**`-p devshell-vm`**（**`--test-threads=1`**） | **§2 Todo**、**§3**、**§4 Devshell**（以测试覆盖为准） |
 | **`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`**（若 **`rustup target`** 未安装则 **SKIP**） | **NF-5**、**D8** |
 

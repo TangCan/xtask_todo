@@ -250,7 +250,7 @@ impl GammaSession {
     }
 
     /// If host `cwd` has `target/release/todo` under [`Self::workspace_parent`], return guest path
-    /// to that `release` dir for `PATH` (see [`super::helpers::guest_todo_release_dir_for_cwd`]).
+    /// to that `release` dir for `PATH` (same logic as `guest_todo_release_dir_for_cwd` in session helpers).
     #[must_use]
     pub fn guest_todo_release_path_for_shell(&self) -> Option<String> {
         let cwd = std::env::current_dir().ok()?;

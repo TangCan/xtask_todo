@@ -1,7 +1,7 @@
 //! Push/pull between VFS and a persistent host workspace directory (session VM staging).
 //!
 //! Layout matches [`super::super::sandbox::export_vfs_to_temp_dir`]: `workspace_parent` holds the
-//! leaf directory named after the last segment of `vfs_path` (see [`super::super::sandbox::host_export_root`]).
+//! leaf directory named after the last segment of `vfs_path` (same leaf naming as the sandbox export helpers).
 
 #![allow(clippy::pedantic, clippy::nursery)]
 

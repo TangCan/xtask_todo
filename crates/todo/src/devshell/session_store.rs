@@ -3,7 +3,7 @@
 //! - **Workspace session (preferred):** [`ENV_DEVSHELL_WORKSPACE_ROOT`] — metadata at
 //!   **`$DEVSHELL_WORKSPACE_ROOT/.cargo-devshell/session.json`** (see `docs/requirements.md` §1.1).
 //!   On Unix, [`crate::devshell::vm::export_devshell_workspace_root_env`] sets this before REPL.
-//! - **Mode S:** legacy [`.dev_shell.bin`] via [`crate::devshell::serialization`] when applicable.
+//! - **Mode S:** legacy `.dev_shell.bin` via [`crate::devshell::serialization`] when applicable.
 //! - **Mode P (guest-primary):** no legacy bin on exit; JSON holds `logical_cwd` only.
 //! - **Fallback** (no `DEVSHELL_WORKSPACE_ROOT`): **`./.cargo-devshell/session.json`** under
 //!   [`std::env::current_dir`] when it succeeds (local dev / tests).

@@ -186,17 +186,20 @@ fn check_cargo_xtask_alias(root: &Path) -> AutomatedCheck {
 
 fn check_pre_commit_has_msvc(root: &Path) -> AutomatedCheck {
     let id = "NF-6";
-    let desc = "`.githooks/pre-commit` runs Windows MSVC cross-check for xtask-todo-lib";
+    let desc = "`.githooks/pre-commit` includes fmt, line limit, clippy, rustdoc, test, MSVC check";
     let path = root.join(".githooks/pre-commit");
     let cmd = format!("read {}", path.display());
     let status = match fs::read_to_string(&path) {
         Ok(text) => {
-            let ok = text.contains("x86_64-pc-windows-msvc") && text.contains("cargo check");
+            let ok = text.contains("x86_64-pc-windows-msvc")
+                && text.contains("cargo check")
+                && text.contains("cargo doc")
+                && text.contains("--no-deps");
             if ok {
                 CheckStatus::Pass
             } else {
                 CheckStatus::Fail(
-                    "expected pre-commit to contain x86_64-pc-windows-msvc and cargo check"
+                    "expected pre-commit to contain MSVC cargo check, cargo doc --no-deps, etc."
                         .to_string(),
                 )
             }
