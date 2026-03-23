@@ -75,6 +75,23 @@ pub fn serve_socket(path: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Same JSON-lines protocol as [`serve_socket`], over **stdin/stdout** (one client, line-delimited).
+/// Used with **`podman machine ssh`** on Windows so the host does not need a local TCP listener.
+pub fn serve_stdio() -> std::io::Result<()> {
+    let stdin = std::io::stdin();
+    let mut stdout = std::io::stdout();
+    let mut reader = BufReader::new(stdin.lock());
+    let mut line = String::new();
+    let mut state = ServerState::default();
+    while reader.read_line(&mut line)? > 0 {
+        let out = handle_line(line.trim(), &mut state);
+        writeln!(stdout, "{out}")?;
+        stdout.flush()?;
+        line.clear();
+    }
+    Ok(())
+}
+
 /// Same JSON-lines protocol as [`serve_socket`], over TCP (for Windows and portable testing).
 pub fn serve_tcp(bind_addr: &str) -> std::io::Result<()> {
     let listener = TcpListener::bind(bind_addr)?;

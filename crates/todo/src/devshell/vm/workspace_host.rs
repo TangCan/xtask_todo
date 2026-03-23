@@ -1,4 +1,4 @@
-//! Host workspace paths shared by γ (Lima) and β (sidecar), without pulling in `limactl` / Lima session.
+//! Host workspace paths shared by γ (Lima) and β (`devshell-vm` over socket / TCP / Windows stdio), without pulling in `limactl` / Lima session.
 //!
 //! Used on **all targets** when `beta-vm` is enabled (Windows β uses TCP); γ continues to use the same
 //! resolution via `session_gamma`.

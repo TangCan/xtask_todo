@@ -10,8 +10,8 @@ mod config;
 mod guest_fs_ops;
 #[cfg(unix)]
 mod lima_diagnostics;
-#[cfg(all(windows, feature = "beta-vm"))]
-mod podman_sidecar;
+#[cfg(feature = "beta-vm")]
+mod podman_machine;
 #[cfg(feature = "beta-vm")]
 mod session_beta;
 #[cfg(unix)]
@@ -23,8 +23,8 @@ mod workspace_host;
 pub use config::{
     workspace_mode_from_env, VmConfig, WorkspaceMode, ENV_DEVSHELL_VM, ENV_DEVSHELL_VM_BACKEND,
     ENV_DEVSHELL_VM_BETA_SESSION_STAGING, ENV_DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME,
-    ENV_DEVSHELL_VM_EAGER, ENV_DEVSHELL_VM_LIMA_INSTANCE, ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP,
-    ENV_DEVSHELL_VM_SOCKET, ENV_DEVSHELL_VM_WORKSPACE_MODE,
+    ENV_DEVSHELL_VM_EAGER, ENV_DEVSHELL_VM_LIMA_INSTANCE, ENV_DEVSHELL_VM_LINUX_BINARY,
+    ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP, ENV_DEVSHELL_VM_SOCKET, ENV_DEVSHELL_VM_WORKSPACE_MODE,
 };
 #[cfg(unix)]
 pub use guest_fs_ops::LimaGuestFsOps;

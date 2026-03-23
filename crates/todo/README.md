@@ -33,7 +33,7 @@ let items = list.list();
 
 ## Devshell VM on Windows
 
-The crate **defaults** to the **`beta-vm`** feature: on Windows, `cargo-devshell` uses the **beta** backend and tries **Podman** to start the `devshell-vm` sidecar automatically (see **`docs/devshell-vm-windows.md`**). To depend without it: `xtask-todo-lib = { version = "0.1", default-features = false }`.
+The crate **defaults** to the **`beta-vm`** feature: on Windows, `cargo-devshell` uses the **beta** backend and talks to **`devshell-vm --serve-stdio`** inside Podman Machine via **`podman machine ssh`** (JSON lines on stdin/stdout; see **`docs/devshell-vm-windows.md`**). To depend without it: `xtask-todo-lib = { version = "0.1", default-features = false }`.
 
 ## `cargo install` (Windows)
 

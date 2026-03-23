@@ -1,8 +1,11 @@
-//! Unix socket / TCP stream and `DEVSHELL_VM_SOCKET` parsing for β.
+//! Unix socket / TCP / **Windows stdio via `podman machine ssh`** and `DEVSHELL_VM_SOCKET` parsing for β.
+#![allow(dead_code)]
 
-use std::io::{Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
-use std::process::ExitStatus;
+use std::path::Path;
+use std::process::{Child, ChildStdin, ChildStdout, ExitStatus};
+use std::sync::{Arc, Mutex};
 
 #[cfg(unix)]
 use std::os::unix::net::UnixStream;
@@ -10,21 +13,93 @@ use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 
 use super::super::config::ENV_DEVSHELL_VM_SOCKET;
+#[cfg(windows)]
+use super::super::podman_machine;
 use super::super::VmError;
 
 /// How to reach the β sidecar.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum SocketSpec {
     #[cfg(unix)]
     Unix(PathBuf),
     /// `host:port`, e.g. `127.0.0.1:9847`
     Tcp(String),
+    /// JSON lines over **`podman machine ssh`** stdin/stdout (Windows; no host TCP).
+    #[cfg(windows)]
+    Stdio,
 }
 
 pub(super) enum IpcStream {
     #[cfg(unix)]
     Unix(UnixStream),
     Tcp(TcpStream),
+    #[cfg(windows)]
+    StdioPipe(StdioPipe),
+}
+
+/// JSON line protocol over **`podman machine ssh`** pipes (single mutex for stdin + stdout reader).
+pub(super) struct StdioPipe {
+    inner: Arc<Mutex<StdioPipeInner>>,
+}
+
+struct StdioPipeInner {
+    _child: Child,
+    stdin: ChildStdin,
+    reader: BufReader<ChildStdout>,
+}
+
+impl StdioPipe {
+    pub(super) fn new(child: Child, stdin: ChildStdin, stdout: ChildStdout) -> Self {
+        let reader = BufReader::new(stdout);
+        Self {
+            inner: Arc::new(Mutex::new(StdioPipeInner {
+                _child: child,
+                stdin,
+                reader,
+            })),
+        }
+    }
+
+    pub(super) fn read_json_line(&self) -> Result<serde_json::Value, VmError> {
+        let mut out = String::new();
+        let n = {
+            let mut g = self.inner.lock().map_err(|e| VmError::Ipc(e.to_string()))?;
+            g.reader
+                .read_line(&mut out)
+                .map_err(|e| VmError::Ipc(e.to_string()))?
+        };
+        if n == 0 || out.trim().is_empty() {
+            return Err(VmError::Ipc(
+                "beta sidecar (stdio) sent no JSON line (connection closed or empty response). \
+                 Check podman machine start, devshell-vm Linux binary, or set DEVSHELL_VM_BACKEND=host."
+                    .into(),
+            ));
+        }
+        serde_json::from_str(out.trim()).map_err(|e| {
+            VmError::Ipc(format!(
+                "beta sidecar response is not JSON ({e}); first line prefix: {:?}",
+                out.chars().take(80).collect::<String>()
+            ))
+        })
+    }
+}
+
+impl Write for StdioPipe {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let mut g = self
+            .inner
+            .lock()
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
+        g.stdin.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        let mut g = self
+            .inner
+            .lock()
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
+        g.stdin.flush()
+    }
 }
 
 impl IpcStream {
@@ -33,6 +108,10 @@ impl IpcStream {
             #[cfg(unix)]
             Self::Unix(u) => Ok(Self::Unix(u.try_clone()?)),
             Self::Tcp(t) => Ok(Self::Tcp(t.try_clone()?)),
+            #[cfg(windows)]
+            Self::StdioPipe(s) => Ok(Self::StdioPipe(StdioPipe {
+                inner: Arc::clone(&s.inner),
+            })),
         }
     }
 }
@@ -43,6 +122,14 @@ impl Read for IpcStream {
             #[cfg(unix)]
             Self::Unix(u) => u.read(buf),
             Self::Tcp(t) => t.read(buf),
+            #[cfg(windows)]
+            Self::StdioPipe(s) => {
+                let mut g = s
+                    .inner
+                    .lock()
+                    .map_err(|e| std::io::Error::other(e.to_string()))?;
+                g.reader.read(buf)
+            }
         }
     }
 }
@@ -53,6 +140,8 @@ impl Write for IpcStream {
             #[cfg(unix)]
             Self::Unix(u) => u.write(buf),
             Self::Tcp(t) => t.write(buf),
+            #[cfg(windows)]
+            Self::StdioPipe(s) => Write::write(s, buf),
         }
     }
 
@@ -61,6 +150,8 @@ impl Write for IpcStream {
             #[cfg(unix)]
             Self::Unix(u) => u.flush(),
             Self::Tcp(t) => t.flush(),
+            #[cfg(windows)]
+            Self::StdioPipe(s) => Write::flush(s),
         }
     }
 }
@@ -69,6 +160,10 @@ pub(super) fn parse_devshell_vm_socket(raw: &str) -> Result<SocketSpec, VmError>
     let t = raw.trim();
     if t.is_empty() {
         return Err(VmError::Ipc(format!("{ENV_DEVSHELL_VM_SOCKET} is empty")));
+    }
+    #[cfg(windows)]
+    if t.eq_ignore_ascii_case("stdio") {
+        return Ok(SocketSpec::Stdio);
     }
     if let Some(rest) = t.strip_prefix("tcp://") {
         let addr = rest.trim();
@@ -90,12 +185,14 @@ pub(super) fn parse_devshell_vm_socket(raw: &str) -> Result<SocketSpec, VmError>
     #[cfg(not(unix))]
     {
         Err(VmError::Ipc(
-            "DEVSHELL_VM_SOCKET on Windows must be tcp:HOST:PORT (e.g. tcp:127.0.0.1:9847); see docs/devshell-vm-windows.md".into(),
+            "DEVSHELL_VM_SOCKET on Windows must be stdio or tcp:HOST:PORT (e.g. tcp:127.0.0.1:9847); see docs/devshell-vm-windows.md".into(),
         ))
     }
 }
 
-pub(super) fn connect_ipc(spec: &SocketSpec) -> Result<IpcStream, VmError> {
+pub(super) fn connect_ipc(spec: &SocketSpec, workspace_root: &Path) -> Result<IpcStream, VmError> {
+    #[cfg(not(windows))]
+    let _ = workspace_root;
     match spec {
         #[cfg(unix)]
         SocketSpec::Unix(p) => UnixStream::connect(p).map(IpcStream::Unix).map_err(|e| {
@@ -107,9 +204,7 @@ pub(super) fn connect_ipc(spec: &SocketSpec) -> Result<IpcStream, VmError> {
         }),
         SocketSpec::Tcp(addr) => TcpStream::connect(addr).map(IpcStream::Tcp).map_err(|e| {
             let suffix = if cfg!(windows) {
-                "\nIf nothing is listening: install Podman (winget install -e --id Podman.Podman), \
-                 run podman machine start, or cd to xtask_todo repo for auto-start. \
-                 Host-only: set DEVSHELL_VM_BACKEND=host"
+                "\nIf nothing is listening: start devshell-vm --serve-tcp, or set DEVSHELL_VM_BACKEND=host"
             } else {
                 ""
             };
@@ -117,6 +212,17 @@ pub(super) fn connect_ipc(spec: &SocketSpec) -> Result<IpcStream, VmError> {
                 "connect tcp {addr}: {e}; start: devshell-vm --serve-tcp {addr}{suffix}"
             ))
         }),
+        #[cfg(windows)]
+        SocketSpec::Stdio => {
+            let mut child = podman_machine::spawn_devshell_vm_stdio(workspace_root)?;
+            let stdin = child.stdin.take().ok_or_else(|| {
+                VmError::Ipc("podman machine ssh: missing stdin pipe".to_string())
+            })?;
+            let stdout = child.stdout.take().ok_or_else(|| {
+                VmError::Ipc("podman machine ssh: missing stdout pipe".to_string())
+            })?;
+            Ok(IpcStream::StdioPipe(StdioPipe::new(child, stdin, stdout)))
+        }
     }
 }
 

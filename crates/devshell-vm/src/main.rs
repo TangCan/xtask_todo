@@ -41,8 +41,17 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        Some("--serve-stdio") => {
+            if let Err(e) = server::serve_stdio() {
+                eprintln!("devshell-vm: {e}");
+                std::process::exit(1);
+            }
+        }
         _ => {
             println!("devshell-vm {}", env!("CARGO_PKG_VERSION"));
+            eprintln!(
+                "β server (stdio): devshell-vm --serve-stdio   # e.g. via podman machine ssh"
+            );
             eprintln!("β server (TCP): devshell-vm --serve-tcp 127.0.0.1:9847");
             #[cfg(unix)]
             eprintln!("β server (Unix socket): devshell-vm --serve-socket /path/to.sock");

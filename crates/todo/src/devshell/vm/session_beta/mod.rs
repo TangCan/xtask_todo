@@ -1,9 +1,9 @@
-//! β client: JSON-lines over **Unix socket** (Unix) or **TCP** (all platforms, required on Windows) to
-//! `devshell-vm --serve-socket <path>` / `devshell-vm --serve-tcp <addr>`.
+//! β client: JSON-lines over **Unix socket** (Unix), **TCP**, or **Windows:** **`podman machine ssh`**
+//! stdio to `devshell-vm --serve-stdio` (default; see `docs/devshell-vm-windows.md`).
 //!
 //! Build: `cargo build -p xtask-todo-lib --features beta-vm`. Env: `DEVSHELL_VM_SOCKET`.
 //! - **Unix:** path to socket, or `tcp:127.0.0.1:9847` / `tcp://127.0.0.1:9847`
-//! - **Windows:** `tcp:127.0.0.1:9847` (see `docs/devshell-vm-windows.md`)
+//! - **Windows:** `stdio` (default) or `tcp:HOST:PORT`
 
 #![allow(clippy::pedantic, clippy::nursery)]
 
@@ -34,7 +34,8 @@ fn read_one_json_line(reader: &mut impl BufRead) -> Result<serde_json::Value, Vm
     if n == 0 || out.trim().is_empty() {
         return Err(VmError::Ipc(
             "beta sidecar sent no JSON line (connection closed or empty response). \
-             Check 127.0.0.1:9847 is devshell-vm, podman logs, or set DEVSHELL_VM_BACKEND=host."
+             On Windows (stdio): check Podman Machine, DEVSHELL_VM_LINUX_BINARY, or podman logs; \
+             for TCP: check the listener; or set DEVSHELL_VM_BACKEND=host."
                 .into(),
         ));
     }
@@ -90,7 +91,7 @@ impl BetaSession {
             _ => {
                 #[cfg(all(windows, feature = "beta-vm"))]
                 {
-                    "tcp:127.0.0.1:9847".to_string()
+                    "stdio".to_string()
                 }
                 #[cfg(not(all(windows, feature = "beta-vm")))]
                 {
@@ -106,7 +107,21 @@ impl BetaSession {
             .ok()
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| "/workspace".to_string());
+            .unwrap_or_else(|| {
+                #[cfg(all(windows, feature = "beta-vm"))]
+                {
+                    if let SocketSpec::Stdio = &spec {
+                        if let Ok(staging) = std::fs::canonicalize(&workspace_parent) {
+                            if let Some(m) =
+                                super::podman_machine::windows_host_path_to_vm_mnt(&staging)
+                            {
+                                return m;
+                            }
+                        }
+                    }
+                }
+                "/workspace".to_string()
+            });
 
         let sync_vfs_with_workspace =
             matches!(config.workspace_mode_effective(), WorkspaceMode::Sync);
@@ -128,26 +143,51 @@ impl BetaSession {
             #[cfg(all(windows, feature = "beta-vm"))]
             {
                 if std::env::var(super::config::ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP).is_err() {
-                    super::podman_sidecar::ensure(&self.workspace_parent)?;
+                    if let SocketSpec::Stdio = &self.spec {
+                        super::podman_machine::ensure(&self.workspace_parent)?;
+                    }
                 }
             }
-            let s = connect_ipc(&self.spec)?;
+            let s = connect_ipc(&self.spec, &self.workspace_parent)?;
             self.stream = Some(s);
         }
         Ok(self.stream.as_mut().expect("set above"))
     }
 
     fn exchange(&mut self, req: &serde_json::Value) -> Result<serde_json::Value, VmError> {
-        let stream = self.conn()?;
         let line = serde_json::to_string(req).map_err(|e| VmError::Ipc(e.to_string()))?;
-        writeln!(stream, "{line}").map_err(|e| VmError::Ipc(e.to_string()))?;
-        stream.flush().map_err(|e| VmError::Ipc(e.to_string()))?;
-        let mut reader = BufReader::new(
-            stream
-                .try_clone()
-                .map_err(|e| VmError::Ipc(format!("stream clone: {e}")))?,
-        );
-        let v = read_one_json_line(&mut reader)?;
+        self.conn()?;
+        let stream = self
+            .stream
+            .as_mut()
+            .ok_or_else(|| VmError::Ipc("beta: IPC stream missing".into()))?;
+        let v = match stream {
+            #[cfg(windows)]
+            IpcStream::StdioPipe(p) => {
+                writeln!(p, "{line}").map_err(|e| VmError::Ipc(e.to_string()))?;
+                p.flush().map_err(|e| VmError::Ipc(e.to_string()))?;
+                p.read_json_line()?
+            }
+            IpcStream::Tcp(t) => {
+                writeln!(t, "{line}").map_err(|e| VmError::Ipc(e.to_string()))?;
+                t.flush().map_err(|e| VmError::Ipc(e.to_string()))?;
+                let mut reader = BufReader::new(
+                    t.try_clone()
+                        .map_err(|e| VmError::Ipc(format!("stream clone: {e}")))?,
+                );
+                read_one_json_line(&mut reader)?
+            }
+            #[cfg(unix)]
+            IpcStream::Unix(u) => {
+                writeln!(u, "{line}").map_err(|e| VmError::Ipc(e.to_string()))?;
+                u.flush().map_err(|e| VmError::Ipc(e.to_string()))?;
+                let mut reader = BufReader::new(
+                    u.try_clone()
+                        .map_err(|e| VmError::Ipc(format!("stream clone: {e}")))?,
+                );
+                read_one_json_line(&mut reader)?
+            }
+        };
         if v.get("op").and_then(|x| x.as_str()) == Some("error") {
             let msg = v
                 .get("message")
@@ -164,6 +204,21 @@ impl BetaSession {
             let t = s.trim();
             if !t.is_empty() {
                 return Ok(t.to_string());
+            }
+        }
+        #[cfg(all(windows, feature = "beta-vm"))]
+        {
+            if let SocketSpec::Stdio = &self.spec {
+                let staging = std::fs::canonicalize(&self.workspace_parent)
+                    .map_err(|e| VmError::Ipc(format!("canonicalize staging: {e}")))?;
+                return super::podman_machine::windows_host_path_to_vm_mnt(&staging).ok_or_else(
+                    || {
+                        VmError::Ipc(
+                            "could not map workspace to Podman Machine /mnt/... path; set DEVSHELL_VM_BETA_SESSION_STAGING"
+                                .into(),
+                        )
+                    },
+                );
             }
         }
         let staging = std::fs::canonicalize(&self.workspace_parent)
@@ -267,22 +322,13 @@ impl VmExecutionSession for BetaSession {
         if self.handshake_ok {
             return Ok(());
         }
-        let stream = self.conn()?;
         let req = serde_json::json!({
             "op": "handshake",
             "version": 1u64,
             "client": "cargo-devshell",
             "client_version": env!("CARGO_PKG_VERSION"),
         });
-        let line = serde_json::to_string(&req).map_err(|e| VmError::Ipc(e.to_string()))?;
-        writeln!(stream, "{line}").map_err(|e| VmError::Ipc(e.to_string()))?;
-        stream.flush().map_err(|e| VmError::Ipc(e.to_string()))?;
-        let mut reader = BufReader::new(
-            stream
-                .try_clone()
-                .map_err(|e| VmError::Ipc(format!("stream clone: {e}")))?,
-        );
-        let v = read_one_json_line(&mut reader)?;
+        let v = self.exchange(&req)?;
         if v.get("op").and_then(|x| x.as_str()) != Some("handshake_ok") {
             return Err(VmError::Ipc(format!("handshake: unexpected {v}")));
         }

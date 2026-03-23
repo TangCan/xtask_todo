@@ -31,18 +31,24 @@ pub const ENV_DEVSHELL_VM_SOCKET: &str = "DEVSHELL_VM_SOCKET";
 /// (e.g. **`/workspace`** inside a Podman/WSL Linux container) while **`DEVSHELL_VM_WORKSPACE_PARENT`** on the
 /// host remains the real Windows path for push/pull. See **`docs/devshell-vm-windows.md`** (Podman).
 ///
-/// On Windows, if **`cargo-devshell`** starts the Podman sidecar itself, it sets this to **`/workspace`** for
-/// that process (unless you already exported a value).
+/// On Windows, **`stdio`** (default) maps the host workspace to **`/mnt/<drive>/…`** inside Podman Machine for
+/// `session_start` **`staging_dir`** unless you set this explicitly.
 pub const ENV_DEVSHELL_VM_BETA_SESSION_STAGING: &str = "DEVSHELL_VM_BETA_SESSION_STAGING";
 
-/// When set (any value), skip automatic Podman image build / `podman run` on Windows (tests or manual sidecar).
+/// When set (any value), skip **`podman machine ssh`** bootstrap on Windows: no Podman check / no requirement
+/// that the Linux `devshell-vm` binary exists (tests or fully manual β setup).
 pub const ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP: &str = "DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP";
+
+/// **Windows β (`podman machine ssh`):** optional full **Windows** path to the **Linux** `devshell-vm` binary
+/// (`x86_64-unknown-linux-gnu` / ELF). If unset, defaults to
+/// **`$workspace_root/target/x86_64-unknown-linux-gnu/release/devshell-vm`** (see `podman_machine.rs`).
+pub const ENV_DEVSHELL_VM_LINUX_BINARY: &str = "DEVSHELL_VM_LINUX_BINARY";
 
 /// When set (any value), do **not** isolate **`USERPROFILE` / `HOME`** for `podman` subprocesses (Windows).
 /// By default we point **`USERPROFILE`** (Go’s `UserHomeDir()` on Windows — not only `HOME`) at a writable
 /// temp “profile” with an **empty default** `.ssh/known_hosts`, so a **locked, protected, or invalid**
 /// **`%USERPROFILE%\.ssh\known_hosts`** is not read. An existing Podman Machine dir is **symlinked** in when
-/// possible (see `podman_sidecar.rs`).
+/// possible (see `podman_machine.rs`).
 pub const ENV_DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME: &str = "DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME";
 
 /// `DEVSHELL_VM_WORKSPACE_MODE` — **`sync`** (default) or **`guest`** (Mode P; guest filesystem as source of truth).
@@ -101,7 +107,8 @@ fn falsy(s: &str) -> bool {
 }
 
 /// Walk parents from [`std::env::current_dir`] looking for `containers/devshell-vm/Containerfile` (xtask_todo repo).
-#[cfg(all(windows, feature = "beta-vm"))]
+#[cfg_attr(not(windows), allow(dead_code))]
+#[cfg(feature = "beta-vm")]
 pub(crate) fn devshell_repo_root_with_containerfile() -> Option<std::path::PathBuf> {
     let mut dir = std::env::current_dir().ok()?;
     loop {

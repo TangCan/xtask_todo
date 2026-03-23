@@ -1,34 +1,49 @@
-# Devshell VM：Windows（β / Podman）
+# Devshell VM：Windows（β / Podman Machine）
 
-**γ（Lima）** 仅在 **Unix** 上可用。在 **Windows** 上，未设置 **`DEVSHELL_VM_BACKEND`** 时默认 **`beta`**（库默认 **`beta-vm`**）。首次需要连接侧车时会尽量 **自动检测 Podman**、尝试 **`winget install Podman.Podman`**、尝试 **`podman machine start`**，并在失败时把 **具体命令** 打到 stderr，便于你手动安装与排障。
+**γ（Lima）** 仅在 **Unix** 上可用。在 **Windows** 上，未设置 **`DEVSHELL_VM_BACKEND`** 时默认 **`beta`**（库默认 **`beta-vm`**）。
 
-1. 若 **`127.0.0.1:9847`** 已有进程监听 → 直接连接。  
-2. 否则若 **`podman --version`** 可用 → 必要时 **`podman machine start`**，再若能从当前目录向上找到 **`containers/devshell-vm/Containerfile`** → **构建镜像**（仅首次）并 **`podman run`**。  
-3. 成功启动容器后，进程内会设置 **`DEVSHELL_VM_BETA_SESSION_STAGING=/workspace`**（若你未事先设置）。  
-4. 若当前目录**不在** `xtask_todo` 克隆内（找不到 Containerfile）→ 不会自动 `podman run`，stderr 会提示：**cd 到仓库根**、或**手动 build/run**、或 **`DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP=1`**、或 **`DEVSHELL_VM_BACKEND=host`**。  
-5. 若 **`podman`** 仍不可用 → stderr 含 **`winget install -e --id Podman.Podman`**、**`podman version`**、文档链接与 **`DEVSHELL_VM_BACKEND=host`** 说明。
+β 的**推荐路径**是：**不在 Windows 宿主机上监听 TCP**。`cargo-devshell` 通过 **`podman machine ssh -T`** 在 Podman Machine（Linux）里执行 **`devshell-vm --serve-stdio`**，JSON 行协议走 **SSH 会话的 stdin/stdout**（与 TCP/Unix 套接字相同的一行一条 JSON）。
 
-**一般用法**：在 **`xtask_todo` 仓库根** 打开终端运行 **`cargo-devshell`**，自动侧车最省事。
+首次需要连接时会尽量 **自动检测 Podman**、尝试 **`winget install Podman.Podman`**、尝试 **`podman machine start`**，并确保存在 **Linux ELF** 的 `devshell-vm`（见下文），失败时把 **具体命令** 打到 stderr。
 
-**若通过 `cargo install` 使用且不在本仓库目录**：请按 stderr 提示操作，或 **`set DEVSHELL_VM_BACKEND=host`** 仅用宿主沙箱。
+### 1. 准备 Linux 版 `devshell-vm`
 
-### 默认与 Linux 对齐的语义
+在 **xtask_todo** 仓库根目录（或设置 **`DEVSHELL_VM_LINUX_BINARY`** 指向已构建好的文件）：
 
-| 变量 | Windows 默认（β + 自动 Podman） |
-|------|----------------------------------|
+```bat
+rustup target add x86_64-unknown-linux-gnu
+cargo build -p devshell-vm --release --target x86_64-unknown-linux-gnu
+```
+
+默认查找路径：`target/x86_64-unknown-linux-gnu/release/devshell-vm`（Windows 路径）。Podman Machine 内通过 **`/mnt/<盘符>/…`** 访问该文件。
+
+### 2. 默认环境变量（与 Linux 对齐的语义）
+
+| 变量 | Windows 默认（β + Podman Machine stdio） |
+|------|------------------------------------------|
 | **`DEVSHELL_VM_BACKEND`** | **`beta`**（未设置时） |
-| **`DEVSHELL_VM_SOCKET`** | **`tcp:127.0.0.1:9847`**（未设置时） |
-| **`DEVSHELL_VM_BETA_SESSION_STAGING`** | 由自动启动的容器设为 **`/workspace`**；若侧车已在本机监听且**不是**本工具拉起的容器，则仍用宿主 **`canonicalize` 路径** |
+| **`DEVSHELL_VM_SOCKET`** | **`stdio`**（未设置时） |
+| **`DEVSHELL_VM_BETA_SESSION_STAGING`** | 由工具根据 **`DEVSHELL_VM_WORKSPACE_PARENT`** 映射为 Podman Machine 里的 **`/mnt/…`** 路径（与 `session_start` 的 `staging_dir` 一致） |
 
-### 关闭 VM / 仅用宿主沙箱
+可选：**`DEVSHELL_VM_LINUX_BINARY`** — 显式指定 Linux `devshell-vm` 的 **Windows 路径**（覆盖默认 `target/.../release/devshell-vm`）。
 
-- **`DEVSHELL_VM=off`** 或 **`DEVSHELL_VM_BACKEND=host`**：不连侧车，使用宿主临时目录沙箱（与文档其它处一致）。
+### 3. 一般用法
 
-### 跳过自动 Podman（测试或自管侧车）
+在 **`xtask_todo` 仓库根** 打开终端：先 **`cargo build`** 出 Linux `devshell-vm`，再运行 **`cargo-devshell`**。无需手动 `podman run` 映射端口。
 
-- **`DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP=1`**：不执行 build/run；请自行保证 **`DEVSHELL_VM_SOCKET`** 可达，必要时设置 **`DEVSHELL_VM_BETA_SESSION_STAGING`**。
+### 4. 可选：TCP 侧车（非默认）
 
-### `known_hosts` 被保护、锁定或内容损坏时
+若 **`DEVSHELL_VM_SOCKET=tcp:127.0.0.1:9847`**（或 `tcp://…`），则仍按 **本机 TCP** 连接；需自行在可达地址上运行 **`devshell-vm --serve-tcp`**（例如容器或 WSL）。**默认流程已改为 stdio，不再依赖宿主机 9847。**
+
+### 5. 关闭 VM / 仅用宿主沙箱
+
+- **`DEVSHELL_VM=off`** 或 **`DEVSHELL_VM_BACKEND=host`**：不连 β，使用宿主临时目录沙箱。
+
+### 6. 跳过自动 Podman / 二进制检查（测试或自管）
+
+- **`DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP=1`**：不执行 Podman 与 Linux 二进制存在性检查；请自行保证 **`DEVSHELL_VM_SOCKET`** 可达，必要时设置 **`DEVSHELL_VM_BETA_SESSION_STAGING`**。
+
+### 7. `known_hosts` 被保护、锁定或内容损坏时
 
 Podman 在 Windows 上走内嵌 SSH 时，**Go 的 `UserHomeDir()` 读的是 `%USERPROFILE%`，不是 `HOME`**。仅改 `HOME` 仍会访问 **`%USERPROFILE%\.ssh\known_hosts`**。
 
@@ -38,16 +53,16 @@ Podman 在 Windows 上走内嵌 SSH 时，**Go 的 `UserHomeDir()` 读的是 `%U
 
 **在 CMD 里手动运行 `podman`** 时不会自动套用上述隔离；可先在同一终端执行与 `scripts/windows/devshell-vm-podman.ps1` 相同的 **`USERPROFILE` 临时目录**逻辑，或修复系统上的 `known_hosts`。
 
-### 手动脚本（可选）
+### 8. 辅助脚本（可选）
 
-仍可使用 **`scripts/windows/devshell-vm-podman.ps1`** 仅构建并前台运行容器；详见 **`containers/devshell-vm/README.md`**。
+**`scripts/windows/devshell-vm-podman.ps1`**：在仓库根 **构建 Linux `devshell-vm`**，并打印推荐环境变量；**不再**以前台 **`podman run -p 9847`** 作为默认流程（见 `containers/devshell-vm/README.md` 中的**可选**容器说明）。
 
-### 与 Unix β 的差异
+### 9. 与 Unix β 的差异
 
-| 项 | Unix | Windows |
-|----|------|---------|
-| 传输 | UDS **或** `tcp:…` | **`tcp:…`**（默认 `127.0.0.1:9847`） |
-| 侧车 | `limactl` / 自启 `devshell-vm` | **推荐自动 Podman**；或本机 **`devshell-vm --serve-tcp`** |
+| 项 | Unix | Windows（默认） |
+|----|------|-----------------|
+| 传输 | UDS **或** `tcp:…` | **`stdio`** → **`podman machine ssh`** → **`devshell-vm --serve-stdio`** |
+| 侧车 | `limactl` / 自启 `devshell-vm` | **Podman Machine** 内执行 Linux `devshell-vm` |
 
 协议与 JSON 行格式见 **`crates/devshell-vm`**、**`docs/devshell-vm-gamma.md`**。
 
