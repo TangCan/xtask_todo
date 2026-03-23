@@ -6,6 +6,7 @@ mod clippy;
 mod coverage;
 mod fmt;
 mod gh;
+mod ghcr;
 mod git;
 mod lima_todo;
 mod publish;
@@ -24,6 +25,7 @@ use clippy::ClippyArgs;
 use coverage::CoverageArgs;
 use fmt::FmtArgs;
 use gh::GhArgs;
+use ghcr::GhcrArgs;
 use git::GitArgs;
 use lima_todo::LimaTodoArgs;
 use publish::PublishArgs;
@@ -60,6 +62,7 @@ pub fn run_with(cmd: XtaskCmd) -> Result<(), RunFailure> {
         XtaskSub::Coverage(args) => coverage::cmd_coverage(args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Fmt(args) => fmt::cmd_fmt(args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Gh(args) => gh::cmd_gh(&args).map_err(|e| to_run_failure(&*e)),
+        XtaskSub::Ghcr(args) => ghcr::cmd_ghcr(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Git(args) => git::cmd_git(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Publish(args) => publish::cmd_publish(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::LimaTodo(args) => lima_todo::cmd_lima_todo(args),
@@ -109,6 +112,7 @@ pub enum XtaskSub {
     Coverage(CoverageArgs),
     Fmt(FmtArgs),
     Gh(GhArgs),
+    Ghcr(GhcrArgs),
     Git(GitArgs),
     Publish(PublishArgs),
     LimaTodo(LimaTodoArgs),

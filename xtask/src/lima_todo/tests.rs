@@ -1,5 +1,7 @@
+use super::cmd::cmd_lima_todo;
 use super::helpers::host_release_str_for_target_dir;
 use super::yaml::{merge_todo_into_lima_yaml, render_fragment};
+use super::LimaTodoArgs;
 
 #[test]
 fn render_fragment_contains_location_and_mount() {
@@ -78,4 +80,25 @@ env:
         out.contains("/abs/release"),
         "serialized yaml should still contain release mount path: {out}"
     );
+}
+
+/// Covers `cmd_lima_todo` `--print-only` + `--no-build` (no `lima.yaml` merge, no `limactl`).
+#[test]
+fn cmd_lima_todo_print_only_no_build_smoke() {
+    let workspace = std::env::current_dir().expect("cwd");
+    let release = workspace.join("target").join("release");
+    std::fs::create_dir_all(&release).unwrap();
+    std::fs::write(release.join("todo"), b"# fake todo bin for test\n").unwrap();
+
+    let args = LimaTodoArgs {
+        print_only: true,
+        no_build: true,
+        write: None,
+        guest_mount: "/host-todo-bin".to_string(),
+        instance: None,
+        lima_yaml: None,
+        no_restart: false,
+    };
+    let r = cmd_lima_todo(args);
+    assert!(r.is_ok(), "{r:?}");
 }

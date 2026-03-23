@@ -39,10 +39,29 @@ pub const ENV_DEVSHELL_VM_BETA_SESSION_STAGING: &str = "DEVSHELL_VM_BETA_SESSION
 /// that the Linux `devshell-vm` binary exists (tests or fully manual β setup).
 pub const ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP: &str = "DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP";
 
-/// **Windows β (`podman machine ssh`):** optional full **Windows** path to the **Linux** `devshell-vm` binary
-/// (`x86_64-unknown-linux-gnu` / ELF). If unset, defaults to
-/// **`$workspace_root/target/x86_64-unknown-linux-gnu/release/devshell-vm`** (see `podman_machine.rs`).
+/// **Windows β:** optional full **Windows** path to the **Linux** `devshell-vm` binary
+/// (`x86_64-unknown-linux-gnu` / ELF) for **`podman machine ssh`** transport.
+///
+/// If unset, the binary is searched under **`$repo_root/target/x86_64-unknown-linux-gnu/release/devshell-vm`**
+/// where `repo_root` is discovered from cwd, [`ENV_DEVSHELL_VM_REPO_ROOT`], or walking up from the workspace
+/// parent — **not** the ephemeral `cargo-devshell-exports` tree. If still not found, **automatic fallback
+/// uses [`ENV_DEVSHELL_VM_CONTAINER_IMAGE`] with `podman run -i`** (see `podman_machine.rs`).
 pub const ENV_DEVSHELL_VM_LINUX_BINARY: &str = "DEVSHELL_VM_LINUX_BINARY";
+
+/// **Windows β:** optional **Windows** path to an **xtask_todo** repository root (directory containing
+/// **`containers/devshell-vm/Containerfile`**). Locates **`target/x86_64-unknown-linux-gnu/release/devshell-vm`**
+/// when [`ENV_DEVSHELL_VM_LINUX_BINARY`] is unset. Useful if you keep a checkout for building the sidecar but run
+/// **`cargo devshell`** from other directories; **not** applicable when you only have a crates.io install and no clone.
+pub const ENV_DEVSHELL_VM_REPO_ROOT: &str = "DEVSHELL_VM_REPO_ROOT";
+
+/// **Windows β:** OCI image used when **no** host Linux `devshell-vm` ELF is found: `podman run -i` with
+/// **`--serve-stdio`** and the workspace mounted at **`/workspace`** (no host TCP).
+/// Default: **`ghcr.io/tangcan/xtask_todo/devshell-vm:v{CARGO_PKG_VERSION}`** (published by CI on release).
+pub const ENV_DEVSHELL_VM_CONTAINER_IMAGE: &str = "DEVSHELL_VM_CONTAINER_IMAGE";
+
+/// **Windows β:** stdio transport for `DEVSHELL_VM_SOCKET=stdio`: **`auto`** (default), **`machine-ssh`**
+/// (host ELF + `podman machine ssh`), or **`podman-run`** (OCI image + `podman run -i`).
+pub const ENV_DEVSHELL_VM_STDIO_TRANSPORT: &str = "DEVSHELL_VM_STDIO_TRANSPORT";
 
 /// When set (any value), do **not** isolate **`USERPROFILE` / `HOME`** for `podman` subprocesses (Windows).
 /// By default we point **`USERPROFILE`** (Go’s `UserHomeDir()` on Windows — not only `HOME`) at a writable
@@ -106,11 +125,7 @@ fn falsy(s: &str) -> bool {
         || s.eq_ignore_ascii_case("off")
 }
 
-/// Walk parents from [`std::env::current_dir`] looking for `containers/devshell-vm/Containerfile` (xtask_todo repo).
-#[cfg_attr(not(windows), allow(dead_code))]
-#[cfg(feature = "beta-vm")]
-pub(crate) fn devshell_repo_root_with_containerfile() -> Option<std::path::PathBuf> {
-    let mut dir = std::env::current_dir().ok()?;
+fn devshell_repo_root_walk(mut dir: std::path::PathBuf) -> Option<std::path::PathBuf> {
     loop {
         let cf = dir.join("containers/devshell-vm/Containerfile");
         if cf.is_file() {
@@ -121,6 +136,21 @@ pub(crate) fn devshell_repo_root_with_containerfile() -> Option<std::path::PathB
         }
     }
     None
+}
+
+/// Walk parents from [`std::env::current_dir`] looking for `containers/devshell-vm/Containerfile` (xtask_todo repo).
+#[cfg_attr(not(windows), allow(dead_code))]
+#[cfg(feature = "beta-vm")]
+pub(crate) fn devshell_repo_root_with_containerfile() -> Option<std::path::PathBuf> {
+    let dir = std::env::current_dir().ok()?;
+    devshell_repo_root_walk(dir)
+}
+
+/// Same as [`devshell_repo_root_with_containerfile`] but starting from `start` (e.g. workspace parent).
+#[cfg_attr(not(windows), allow(dead_code))]
+#[cfg(feature = "beta-vm")]
+pub(crate) fn devshell_repo_root_from_path(start: &std::path::Path) -> Option<std::path::PathBuf> {
+    devshell_repo_root_walk(start.to_path_buf())
 }
 
 fn default_backend_for_release() -> String {

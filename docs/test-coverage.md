@@ -13,7 +13,7 @@
 
 - **xtask-todo-lib**：排除项用于聚焦可稳定测的库代码（`cargo-devshell` 入口、REPL、脚本、VM/Lima、宿主 sandbox、`host_text`、**`completion/*`**、**`workspace/*`**、**`command/dispatch/{builtin_impl,workspace}.rs`**、**`vfs/tree.rs`**、**`session_store.rs`** 等）；核心 todo/VFS/parser/sandbox 与 devshell 集成测试覆盖其余部分；精确列表见 **`xtask/src/coverage.rs`**。
 - **β / `guest_fs`**：`cargo test -p xtask-todo-lib --features beta-vm`；**`crates/devshell-vm`**：`cargo test -p devshell-vm`。
-- **xtask**：**`main.rs`**、**`bin/todo.rs`** 为薄入口；**`lima_todo/*`** 依赖 Lima/VM；**`gh.rs`** 依赖 `gh` CLI；**`acceptance.rs`** 为验收/文档检查辅助（多在单独流程中跑）；与 **`crates/todo/*`** 一并排除后，报告率反映 **`lib`** 中可稳定单测的部分；精确列表见 **`xtask/src/coverage.rs`**。
+- **xtask**：**`main.rs`**、**`bin/todo.rs`** 为薄入口（`todo` 逻辑在 **`todo::run_standalone`** 中有单测）；**`lima_todo/*`**、**`gh.rs`**、**`ghcr.rs`**（HTTP 层）、**`acceptance/*`**（嵌套 `cargo test`）在 tarpaulin 分母中排除，但仓库内仍有对应 **`#[cfg(test)]`**（如 **`ghcr::tests`** 解析 JSON、**`acceptance::tests`** 生成报告、**`lima_todo::tests`** 含 `cmd_lima_todo` smoke）。与 **`crates/todo/*`** 一并排除后，摘要 ≥95%；精确列表见 **`xtask/src/coverage.rs`**。
 
 ## 运行
 

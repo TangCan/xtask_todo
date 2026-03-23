@@ -7,6 +7,26 @@ fn xtask_bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_xtask"))
 }
 
+fn todo_bin() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_todo"))
+}
+
+/// Covers `src/bin/todo.rs` (standalone todo CLI).
+#[test]
+fn todo_bin_help_exits_success() {
+    let out = todo_bin().arg("--help").output().unwrap();
+    assert!(
+        out.status.success(),
+        "todo --help: {:?}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let s = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        s.contains("todo") || s.contains("Todo"),
+        "help should mention todo: {s}"
+    );
+}
+
 #[test]
 fn xtask_run_exits_success() {
     let out = xtask_bin().arg("run").output().unwrap();

@@ -179,7 +179,7 @@
 | TC-X-CLEAN-1 | design §3.2 | `clean` | 单元 | `xtask/src/tests/clean.rs` |
 | TC-X-GIT-1 | design §3.2 | `git` 子命令解析/行为 | 单元 | `xtask/src/tests/git.rs` |
 | TC-X-GIT-2 | requirements §4 / design §1.6 | **`.githooks/pre-commit`** 与 **`cargo xtask git pre-commit`** 含 **`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`**；需 **`rustup target`** | 手工 / CI 跑完整 pre-commit；或单独 **`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`** | `.githooks/pre-commit`；`xtask/src/git.rs` |
-| TC-X-ACC-1 | requirements §4 / acceptance §8 | **`cargo xtask acceptance`** 生成报告且退出码 **0**（失败检查为 **1**） | 仓库根执行；或 **`--stdout-only`** | `xtask/src/acceptance.rs` |
+| TC-X-ACC-1 | requirements §4 / acceptance §8 | **`cargo xtask acceptance`** 生成报告且退出码 **0**（失败检查为 **1**） | 仓库根执行；或 **`--stdout-only`** | `xtask/src/acceptance/` |
 | TC-X-GH-1 | design §3.2 | `gh` 相关 | 单元（无 gh 时可跳过） | `xtask/src/tests/gh.rs` |
 | TC-X-FMT-1 | design §3.2 | `fmt` | CI / 手工 | **待补充** 专用测试或依赖 `cargo fmt --check` |
 | TC-X-COV-1 | design §3.2 | `coverage` | CI | 手工或 CI 脚本 |

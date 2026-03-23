@@ -52,3 +52,40 @@ jobs:
             Docs: [docs.rs/xtask-todo-lib](https://docs.rs/xtask-todo-lib).
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # OCI image for Windows β automatic fallback (`podman run -i`; default tag matches `CARGO_PKG_VERSION`).
+  devshell-vm-oci:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag_name || github.ref }}
+
+      - name: Version from tag
+        id: ver
+        run: |
+          REF="${{ github.event.inputs.tag_name || github.ref_name }}"
+          VERSION="${REF#xtask-todo-lib-v}"
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "owner=${OWNER}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push devshell-vm
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: containers/devshell-vm/Containerfile
+          push: true
+          tags: ghcr.io/${{ steps.ver.outputs.owner }}/xtask_todo/devshell-vm:v${{ steps.ver.outputs.version }}

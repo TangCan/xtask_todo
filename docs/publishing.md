@@ -99,7 +99,7 @@ cargo xtask publish
    git tag xtask-todo-lib-v0.1.2
    git push origin xtask-todo-lib-v0.1.2
    ```
-2. 仓库中的 **Release** 工作流（`.github/workflows/release.yml`）会在推送 tag `xtask-todo-lib-v*` 时自动创建 GitHub Release，并附带对应的 `.crate` 文件。
+2. 仓库中的 **Release** 工作流（`.github/workflows/release.yml`）会在推送 tag `xtask-todo-lib-v*` 时自动创建 GitHub Release，并附带对应的 `.crate` 文件；**同一工作流**还会并行运行 **`devshell-vm-oci`** Job，构建并推送 **Windows β 默认 OCI 侧车镜像**到 GHCR（与 `xtask-todo-lib` 版本对齐）。详见 **[devshell-vm-oci-release.md](./devshell-vm-oci-release.md)**。
 3. 这样 **crates.io** 与 **GitHub → Releases** 的版本一一对应（如 0.1.0、0.1.1、0.1.2），用户可在 Releases 页下载 `.crate` 或通过链接跳转到 crates.io / docs.rs。
 
 **已有历史版本**：若 0.1.0、0.1.1 已发布但未打过 tag，可补打 tag 并推送，再在 GitHub 上对该 tag 手动创建 Release（或重新推送同一 tag 触发工作流，需先删除远程 tag）。

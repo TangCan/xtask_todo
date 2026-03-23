@@ -6,13 +6,12 @@
 //! it to `PATH` so `todo` resolves without `cargo`. See `docs/devshell-vm-gamma.md`.
 
 use xtask::todo::args::TodoStandaloneArgs;
-use xtask::todo::{cmd_todo, print_json_error, TodoArgs};
+use xtask::todo::{print_json_error, run_standalone};
 
 fn main() {
     let cli: TodoStandaloneArgs = argh::from_env();
     let json = cli.json;
-    let args: TodoArgs = cli.into();
-    match cmd_todo(args) {
+    match run_standalone(cli) {
         Ok(()) => {}
         Err(e) => {
             if json {

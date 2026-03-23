@@ -33,11 +33,15 @@ let items = list.list();
 
 ## Devshell VM on Windows
 
-The crate **defaults** to the **`beta-vm`** feature: on Windows, `cargo-devshell` uses the **beta** backend and talks to **`devshell-vm --serve-stdio`** inside Podman Machine via **`podman machine ssh`** (JSON lines on stdin/stdout; see **`docs/devshell-vm-windows.md`**). To depend without it: `xtask-todo-lib = { version = "0.1", default-features = false }`.
+The crate **defaults** to the **`beta-vm`** feature: on Windows, `cargo-devshell` uses the **beta** backend and JSON-lines **`devshell-vm --serve-stdio`** over stdio (see **`docs/devshell-vm-windows.md`**). To depend without it: `xtask-todo-lib = { version = "0.1", default-features = false }`.
+
+**`cargo install` does not include a Linux `devshell-vm` on the host disk**, but the default flow **falls back** to an **OCI image** (`podman pull` + `podman run -i` with the workspace at `/workspace`) when no host ELF is found — **no mandatory env vars** for typical use. Optional **`DEVSHELL_VM_LINUX_BINARY`** / **`DEVSHELL_VM_CONTAINER_IMAGE`** / **`DEVSHELL_VM_STDIO_TRANSPORT`** tune behavior.
 
 ## `cargo install` (Windows)
 
 Use **`xtask-todo-lib` 0.1.16+** for `cargo install xtask-todo-lib` on Windows. Older releases (e.g. 0.1.15) could fail to compile: `rustyline` was only listed under Linux target deps, `WorkspaceBackendError` was imported under `cfg(unix)` while used unconditionally, and `vm_workspace_host_root` was Unix-only while still referenced in type-checked branches.
+
+For **beta VM after install**, see **`docs/devshell-vm-windows.md`** (automatic OCI fallback vs host ELF).
 
 ## License
 

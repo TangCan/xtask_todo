@@ -25,6 +25,7 @@ cargo xtask todo delete <id>
 | `cargo xtask clippy` | Lint with Clippy (pedantic + nursery, warnings as errors) |
 | `cargo xtask coverage` | Run coverage per crate (cargo-tarpaulin) |
 | `cargo xtask gh log` | Show log of the most recent GitHub Actions run (requires [GitHub CLI](https://cli.github.com/) in PATH; equiv. `gh run view $(gh run list --limit 1 --json databaseId -q '.[0].databaseId') --log`) |
+| `cargo xtask ghcr` | Print latest **devshell-vm** GHCR image tag (from GitHub Releases / crates.io) and `podman pull …` — see [docs/devshell-vm-oci-release.md](docs/devshell-vm-oci-release.md) §7 |
 | `cargo xtask git add` | Stage common paths (e.g. .github, xtask, docs, crates) |
 | `cargo xtask git pre-commit` | Run the same checks as the pre-commit hook (fmt, clippy, .rs line limit, test, Windows MSVC cross-check) without committing |
 | `cargo xtask acceptance` | Run automated checks from [docs/acceptance.md](docs/acceptance.md) and write `docs/acceptance-report.md` (use `--stdout-only` to print only) |
@@ -77,7 +78,7 @@ Scripts only run built-in commands and use the same virtual filesystem as the RE
 - **Linux optional mount namespace** — set **`DEVSHELL_RUST_MOUNT_NAMESPACE=1`** so the child uses `unshare` + private mounts (libc/kernel only). See [docs/dev-container.md](docs/dev-container.md).
 - Export parent dir (then `devshell_<pid>_<nanos>`): defaults to **`~/.cache/cargo-devshell-exports`** (or **`XDG_CACHE_HOME`**, or on Windows **`%LOCALAPPDATA%/cargo-devshell-exports`**) so **`cargo run` can execute** binaries; plain **`$TMPDIR`** is often **`noexec`** on Linux and would cause *Permission denied* on the built binary. Override with **`DEVSHELL_EXPORT_BASE`**. Subdir mode `0o700` on Unix; removed after sync. Design: `docs/design.md` §2.5.
 - **VM (γ, Unix) — default for `cargo devshell`:** If **`DEVSHELL_VM`** is unset, VM mode is **on**; if **`DEVSHELL_VM_BACKEND`** is unset, it defaults to **`lima`**. `rustup`/`cargo` run inside [Lima](https://lima-vm.io/) with VFS ↔ host workspace sync; requires `limactl` and a matching mount in your Lima template. **Opt out:** **`DEVSHELL_VM=off`** or **`DEVSHELL_VM_BACKEND=host`** (or `auto`) for host temp export only. **`cargo test`** for this crate still defaults to host sandbox (`cfg(test)`). See **[docs/devshell-vm-gamma.md](docs/devshell-vm-gamma.md)**.
-- **β (`devshell-vm`):** workspace crate **`devshell-vm`** — JSON-lines IPC; on **Windows** (default **`beta-vm`**) uses **`podman machine ssh`** and **`--serve-stdio`** (see [docs/devshell-vm-windows.md](docs/devshell-vm-windows.md)). IPC draft: [docs/superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md](docs/superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md).
+- **β (`devshell-vm`):** workspace crate **`devshell-vm`** — JSON-lines IPC; on **Windows** (default **`beta-vm`**) uses stdio (**`podman machine ssh`** to a host ELF when available, else automatic **`podman run -i`** + OCI image — see [docs/devshell-vm-windows.md](docs/devshell-vm-windows.md)). IPC draft: [docs/superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md](docs/superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md).
 
 Example: `mkdir my_project && cd my_project && cargo new . --name my_app && cargo build`.
 

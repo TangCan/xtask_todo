@@ -111,13 +111,7 @@ impl BetaSession {
                 #[cfg(all(windows, feature = "beta-vm"))]
                 {
                     if let SocketSpec::Stdio = &spec {
-                        if let Ok(staging) = std::fs::canonicalize(&workspace_parent) {
-                            if let Some(m) =
-                                super::podman_machine::windows_host_path_to_vm_mnt(&staging)
-                            {
-                                return m;
-                            }
-                        }
+                        return super::podman_machine::stdio_guest_mount(&workspace_parent);
                     }
                 }
                 "/workspace".to_string()
@@ -209,16 +203,7 @@ impl BetaSession {
         #[cfg(all(windows, feature = "beta-vm"))]
         {
             if let SocketSpec::Stdio = &self.spec {
-                let staging = std::fs::canonicalize(&self.workspace_parent)
-                    .map_err(|e| VmError::Ipc(format!("canonicalize staging: {e}")))?;
-                return super::podman_machine::windows_host_path_to_vm_mnt(&staging).ok_or_else(
-                    || {
-                        VmError::Ipc(
-                            "could not map workspace to Podman Machine /mnt/... path; set DEVSHELL_VM_BETA_SESSION_STAGING"
-                                .into(),
-                        )
-                    },
-                );
+                return Ok(self.guest_mount.clone());
             }
         }
         let staging = std::fs::canonicalize(&self.workspace_parent)

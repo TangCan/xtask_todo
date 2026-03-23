@@ -6,6 +6,8 @@
 
 在 **Windows** 上，`cargo-devshell` 的默认实现是 **`podman machine ssh`** + **`devshell-vm --serve-stdio`**（见 **`docs/devshell-vm-windows.md`**），**不要求**在宿主机上映射 **9847** 或运行本 README 里的 `podman run -p …`。
 
+**`cargo install xtask-todo-lib` 不会把 ELF 装到宿主机**，但 **`cargo-devshell` 默认可 `podman pull` 本镜像**（见 `docs/devshell-vm-windows.md` 的 **OCI 自动回退**）。仅在离线或需固定版本时，才需要 **`DEVSHELL_VM_LINUX_BINARY`** 或 **`DEVSHELL_VM_CONTAINER_IMAGE`**。
+
 请先在本机仓库根构建 Linux 二进制：
 
 ```bash

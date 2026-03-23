@@ -134,18 +134,21 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
                 "xtask/src/main.rs",
                 "--exclude-files",
                 "crates/todo/*",
-                // Second binary entry (`cargo xtask-todo`); thin `main` only.
+                // Thin wrapper; logic covered via `todo::run_standalone` in unit tests.
                 "--exclude-files",
                 "xtask/src/bin/todo.rs",
-                // Lima YAML / guest helpers: needs limactl + VM; mostly integration-only.
+                // Lima merge / limactl — integration-style; `lima_todo::tests` still validates YAML/helpers.
                 "--exclude-files",
                 "xtask/src/lima_todo/*",
-                // `gh run list` integration; needs `gh` CLI in CI.
+                // Needs real `gh` on PATH for full branches; see `tests/gh.rs`.
                 "--exclude-files",
                 "xtask/src/gh.rs",
-                // Acceptance report / doc-check helpers; exercised manually or in separate workflows.
+                // HTTP + GitHub API; JSON/semver parsing covered in `ghcr::tests`, network paths excluded here.
                 "--exclude-files",
-                "xtask/src/acceptance.rs",
+                "xtask/src/ghcr.rs",
+                // Runs nested `cargo test` / file checks; `acceptance::tests` cover report builders.
+                "--exclude-files",
+                "xtask/src/acceptance/*",
             ],
             &["--test-threads=1", "--include-ignored"],
         );
