@@ -6,7 +6,8 @@
 
 FROM docker.io/library/rust:1-bookworm AS builder
 WORKDIR /src
-COPY Cargo.toml Cargo.lock ./
+# Workspace root `Cargo.lock` is gitignored and absent in CI checkouts; Cargo generates it on build.
+COPY Cargo.toml ./
 COPY crates/devshell-vm crates/devshell-vm
 COPY crates/todo crates/todo
 COPY xtask xtask

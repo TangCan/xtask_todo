@@ -25,6 +25,7 @@ cargo xtask todo delete <id>
 | `cargo xtask clippy` | Lint with Clippy (pedantic + nursery, warnings as errors) |
 | `cargo xtask coverage` | Run coverage per crate (cargo-tarpaulin) |
 | `cargo xtask gh log` | Show log of the most recent GitHub Actions run (requires [GitHub CLI](https://cli.github.com/) in PATH; equiv. `gh run view $(gh run list --limit 1 --json databaseId -q '.[0].databaseId') --log`) |
+| `cargo xtask gh log --job devshell-vm-oci` | Show log of the **`devshell-vm-oci`** job only (latest run of workflow `release.yml`; optional `--workflow <file>` to override) |
 | `cargo xtask ghcr` | Print latest **devshell-vm** GHCR image tag (from GitHub Releases / crates.io) and `podman pull …` — see [docs/devshell-vm-oci-release.md](docs/devshell-vm-oci-release.md) §7 |
 | `cargo xtask git add` | Stage common paths (e.g. .github, xtask, docs, crates) |
 | `cargo xtask git pre-commit` | Run the same checks as the pre-commit hook (fmt, clippy, .rs line limit, test, Windows MSVC cross-check) without committing |

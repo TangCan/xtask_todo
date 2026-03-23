@@ -59,7 +59,7 @@ permissions:
 ### 4.2 检出代码
 
 - **`actions/checkout@v4`**，`ref` 为 **`github.event.inputs.tag_name || github.ref`**（手动运行时用手动输入的标签，否则为当前推送的标签）。
-- 保证构建的 **`Containerfile`** 与 **`Cargo.lock`** 等上下文与**该标签**指向的提交一致。
+- 保证构建的 **`Containerfile`** 与**该标签**指向的提交一致。仓库根 **`Cargo.lock`** 可被 **`.gitignore`** 忽略而不在 checkout 中出现；**`Containerfile`** 只复制 **`Cargo.toml`**，在镜像 **`RUN cargo build`** 时由 Cargo 生成 lockfile。
 
 ### 4.3 从标签解析版本号与 Owner
 
@@ -170,9 +170,22 @@ ghcr.io/tangcan/xtask_todo/devshell-vm:v0.1.22
 2. 对应 **`xtask-todo-lib-v*`** 标签的那次运行中，确认 **`devshell-vm-oci`** Job 为 **绿色**（成功）。
 3. **GitHub → Packages**（或仓库右侧 **Packages**）中应出现 **`devshell-vm`** 镜像，标签含 **`v{版本}`**。
 
-### 7.2 仓库内命令：`cargo xtask ghcr`（推荐）
+### 7.2 仓库内命令
 
-在本仓库根目录（需已配置 `.cargo/config.toml` 的 `xtask` alias，见下文）：
+需已配置 `.cargo/config.toml` 的 **`xtask`** alias（见 **§12**）。
+
+#### `cargo xtask gh log --job devshell-vm-oci`（只看 OCI Job 日志）
+
+需已安装 [GitHub CLI](https://cli.github.com/) 并 **`gh auth login`**：
+
+```bash
+cargo xtask gh log --job devshell-vm-oci
+```
+
+等价于：取 **`release.yml`** 最近一次 workflow run → 用 **`gh api …/jobs`** 解析名为 **`devshell-vm-oci`** 的 job id → **`gh run view <run> --job <id> --log`**。  
+若 workflow 文件不是默认名，可加 **`--workflow <file>`**（默认 **`release.yml`**）。
+
+#### `cargo xtask ghcr`（镜像标签与 `podman pull`，推荐）
 
 ```bash
 cargo xtask ghcr

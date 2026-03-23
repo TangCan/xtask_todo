@@ -11,7 +11,10 @@ fn cmd_gh_log_errors_when_gh_not_found() {
     let path = std::env::var_os("PATH");
     std::env::set_var("PATH", "");
     let args = GhArgs {
-        sub: GhSub::Log(GhLogArgs {}),
+        sub: GhSub::Log(GhLogArgs {
+            job: None,
+            workflow: None,
+        }),
     };
     let r = cmd_gh(&args);
     if let Some(p) = path {
@@ -29,7 +32,10 @@ fn run_with_gh_returns_run_failure_when_gh_fails() {
     std::env::set_var("PATH", "");
     let cmd = XtaskCmd {
         sub: XtaskSub::Gh(GhArgs {
-            sub: GhSub::Log(GhLogArgs {}),
+            sub: GhSub::Log(GhLogArgs {
+                job: None,
+                workflow: None,
+            }),
         }),
     };
     let r = run_with(cmd);
@@ -57,7 +63,10 @@ fn cmd_gh_log_errors_when_gh_run_list_fails() {
     std::fs::set_permissions(&gh_script, perms).unwrap();
     std::env::set_var("PATH", &dir);
     let args = GhArgs {
-        sub: GhSub::Log(GhLogArgs {}),
+        sub: GhSub::Log(GhLogArgs {
+            job: None,
+            workflow: None,
+        }),
     };
     let r = cmd_gh(&args);
     if let Some(p) = path {
