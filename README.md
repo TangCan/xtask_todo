@@ -26,7 +26,8 @@ cargo xtask todo delete <id>
 | `cargo xtask coverage` | Run coverage per crate (cargo-tarpaulin) |
 | `cargo xtask gh log` | Show log of the most recent GitHub Actions run (requires [GitHub CLI](https://cli.github.com/) in PATH; equiv. `gh run view $(gh run list --limit 1 --json databaseId -q '.[0].databaseId') --log`) |
 | `cargo xtask git add` | Stage common paths (e.g. .github, xtask, docs, crates) |
-| `cargo xtask git pre-commit` | Run the same checks as the pre-commit hook (fmt, clippy, .rs line limit, test) without committing |
+| `cargo xtask git pre-commit` | Run the same checks as the pre-commit hook (fmt, clippy, .rs line limit, test, Windows MSVC cross-check) without committing |
+| `cargo xtask acceptance` | Run automated checks from [docs/acceptance.md](docs/acceptance.md) and write `docs/acceptance-report.md` (use `--stdout-only` to print only) |
 | `cargo xtask git commit` | Commit with message "Sync" by default; use `-m "message"` for a custom message (runs pre-commit checks) |
 | `cargo xtask lima-todo` | Build standalone `todo` (`--release --bin todo`) and **merge** host `target/release` mount + `env.PATH` into `~/.lima/<instance>/lima.yaml`, then `limactl stop` / `start -y` (use `--print-only` for fragment-only; `--no-build`, `--no-restart`, `--write`, `--guest-mount`, `--instance`) — see [docs/devshell-vm-gamma.md](docs/devshell-vm-gamma.md) |
 

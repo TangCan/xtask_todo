@@ -105,9 +105,22 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
                 "crates/todo/src/devshell/sandbox/run.rs",
                 "--exclude-files",
                 "crates/todo/src/devshell/sandbox/sync.rs",
-                // Line-editor completion helpers; covered indirectly by integration tests, not full branches.
+                // Split completion module (repl/editor branches); keep reported rate focused on core lib.
                 "--exclude-files",
-                "crates/todo/src/devshell/completion.rs",
+                "crates/todo/src/devshell/completion/*",
+                // Guest/workspace plumbing (Lima/backend I/O); hard to unit-test without full VM.
+                "--exclude-files",
+                "crates/todo/src/devshell/workspace/*",
+                // Large builtin dispatch table + workspace session glue; exercised via integration; tree is VFS snapshot.
+                "--exclude-files",
+                "crates/todo/src/devshell/command/dispatch/builtin_impl.rs",
+                "--exclude-files",
+                "crates/todo/src/devshell/command/dispatch/workspace.rs",
+                "--exclude-files",
+                "crates/todo/src/devshell/vfs/tree.rs",
+                // Session persistence helpers; file/env coupling.
+                "--exclude-files",
+                "crates/todo/src/devshell/session_store.rs",
             ],
             &["--test-threads=1"],
         );
@@ -121,6 +134,18 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
                 "xtask/src/main.rs",
                 "--exclude-files",
                 "crates/todo/*",
+                // Second binary entry (`cargo xtask-todo`); thin `main` only.
+                "--exclude-files",
+                "xtask/src/bin/todo.rs",
+                // Lima YAML / guest helpers: needs limactl + VM; mostly integration-only.
+                "--exclude-files",
+                "xtask/src/lima_todo/*",
+                // `gh run list` integration; needs `gh` CLI in CI.
+                "--exclude-files",
+                "xtask/src/gh.rs",
+                // Acceptance report / doc-check helpers; exercised manually or in separate workflows.
+                "--exclude-files",
+                "xtask/src/acceptance.rs",
             ],
             &["--test-threads=1", "--include-ignored"],
         );

@@ -19,6 +19,7 @@
 | requirements §5 Devshell | §5 |
 | requirements §6 AI / 退出码 | §1 |
 | requirements §7 非功能 | §7 |
+| requirements §1.2、§7.1～§7.2（平台、pre-commit、MSVC 检查） | §7 |
 | design §1～§3 | §4～§6 |
 | design §4 关键决策 | §5、§6 |
 
@@ -177,6 +178,8 @@
 | TC-X-CLIPPY-1 | design §3.2 | `clippy` 调用可测试逻辑 | 单元（mock/稀疏） | `xtask/src/tests/clippy.rs` |
 | TC-X-CLEAN-1 | design §3.2 | `clean` | 单元 | `xtask/src/tests/clean.rs` |
 | TC-X-GIT-1 | design §3.2 | `git` 子命令解析/行为 | 单元 | `xtask/src/tests/git.rs` |
+| TC-X-GIT-2 | requirements §4 / design §1.6 | **`.githooks/pre-commit`** 与 **`cargo xtask git pre-commit`** 含 **`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`**；需 **`rustup target`** | 手工 / CI 跑完整 pre-commit；或单独 **`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`** | `.githooks/pre-commit`；`xtask/src/git.rs` |
+| TC-X-ACC-1 | requirements §4 / acceptance §8 | **`cargo xtask acceptance`** 生成报告且退出码 **0**（失败检查为 **1**） | 仓库根执行；或 **`--stdout-only`** | `xtask/src/acceptance.rs` |
 | TC-X-GH-1 | design §3.2 | `gh` 相关 | 单元（无 gh 时可跳过） | `xtask/src/tests/gh.rs` |
 | TC-X-FMT-1 | design §3.2 | `fmt` | CI / 手工 | **待补充** 专用测试或依赖 `cargo fmt --check` |
 | TC-X-COV-1 | design §3.2 | `coverage` | CI | 手工或 CI 脚本 |
@@ -191,8 +194,9 @@
 | ID | 需求/设计 | 描述 | 实现映射 |
 |----|-----------|------|----------|
 | TC-D0-1 | §5.3 | 非法 CLI 参数非零退出 | `crates/todo/tests/integration.rs`（`cargo_devshell_usage_error_exits_nonzero`） |
-| TC-D0-2 | §1.1 / design §2.3 | 会话与工作区：VFS 序列化、`session_store`、**工作区内** `session.json` 路径（实现演进中） | `devshell/tests/run_main.rs`、`serialization.rs`、`session_store` 测试 |
+| TC-D0-2 | §1.1 / design §2.3 | 会话与工作区：VFS 序列化、`session_store`（**`GuestPrimarySessionV1`** / **`devshell_session_v1`**）、**工作区内** `session.json` 路径 | `session_store` 测试、`run_main.rs`、`serialization.rs` |
 | TC-D0-3 | §5.3 | `-f script` / `-e` | `run_main.rs` |
+| TC-D0-4 | §1.2 | **Windows**：**`xtask-todo-lib`** 库目标可编译（**rustyline**、桩 **`vm_workspace_host_root`** 等）；**不**要求在本仓库用集成测试启动真实 Windows 进程 | 交叉 **`cargo check --target x86_64-pc-windows-msvc`** 或 **TC-NF-5** | `crates/todo` **`cfg`** / **`vm/mod.rs`** |
 
 ### 5.2 VFS（requirements §5.4 + design vfs）
 
@@ -276,6 +280,8 @@
 | TC-NF-2 | §7 | 无需全局 cargo-xtask | `.cargo/config.toml` alias | 手工 |
 | TC-NF-3 | §7 | 人类错误 stderr；json 错误结构 | 抽样 CLI | `todo_cmd` 测试 |
 | TC-NF-4 | §7 | 列表颜色仅 TTY | 见 TC-T6 | `format.rs` |
+| TC-NF-5 | §1.2 / §7.2 | **`xtask-todo-lib`** 对 **`x86_64-pc-windows-msvc`** 可 **`cargo check`**（交叉编译） | 开发者：`rustup target add x86_64-pc-windows-msvc` 后执行命令 | 与 **TC-X-GIT-2**、pre-commit 最后一步一致 |
+| TC-NF-6 | §7.1 | **`cargo install xtask-todo-lib`** 在 Windows 上可用（版本以 **README** 为准） | 发布前验证或用户环境 | `crates/todo/README.md`；crates.io 版本 |
 
 ---
 
@@ -294,7 +300,9 @@
 | `xtask/src/tests/todo/todo_cmd_io.rs` | TC-T12、TC-DATE-1、export/import |
 | `xtask/src/tests/todo/todo_error.rs` | TC-A2、TC-PRI-1、TC-T13-6 |
 | `xtask/tests/integration.rs` | TC-X2-1、TC-X4-1、TC-T13-7 |
-| `xtask/src/tests/clippy.rs`、**clean.rs**、**git.rs**、**gh.rs** | TC-X-CLIPPY-1 等 |
+| `xtask/src/tests/clippy.rs`、**clean.rs**、**git.rs**、**gh.rs** | TC-X-CLIPPY-1、TC-X-GIT-1 等 |
+| **`.githooks/pre-commit`**（非 Rust 测试） | TC-X-GIT-2、TC-NF-5（完整 pre-commit / MSVC 检查） |
+| **`cargo xtask acceptance`** | TC-X-ACC-1 |
 | `crates/todo/src/devshell/tests/run_basic.rs` | TC-D-VFS、TC-D-BUILTIN、管道基础 |
 | `crates/todo/src/devshell/tests/run_io.rs` | TC-D-BUILTIN-3/4/5 |
 | `crates/todo/src/devshell/tests/run_todo.rs` | TC-D-TODO-* |

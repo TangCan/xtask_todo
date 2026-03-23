@@ -25,6 +25,15 @@
 - Guest **根文件系统**由 Lima 实例目录下的 **`qcow2`**（如 **`diffdisk`**）承载；**工程树**在典型配置下为 **挂载进 guest 的宿主目录**，与 **`/workspace/…`** 对齐。
 - **`logical_cwd`** 等会话字段**仅**写入 **逻辑工作区树内**的 JSON，例如 **`${DEVSHELL_VM_GUEST_WORKSPACE}/.cargo-devshell/session.json`**（默认 **`/workspace/.cargo-devshell/session.json`**）；宿主侧与挂载对齐为 **`${DEVSHELL_WORKSPACE_ROOT}/.cargo-devshell/session.json`**。
 - 细节与环境变量见 **`docs/devshell-vm-gamma.md`**；Mode P 行为见 **`docs/superpowers/specs/2026-03-20-devshell-guest-primary-design.md`**。
+- **会话 JSON（guest-primary / Mode P）**：`format` 字段为 **`devshell_session_v1`**（见实现 **`session_store::GuestPrimarySessionV1`**）；**`logical_cwd`**、**`saved_at_unix_ms`** 等字段与 **`docs/design.md`** 一致。
+
+### 1.2 平台与构建目标
+
+| 维度 | 说明 |
+|------|------|
+| **`xtask-todo-lib` / `cargo install`** | **Linux、macOS、Windows（MSVC）** 均可编译与安装；**`rustyline`** 为通用依赖，REPL 在 Windows 上可用。详见 **`crates/todo/README.md`**（含 Windows 安装说明）。 |
+| **VM / Lima / β / Mode P / Linux mount-namespace sandbox** | 以 **Unix（Linux/macOS）** 为主；**Windows** 上无 Lima 编排等价路径，devshell 以 **内存 VFS** 与 **宿主** `rustup`/`cargo` 为主（与 **`DEVSHELL_VM`** 等回退行为一致）。 |
+| **交叉编译自检** | 仓库 **pre-commit**（见 **§4**、**§7.2**）对 **`xtask-todo-lib`** 执行 **`x86_64-pc-windows-msvc` 目标 `cargo check`**，避免仅 Linux 开发时引入不可在 Windows 上编译的代码。 |
 
 ---
 
@@ -86,8 +95,9 @@
 |--------|------|
 | `run` / `fmt` / `clippy` / `coverage` / `clean` | 开发者任务，行为以 xtask 实现为准。 |
 | `gh log` | 依赖宿主 **`gh`**。 |
-| `git add` / `git pre-commit` / `git commit` | 暂存与带检查的提交。 |
+| `git add` / `git pre-commit` / `git commit` | 暂存与带检查的提交；**`git pre-commit`** 与 **`cargo xtask git pre-commit`** 执行 **`.githooks/pre-commit`**：`cargo fmt --check`、暂存 **`.rs` 行数 ≤500**、**`cargo clippy`**（pedantic/nursery、**`-D warnings`**）、**`cargo test`**、**`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`**（需 **`rustup target add x86_64-pc-windows-msvc`**）。 |
 | `publish` | 见 **`docs/publishing.md`**。 |
+| **`acceptance`** | 按 **`docs/acceptance.md`** 运行可自动化验收（`cargo test` 各包、**NF-1/2/6** 文件检查、**NF-5/D8** Windows **`cargo check`** 等），并生成 **`docs/acceptance-report.md`**（可用 **`-o`** / **`--stdout-only`**）；无法自动化的项在报告中列为人工/环境。 |
 
 ---
 
@@ -161,6 +171,16 @@
 - **颜色**：Todo 列表仅 TTY 着色。
 - **兼容性**：主版本内尽量保持 CLI 稳定；破坏性变更需说明。
 
+### 7.1 目标平台与 `xtask-todo-lib` 构建
+
+- **crates.io**：以 **`xtask-todo-lib`** 当前版本为准；**Windows** 用户请使用 **`crates/todo/README.md`** 中标注的最低版本（例如修复 **`cargo install`** 所需的依赖与 **`cfg`** 调整）。
+- **全功能 devshell（VM、guest 挂载、Mode P 与 Linux 沙箱扩展）**：开发与验收以 **Unix** 环境为准；**Windows** 侧重 **库 + `cargo-devshell` REPL** 与 **Todo** 内置命令，不保证与 Lima 文档 1:1 行为一致。
+
+### 7.2 Pre-commit 与 Windows 交叉编译检查
+
+- **`cargo xtask git pre-commit`** 与启用 **`git config core.hooksPath .githooks`** 后的 **`git commit`** 前钩子，均运行同一 **`pre-commit`** 脚本（见 **§4** 表）。
+- 若本地未安装 **`x86_64-pc-windows-msvc`** 标准库，**`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`** 会失败；请先执行 **`rustup target add x86_64-pc-windows-msvc`**。
+
 ---
 
 ## 8. 文档维护
@@ -179,12 +199,14 @@
 | 概述、Mode S / P、会话路径 | **§1**（含 **§1.1**） |
 | 能力范围与不承诺 | **§2** |
 | Todo、**`cargo xtask todo`** | **§3** |
-| 其他 **`cargo xtask`** 子命令 | **§4** |
+| 其他 **`cargo xtask`** 子命令（含 **`acceptance`**） | **§4** |
 | Devshell | **§5** |
 | **`--json`**、退出码、`init-ai` | **§6** |
 | 非功能约束 | **§7** |
+| 平台、`cargo install`、pre-commit 交叉检查 | **§1.2**、**§7.1**、**§7.2** |
 | 文档维护 | **§8** |
 
 - **`docs/publishing.md`** — 发布流程  
 - **`docs/design.md`** — 设计总览  
+- **`docs/acceptance.md` §8** — **`cargo xtask acceptance`** 自动化验收与报告  
 - **`docs/reference/requirement_example.md`** — 原始需求示例（仅作参考）

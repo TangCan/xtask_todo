@@ -3,7 +3,12 @@
 use argh::FromArgs;
 use std::fs;
 
-const PREFIXES: &[&str] = &["xtask_clippy_", "xtask_nongit_", "xtask_git_"];
+const PREFIXES: &[&str] = &[
+    "xtask_clippy_",
+    "xtask_nongit_",
+    "xtask_git_",
+    "xtask_fmt_fail_",
+];
 
 #[derive(FromArgs, Clone)]
 #[argh(subcommand, name = "clean")]

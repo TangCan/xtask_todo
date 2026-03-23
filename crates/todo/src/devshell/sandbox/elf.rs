@@ -4,6 +4,7 @@ use std::path::Path;
 
 use super::error::SandboxError;
 
+#[cfg(unix)]
 const MAX_TARGET_TREE_DEPTH: usize = 64;
 
 #[cfg(unix)]

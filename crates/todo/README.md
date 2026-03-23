@@ -31,6 +31,10 @@ let items = list.list();
 - **`Todo`** – single item (`id`, `title`, `completed`, `created_at`, `completed_at`).
 - **`InMemoryStore`** – default in-memory store; implement **`Store`** for your own backend.
 
+## `cargo install` (Windows)
+
+Use **`xtask-todo-lib` 0.1.16+** for `cargo install xtask-todo-lib` on Windows. Older releases (e.g. 0.1.15) could fail to compile: `rustyline` was only listed under Linux target deps, `WorkspaceBackendError` was imported under `cfg(unix)` while used unconditionally, and `vm_workspace_host_root` was Unix-only while still referenced in type-checked branches.
+
 ## License
 
 MIT OR Apache-2.0

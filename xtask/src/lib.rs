@@ -1,5 +1,6 @@
 //! xtask library - logic for custom cargo tasks (testable).
 
+mod acceptance;
 mod clean;
 mod clippy;
 mod coverage;
@@ -16,6 +17,7 @@ mod tests;
 
 use argh::FromArgs;
 
+use crate::acceptance::AcceptanceArgs;
 use crate::todo::TodoArgs;
 use clean::CleanArgs;
 use clippy::ClippyArgs;
@@ -61,6 +63,10 @@ pub fn run_with(cmd: XtaskCmd) -> Result<(), RunFailure> {
         XtaskSub::Git(args) => git::cmd_git(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Publish(args) => publish::cmd_publish(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::LimaTodo(args) => lima_todo::cmd_lima_todo(args),
+        XtaskSub::Acceptance(args) => acceptance::cmd_acceptance(args).map_err(|e| RunFailure {
+            code: 1,
+            message: e,
+        }),
         XtaskSub::Todo(args) => {
             let json = args.json;
             match todo::cmd_todo(args) {
@@ -96,6 +102,7 @@ pub struct XtaskCmd {
 #[derive(FromArgs, Clone)]
 #[argh(subcommand)]
 pub enum XtaskSub {
+    Acceptance(AcceptanceArgs),
     Run(RunArgs),
     Clean(CleanArgs),
     Clippy(ClippyArgs),

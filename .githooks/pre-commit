@@ -1,5 +1,5 @@
 #!/bin/sh
-# Pre-commit hook: format check, .rs line limit, clippy, tests.
+# Pre-commit hook: format check, .rs line limit, clippy, tests, Windows MSVC cross-check (xtask-todo-lib).
 # Enable: git config core.hooksPath .githooks
 
 set -e
@@ -25,5 +25,9 @@ cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings
 
 echo "Running cargo test..."
 cargo test -- --test-threads=1
+
+# Requires: rustup target add x86_64-pc-windows-msvc
+echo "Running cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc..."
+cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc
 
 echo "Pre-commit checks passed."

@@ -8,7 +8,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::devshell::vfs::{Vfs, VfsError};
-use crate::devshell::vm::{GuestFsError, GuestFsOps, SessionHolder};
+#[cfg(unix)]
+use crate::devshell::vm::GuestFsOps;
+use crate::devshell::vm::{GuestFsError, SessionHolder};
 
 #[cfg(unix)]
 use crate::devshell::vm::GammaSession;
@@ -76,6 +78,8 @@ pub fn read_logical_file_bytes(
             return GuestFsOps::read_file(ops, &gp).map_err(WorkspaceReadError::Guest);
         }
     }
+    #[cfg(not(unix))]
+    let _ = vm_session;
     vfs.read_file(path).map_err(WorkspaceReadError::Vfs)
 }
 

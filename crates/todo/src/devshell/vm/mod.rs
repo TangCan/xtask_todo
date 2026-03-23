@@ -371,6 +371,14 @@ pub fn vm_workspace_host_root() -> std::path::PathBuf {
     session_gamma::workspace_parent_for_instance(&c.lima_instance)
 }
 
+/// Stub for non-Unix targets: `devshell/mod.rs` uses `if cfg!(unix) && …` but the branch is still
+/// type-checked; this is never called when `cfg!(unix)` is false.
+#[cfg(not(unix))]
+#[must_use]
+pub fn vm_workspace_host_root() -> std::path::PathBuf {
+    std::path::PathBuf::new()
+}
+
 #[cfg(unix)]
 #[must_use]
 pub fn should_delegate_lima_shell(
