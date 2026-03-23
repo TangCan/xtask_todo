@@ -1,5 +1,5 @@
 use super::cmd::cmd_lima_todo;
-use super::helpers::host_release_str_for_target_dir;
+use super::helpers::{cargo_metadata_target, host_release_str_for_target_dir};
 use super::yaml::{merge_todo_into_lima_yaml, render_fragment};
 use super::LimaTodoArgs;
 
@@ -83,10 +83,14 @@ env:
 }
 
 /// Covers `cmd_lima_todo` `--print-only` + `--no-build` (no `lima.yaml` merge, no `limactl`).
+///
+/// Must place the fake `todo` under the same `target/release` as `cmd_lima_todo` (from
+/// `cargo metadata`), i.e. the workspace `target/`, not `cwd/target/` when the crate root is `xtask/`.
 #[test]
 fn cmd_lima_todo_print_only_no_build_smoke() {
     let workspace = std::env::current_dir().expect("cwd");
-    let release = workspace.join("target").join("release");
+    let (_root, target_dir) = cargo_metadata_target(&workspace).expect("cargo metadata");
+    let release = target_dir.join("release");
     std::fs::create_dir_all(&release).unwrap();
     std::fs::write(release.join("todo"), b"# fake todo bin for test\n").unwrap();
 
