@@ -89,3 +89,20 @@ jobs:
           file: containers/devshell-vm/Containerfile
           push: true
           tags: ghcr.io/${{ steps.ver.outputs.owner }}/xtask_todo/devshell-vm:v${{ steps.ver.outputs.version }}
+
+      # Anonymous `podman pull` requires the package to be Public (403 otherwise).
+      # See docs/devshell-vm-oci-release.md §6.
+      - name: Set GHCR package visibility to public
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          PKG_NAME='xtask_todo%2Fdevshell-vm'
+          if gh api "orgs/${OWNER}" >/dev/null 2>&1; then
+            echo "PATCH orgs/${OWNER}/packages/container/${PKG_NAME} -> visibility=public"
+            gh api --method PATCH "orgs/${OWNER}/packages/container/${PKG_NAME}" -f visibility=public
+          else
+            echo "PATCH user/packages/container/${PKG_NAME} -> visibility=public"
+            gh api --method PATCH "user/packages/container/${PKG_NAME}" -f visibility=public
+          fi

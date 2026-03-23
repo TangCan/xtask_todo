@@ -107,6 +107,15 @@ ghcr.io/tangcan/xtask_todo/devshell-vm:v0.1.22
 
 这与 **`Cargo.toml` `version = "0.1.22"`** 时代码中的 **`CARGO_PKG_VERSION`** 一致。
 
+### 4.6 将 GHCR 包设为 Public（自动化）
+
+推送成功后，工作流会再执行一步 **`Set GHCR package visibility to public`**：通过 GitHub REST API 对包 **`xtask_todo/devshell-vm`** 执行 **`PATCH`**，将 **`visibility`** 设为 **`public`**。
+
+- **组织仓库**：`PATCH /orgs/{owner}/packages/container/xtask_todo%2Fdevshell-vm`
+- **个人账号仓库**：`PATCH /user/packages/container/xtask_todo%2Fdevshell-vm`（由 `gh api` 根据 `orgs/{owner}` 是否存在自动选择）
+
+这样 **`podman pull`** 无需登录即可使用（见 **§6**）。若该步骤失败（例如权限不足），请查看 Job 日志，并仍可按 **§6.3** 在网页上手动设为 Public。
+
 ---
 
 ## 5. 版本对齐检查清单（维护者）
@@ -124,16 +133,22 @@ ghcr.io/tangcan/xtask_todo/devshell-vm:v0.1.22
 ### 6.1 为何需要「可匿名 pull」
 
 `cargo-devshell` 在 Windows 上默认会执行 **`podman pull ghcr.io/<owner>/xtask_todo/devshell-vm:v<版本>`**。  
-若包为 **Private**，未登录的用户会 **pull 失败**。
+若包为 **Private**，未登录的用户会 **pull 失败**（常见为 **403 Forbidden**）。
 
-### 6.2 维护者操作（推荐）
+### 6.2 推荐：由 Release 工作流自动设为 Public
+
+**`.github/workflows/release.yml`** 中 **`devshell-vm-oci`** Job 在 **构建并推送** 之后会执行 **「Set GHCR package visibility to public」**（见 **§4.6**），无需在网页上手点。
+
+首次接入前若包已是 **Private**，下一次 **成功** 跑完该 Job 后也会被设为 **Public**。
+
+### 6.3 手动操作（仅当自动化失败或需一次性修正）
 
 1. 打开 GitHub：**仓库 → Packages**（或该镜像包页面）。
-2. 将 **`devshell-vm`** 对应 **Container package** 设为 **Public**（或组织策略允许匿名读取）。
+2. 将 **`devshell-vm`**（完整包名 **`xtask_todo/devshell-vm`**）对应 **Container package** 设为 **Public**（或组织策略允许匿名读取）。
 
-这样用户 **无需** `docker login ghcr.io` 即可使用默认流程。
+这样用户 **无需** `podman login ghcr.io` 即可使用默认流程。
 
-### 6.3 若包必须保持 Private
+### 6.4 若包必须保持 Private
 
 在 **`docs/devshell-vm-windows.md`** 或用户文档中说明：
 
