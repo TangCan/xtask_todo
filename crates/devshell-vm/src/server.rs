@@ -3,6 +3,7 @@
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 use std::path::PathBuf;
+use std::process::Command;
 
 use crate::guest_fs::{guest_fs_on_host, guest_fs_stub};
 
@@ -45,6 +46,19 @@ impl SessionCtx {
         }
         Ok(host)
     }
+}
+
+fn exec_status_fields(status: std::process::ExitStatus) -> (i64, serde_json::Value) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        if let Some(sig) = status.signal() {
+            let code = i64::from(128 + sig);
+            return (code, serde_json::json!(sig));
+        }
+    }
+    let code = status.code().map_or(-1, i64::from);
+    (code, serde_json::Value::Null)
 }
 
 #[cfg(unix)]
@@ -117,6 +131,104 @@ pub fn serve_tcp(bind_addr: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+fn handle_exec(v: &serde_json::Value, state: &ServerState, sid: &serde_json::Value) -> String {
+    let argv: Vec<String> = v
+        .get("argv")
+        .and_then(|a| a.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let fail = argv.iter().any(|x| x.as_str() == "--devshell-vm-test-fail");
+    if fail {
+        return serde_json::json!({
+            "op": "exec_result",
+            "session_id": sid,
+            "exit_code": 1i64,
+            "signal": serde_json::Value::Null,
+        })
+        .to_string();
+    }
+
+    if argv.is_empty() {
+        return serde_json::json!({
+            "op": "error",
+            "code": "exec",
+            "message": "empty argv",
+        })
+        .to_string();
+    }
+
+    let Some(ref ctx) = state.session else {
+        return serde_json::json!({
+            "op": "error",
+            "code": "no_session",
+            "message": "exec requires session_start",
+        })
+        .to_string();
+    };
+
+    let guest_cwd = v
+        .get("guest_cwd")
+        .and_then(|x| x.as_str())
+        .unwrap_or(ctx.guest_mount.as_str());
+
+    let host_cwd = match ctx.map_guest_to_host(guest_cwd) {
+        Ok(p) => p,
+        Err(e) => {
+            return serde_json::json!({
+                "op": "error",
+                "code": "bad_guest_cwd",
+                "message": e,
+            })
+            .to_string();
+        }
+    };
+
+    if !host_cwd.is_dir() {
+        return serde_json::json!({
+            "op": "error",
+            "code": "bad_guest_cwd",
+            "message": "guest cwd is not an existing directory on the host",
+        })
+        .to_string();
+    }
+
+    let mut cmd = Command::new(&argv[0]);
+    cmd.args(&argv[1..]);
+    cmd.current_dir(&host_cwd);
+
+    if let Some(env_obj) = v.get("env").and_then(|e| e.as_object()) {
+        for (k, val) in env_obj {
+            if let Some(s) = val.as_str() {
+                cmd.env(k, s);
+            }
+        }
+    }
+
+    match cmd.status() {
+        Ok(status) => {
+            let (exit_code, signal) = exec_status_fields(status);
+            serde_json::json!({
+                "op": "exec_result",
+                "session_id": sid,
+                "exit_code": exit_code,
+                "signal": signal,
+            })
+            .to_string()
+        }
+        Err(e) => serde_json::json!({
+            "op": "error",
+            "code": "exec_spawn",
+            "message": e.to_string(),
+        })
+        .to_string(),
+    }
+}
+
 pub fn handle_line(line: &str, state: &mut ServerState) -> String {
     if line.is_empty() {
         return r#"{"op":"error","code":"empty","message":"empty line"}"#.to_string();
@@ -170,20 +282,7 @@ pub fn handle_line(line: &str, state: &mut ServerState) -> String {
             "session_id": sid,
         })
         .to_string(),
-        "exec" => {
-            let fail = v.get("argv").and_then(|a| a.as_array()).is_some_and(|a| {
-                a.iter()
-                    .any(|x| x.as_str() == Some("--devshell-vm-test-fail"))
-            });
-            let code = i64::from(fail);
-            serde_json::json!({
-                "op": "exec_result",
-                "session_id": sid,
-                "exit_code": code,
-                "signal": serde_json::Value::Null,
-            })
-            .to_string()
-        }
+        "exec" => handle_exec(&v, state, &sid),
         "session_shutdown" => {
             state.session = None;
             serde_json::json!({

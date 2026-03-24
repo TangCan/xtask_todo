@@ -32,6 +32,38 @@ fn handle_exec_fail_flag() {
     assert!(out.contains("\"exit_code\":1"));
 }
 
+#[cfg(unix)]
+#[test]
+fn handle_exec_runs_subprocess_in_staging_dir() {
+    let dir = std::env::temp_dir().join(format!(
+        "devshell_vm_exec_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+
+    let mut st = ServerState::default();
+    let _ = handle_line(&line_session_start(&dir), &mut st);
+    let out = handle_line(
+        r#"{"op":"exec","session_id":"t","guest_cwd":"/workspace","argv":["sh","-c","echo hi > marker.txt"]}"#,
+        &mut st,
+    );
+    assert!(out.contains("exec_result"), "{out}");
+    assert!(out.contains("\"exit_code\":0"), "{out}");
+    assert_eq!(
+        fs::read_to_string(dir.join("marker.txt"))
+            .unwrap()
+            .trim_end_matches(['\r', '\n']),
+        "hi"
+    );
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn handle_guest_fs_list_dir_stub_without_session() {
     let mut st = ServerState::default();

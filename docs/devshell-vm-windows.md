@@ -21,6 +21,8 @@
 
 `podman run --rm -i -v <宿主工作区>:/workspace:Z -w /workspace <镜像> /usr/local/bin/devshell-vm --serve-stdio`
 
+侧车对 **`exec`**（如 **`cargo new`**）会在 **`session_start` 的 `staging_dir`**（方式 B 下即 **`/workspace`** 对应的宿主目录）上 **真实启动子进程**；镜像需在运行时包含 **`cargo`**（当前 **`Containerfile`** 通过 **`apt install cargo`** 安装）。更新本地镜像时请 **`podman build -f containers/devshell-vm/Containerfile`**，或拉取已发布的新版 GHCR 镜像。
+
 **一般无需设置环境变量。** 若 **`podman pull`** 失败（离线、镜像尚未发布、私有仓库），可任选：
 
 - 临时 **`DEVSHELL_VM_BACKEND=host`** 使用宿主沙箱；或  

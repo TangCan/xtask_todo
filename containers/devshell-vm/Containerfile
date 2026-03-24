@@ -14,8 +14,9 @@ COPY xtask xtask
 RUN cargo build --release -p devshell-vm
 
 FROM docker.io/library/debian:bookworm-slim
+# `cargo` / `rustc` so `exec` can run rust tools against the bind-mounted workspace (runtime was slim-only).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends ca-certificates cargo \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /src/target/release/devshell-vm /usr/local/bin/devshell-vm
 EXPOSE 9847
