@@ -90,6 +90,32 @@ fn handle_exec_timeout_kills_long_sleep() {
     let _ = fs::remove_dir_all(&dir);
 }
 
+/// `sleep` is a grandchild of `sh`; process-group kill must end the whole tree (see `server.rs`).
+#[cfg(unix)]
+#[test]
+fn handle_exec_timeout_kills_shell_sleep_pipeline() {
+    let dir = std::env::temp_dir().join(format!(
+        "devshell_vm_exec_timeout_sh_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+
+    let mut st = ServerState::default();
+    let _ = handle_line(&line_session_start(&dir), &mut st);
+    let out = handle_line(
+        r#"{"op":"exec","session_id":"t","guest_cwd":"/workspace","timeout_ms":200,"argv":["sh","-c","sleep 30"]}"#,
+        &mut st,
+    );
+    assert!(out.contains("\"code\":\"exec_timeout\""), "{out}");
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn handle_guest_fs_list_dir_stub_without_session() {
     let mut st = ServerState::default();

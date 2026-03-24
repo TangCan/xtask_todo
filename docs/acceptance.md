@@ -1,6 +1,6 @@
 # 验收文档（Acceptance）
 
-对 [requirements.md](./requirements.md) 中的能力与验收标准做**可勾选**验证；发布或迭代结束时可作为签字依据。详细用例与自动化映射见 [test-cases.md](./test-cases.md)（含 **TC-X-ACC-1**、**TC-X-GIT-2**、**TC-NF-5/6**、**TC-D0-4**、**TC-D-VM-1～5**）；覆盖率目标见 [test-coverage.md](./test-coverage.md)。
+对 [requirements.md](./requirements.md) 中的能力与验收标准做**可勾选**验证；发布或迭代结束时可作为签字依据。详细用例与自动化映射见 [test-cases.md](./test-cases.md)（含 **TC-X-ACC-1**、**TC-X-GIT-2**、**TC-NF-5/6**、**TC-D0-4**、**TC-D-VM-1～7**）；覆盖率目标见 [test-coverage.md](./test-coverage.md)。
 
 ---
 
@@ -175,7 +175,7 @@ cargo xtask acceptance
 | 读根 **`Cargo.toml`** 是否含 **`crates/todo`**、**`xtask`** | **NF-1** |
 | 读 **`.cargo/config.toml`** 是否含 **`cargo xtask`** 别名 | **NF-2** |
 | 读 **`.githooks/pre-commit`** 是否含 **`cargo doc --no-deps`**、**MSVC** 交叉 **`cargo check`** 等 | **NF-6** |
-| **`cargo test -p xtask-todo-lib`**、**`-p xtask`**、**`-p devshell-vm`**（**`--test-threads=1`**） | **§2 Todo**、**§3**、**§4 Devshell**、**TC-D-VM-1～3/5**（以测试覆盖为准） |
+| **`cargo test -p xtask-todo-lib`**、**`-p xtask`**、**`-p devshell-vm`**（**`--test-threads=1`**） | **§2 Todo**、**§3**、**§4 Devshell**、**TC-D-VM-1～3/5/7**（以测试覆盖为准） |
 | **`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`**（若 **`rustup target`** 未安装则 **SKIP**） | **NF-5**、**D8** |
 
 **本命令不自动执行**（在报告 **§2** 表中列出原因）：**T6-1**、**T6-2**、**NF-3**、**NF-4**、**D5**、**D6**、**D9**（Windows Podman 全链路）、**X3-1** 等需终端、文档评审、**Lima**/**Podman** 或手工环境。

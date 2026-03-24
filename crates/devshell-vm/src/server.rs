@@ -164,6 +164,27 @@ enum WaitChildOutcome {
     Io(std::io::Error),
 }
 
+/// After [`std::os::unix::process::CommandExt::process_group`] `(0)`, the child is its own group
+/// leader; `kill(-pid)` tears down `sh -c …` grandchildren on timeout.
+#[cfg(unix)]
+fn kill_exec_child_tree(child: &mut std::process::Child) {
+    let pid = child.id();
+    if pid > 0 {
+        // SAFETY: `kill` with negative pid targets the child's process group (leader set via
+        // `process_group(0)`); libc API matches POSIX.
+        unsafe {
+            let _ = libc::kill(-(pid.cast_signed()), libc::SIGKILL);
+        }
+    }
+    let _ = child.wait();
+}
+
+#[cfg(not(unix))]
+fn kill_exec_child_tree(child: &mut std::process::Child) {
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 fn wait_child_with_timeout(
     child: &mut std::process::Child,
     timeout: Option<Duration>,
@@ -175,8 +196,7 @@ fn wait_child_with_timeout(
             Ok(None) => {
                 if let Some(limit) = timeout {
                     if start.elapsed() >= limit {
-                        let _ = child.kill();
-                        let _ = child.wait();
+                        kill_exec_child_tree(child);
                         return WaitChildOutcome::Timeout;
                     }
                 }
@@ -212,6 +232,12 @@ fn run_exec_command(
                 cmd.env(k, s);
             }
         }
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        cmd.process_group(0);
     }
 
     let mut child = match cmd.spawn() {
