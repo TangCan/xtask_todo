@@ -273,7 +273,7 @@
 | TC-D-VM-4 | requirements §5.8 / §7.1 | **Windows + Podman**：Mode P、**`DEVSHELL_VM_BACKEND=beta`**（默认），OCI 或 ELF 侧车；**`cargo new --bin hello`** 后 **`cd hello`**，**`cargo run`** 成功，宿主工作区出现工程；**无**「sidecar response is not JSON」类错误（子进程 stdout 不得污染侧车协议 stdout） | **手工**（需 Podman Machine、网络拉镜像等） | 与 **requirements §5.8**「stdio 与程序输出」一致 | 手工；日志样例见仓库内 **`006_win.log`** 类记录 |
 | TC-D-VM-5 | design §1.1 图 | **`devshell-vm`** crate 与 **`handle_line`** 可编译、**`cargo test -p devshell-vm`** 通过 | CI / 本地 | 全绿 | `crates/devshell-vm`；**`acceptance`** 编排含该包测试（见 **TC-X-ACC-1**） |
 | TC-D-VM-6 | design §1.4 | **TCP**：子进程 **`devshell-vm --serve-tcp`** + **`TcpStream`** 做 **handshake → session_start → exec**（**Unix**，**`true`**）；避免同进程 **`accept`/`connect`** 死锁 | 集成测试 **`cargo test -p devshell-vm`** | 通过 | **`crates/devshell-vm/tests/tcp_subprocess.rs`** |
-| TC-D-VM-7 | requirements §5.8 **`exec` 超时** | **`timeout_ms`** 或侧车 **`DEVSHELL_VM_EXEC_TIMEOUT_MS`** 到期时 **`exec_timeout`**；**Unix** 上进程组 kill 覆盖 **`sleep`** 与 **`sh -c sleep`** | 单元（Unix） | JSON **`code":"exec_timeout"`**；测试在 **~200ms** 级完成，非 30s | **`crates/devshell-vm/src/tests.rs`**（`handle_exec_timeout_kills_long_sleep`、`handle_exec_timeout_kills_shell_sleep_pipeline`） |
+| TC-D-VM-7 | requirements §5.8 **`exec` 超时** | **`timeout_ms`** 或侧车 **`DEVSHELL_VM_EXEC_TIMEOUT_MS`** 到期时 **`exec_timeout`**；**Unix** 上进程组 kill 覆盖 **`sleep`** 与 **`sh -c sleep`**；宿主库 **`exec_timeout_ms_from_env`** 注入 JSON | 单元（Unix）+ 库单测 | JSON **`code":"exec_timeout"`**；测试在 **~200ms** 级完成，非 30s | **`crates/devshell-vm/src/tests.rs`**；**`crates/todo/src/devshell/vm/config.rs`**（`exec_timeout_ms_from_env_*`） |
 
 ---
 
@@ -333,6 +333,7 @@
 | `crates/devshell-vm/src/server.rs`、`crates/devshell-vm/src/tests.rs` | TC-D-VM-1～3、**TC-D-VM-7**、TC-DES-4.5 |
 | **`crates/devshell-vm/tests/tcp_subprocess.rs`** | TC-D-VM-6 |
 | **Windows 手工**（Podman + `cargo devshell`） | TC-D-VM-4 |
+| `crates/todo/src/devshell/vm/config.rs`（`exec_timeout_ms_from_env_*`） | TC-D-VM-7（宿主 **`timeout_ms`** 注入） |
 | `crates/todo/src/devshell/repl.rs`（#[test]） | process_line、脚本入口 |
 | `xtask/src/todo/format.rs` | TC-T5-2、TC-T6、TC-NF-4（逻辑） |
 

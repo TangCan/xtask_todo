@@ -216,6 +216,7 @@
 | Todo、**`cargo xtask todo`** | **§3** |
 | 其他 **`cargo xtask`** 子命令（含 **`acceptance`**） | **§4** |
 | Devshell（含 **Windows β**） | **§5**（**§5.8**） |
+| β **`exec` 超时**（**`timeout_ms`** / **`DEVSHELL_VM_EXEC_TIMEOUT_MS`**） | **§5.8**、**[test-cases.md](./test-cases.md) TC-D-VM-7** |
 | **`--json`**、退出码、`init-ai` | **§6** |
 | 非功能约束 | **§7** |
 | 平台、`cargo install`、pre-commit 交叉检查 | **§1.2**、**§7.1**、**§7.2** |

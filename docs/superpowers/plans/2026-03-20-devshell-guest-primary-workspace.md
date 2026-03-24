@@ -8,7 +8,7 @@
 
 - [x] 设计文档 **§15** 开放决策已全部勾选（含 §6 **强制 sync**）
 - [x] 本计划已拆为 **sprint 级 + 文件级** 任务（见下文）
-- [ ] 实现前再扫一眼设计 **§1.2 成功标准** 作为每阶段 PR 验收清单
+- [x] 设计 **§1.2 成功标准**：标准 **3–4**（无 Lima 下测试、Mode S 回归）由 **`cargo test -p xtask-todo-lib`** 覆盖；**1–2**（guest 一致、`cargo` 无工程树 push/pull）需 **Lima/β** 环境或 **[test-cases.md](../../test-cases.md)** 中 **TC-D-*** / 手工；β **`exec` 超时**见 **TC-D-VM-7**、**`exec_timeout_ms_from_env`**（**`vm/config.rs`**）
 
 ---
 

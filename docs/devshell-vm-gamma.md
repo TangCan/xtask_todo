@@ -249,6 +249,7 @@ sudo apt install -y build-essential
 | 侧车 | **`devshell-vm --serve-socket <path>`** / **`--serve-tcp`** / **`--serve-stdio`**（见 IPC 草案与 **`docs/devshell-vm-windows.md`**） |
 | **`guest_fs`** | **`session_start`** 提供 **`staging_dir`** 后，**`guest_path`** 映射到该宿主目录；无会话时可为固定桩响应（单测） |
 | **`exec`** | **`session_start`** 之后在 **`guest_cwd`** 映射目录上 **真实 `spawn` 子进程**；OCI 镜像需含 **`cargo`**（见 **`containers/devshell-vm/Containerfile`**）。**stdio** 传输时子进程 **stdout/stderr** 管道化并写入侧车 **stderr**，避免污染协议 **stdout**（**requirements §5.8**） |
+| **`exec` 超时** | 宿主可设 **`DEVSHELL_VM_EXEC_TIMEOUT_MS`**，库在 **`exec`** JSON 中带 **`timeout_ms`**；侧车超时时返回 **`exec_timeout`**（**Unix** 上进程组 **`kill`**，含 **`sh -c`** 子树；见 **requirements §5.8**、**[test-cases.md](./test-cases.md) TC-D-VM-7**） |
 | 测试 | argv 含 **`--devshell-vm-test-fail`** 时侧车直接返回 **`exit_code: 1`**（单元测试，不启动子进程） |
 
 与 γ 相同：工作区父目录仍用 **`DEVSHELL_VM_WORKSPACE_PARENT`** / **`workspace_parent_for_instance`**（**requirements §5.2**）；**pull 失败**时仅警告，仍以 **guest 工具退出码** 为准。
