@@ -272,7 +272,7 @@
 | TC-D-VM-3 | design §1.4 | **`guest_fs`** 在 **`session_start`** 后读宿主 **`staging_dir`** 内文件 | 单元 | `guest_fs_ok`、内容与基64 一致 | `crates/devshell-vm/src/tests.rs`（`guest_fs_reads_host_file_after_session_start`） |
 | TC-D-VM-4 | requirements §5.8 / §7.1 | **Windows + Podman**：Mode P、**`DEVSHELL_VM_BACKEND=beta`**（默认），OCI 或 ELF 侧车；**`cargo new --bin hello`** 后 **`cd hello`**，**`cargo run`** 成功，宿主工作区出现工程；**无**「sidecar response is not JSON」类错误（子进程 stdout 不得污染侧车协议 stdout） | **手工**（需 Podman Machine、网络拉镜像等） | 与 **requirements §5.8**「stdio 与程序输出」一致 | 手工；日志样例见仓库内 **`006_win.log`** 类记录 |
 | TC-D-VM-5 | design §1.1 图 | **`devshell-vm`** crate 与 **`handle_line`** 可编译、**`cargo test -p devshell-vm`** 通过 | CI / 本地 | 全绿 | `crates/devshell-vm`；**`acceptance`** 编排含该包测试（见 **TC-X-ACC-1**） |
-| TC-D-VM-6 | design §1.4 | **TCP**：**`serve_tcp` / `run_one_tcp_connection`**（见 **`server.rs`**）与 **`handle_line`** 协议一致；**单元测试** 以 **`handle_line`** 为主（**`#[test]`** 内线程 **`connect`/`accept`** 在部分调度下易死锁，故不强制 CI 内嵌 TCP 往返） | 代码评审 / 手工 | 与 **TC-D-VM-2** 同类语义 | **TC-D-VM-4**（Windows 手工）覆盖端到端 |
+| TC-D-VM-6 | design §1.4 | **TCP**：子进程 **`devshell-vm --serve-tcp`** + **`TcpStream`** 做 **handshake → session_start → exec**（**Unix**，**`true`**）；避免同进程 **`accept`/`connect`** 死锁 | 集成测试 **`cargo test -p devshell-vm`** | 通过 | **`crates/devshell-vm/tests/tcp_subprocess.rs`** |
 
 ---
 
@@ -330,6 +330,7 @@
 | `crates/todo/src/devshell/sandbox.rs`（#[test]） | TC-D-SBX-* |
 | `crates/todo/src/devshell/serialization.rs`（#[test]） | TC-D-SER-1 |
 | `crates/devshell-vm/src/server.rs`、`crates/devshell-vm/src/tests.rs` | TC-D-VM-1～3、TC-DES-4.5 |
+| **`crates/devshell-vm/tests/tcp_subprocess.rs`** | TC-D-VM-6 |
 | **Windows 手工**（Podman + `cargo devshell`） | TC-D-VM-4 |
 | `crates/todo/src/devshell/repl.rs`（#[test]） | process_line、脚本入口 |
 | `xtask/src/todo/format.rs` | TC-T5-2、TC-T6、TC-NF-4（逻辑） |

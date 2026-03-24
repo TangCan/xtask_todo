@@ -14,7 +14,9 @@ use std::path::PathBuf;
 use std::process::ExitStatus;
 
 use super::super::vfs::Vfs;
-use super::config::{ENV_DEVSHELL_VM_BETA_SESSION_STAGING, ENV_DEVSHELL_VM_SOCKET};
+use super::config::{
+    ENV_DEVSHELL_VM_BETA_SESSION_STAGING, ENV_DEVSHELL_VM_EXEC_TIMEOUT_MS, ENV_DEVSHELL_VM_SOCKET,
+};
 use super::guest_fs_ops::{validate_guest_path_under_mount, GuestFsError, GuestFsOps};
 use super::sync::{pull_workspace_to_vfs, push_incremental};
 use super::workspace_host::{guest_dir_for_vfs_cwd, workspace_parent_for_instance};
@@ -348,13 +350,20 @@ impl VmExecutionSession for BetaSession {
         let mut argv = vec![program.to_string()];
         argv.extend_from_slice(args);
         let guest_cwd = guest_dir_for_vfs_cwd(&self.guest_mount, vfs_cwd);
-        let exec = serde_json::json!({
+        let mut exec = serde_json::json!({
             "op": "exec",
             "session_id": &self.session_id,
             "guest_cwd": guest_cwd,
             "argv": argv,
             "env": serde_json::json!({}),
         });
+        if let Ok(s) = std::env::var(ENV_DEVSHELL_VM_EXEC_TIMEOUT_MS) {
+            if let Ok(ms) = s.trim().parse::<u64>() {
+                if ms > 0 {
+                    exec["timeout_ms"] = ms.into();
+                }
+            }
+        }
         let res = self.exchange(&exec)?;
         let code = res.get("exit_code").and_then(|x| x.as_i64()).unwrap_or(1) as i32;
 

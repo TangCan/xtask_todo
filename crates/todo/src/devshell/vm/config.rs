@@ -78,6 +78,9 @@ pub const ENV_DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME: &str = "DEVSHELL_VM_DISABLE_P
 /// **Unset** (including **`cfg(test)`**): [`WorkspaceMode::Sync`].
 pub const ENV_DEVSHELL_VM_WORKSPACE_MODE: &str = "DEVSHELL_VM_WORKSPACE_MODE";
 
+/// **β 侧车 `exec`：** 若设为正整数，作为毫秒超时（与 JSON **`timeout_ms`** 二选一/叠加见 **`devshell-vm`**）。**`0`** 或未设置表示不限制（仅受宿主/客户端是否在 JSON 里传 **`timeout_ms`** 约束）。
+pub const ENV_DEVSHELL_VM_EXEC_TIMEOUT_MS: &str = "DEVSHELL_VM_EXEC_TIMEOUT_MS";
+
 /// How the devshell workspace is backed: memory VFS + push/pull (**[`WorkspaceMode::Sync`]**) vs guest-primary (**[`WorkspaceMode::Guest`]**, planned).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkspaceMode {

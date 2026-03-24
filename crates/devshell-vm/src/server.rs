@@ -5,8 +5,12 @@ use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
+use std::time::{Duration, Instant};
 
 use crate::guest_fs::{guest_fs_on_host, guest_fs_stub};
+
+/// Same as `xtask_todo_lib::devshell::vm::ENV_DEVSHELL_VM_EXEC_TIMEOUT_MS` (sidecar has no lib dep).
+const ENV_EXEC_TIMEOUT_MS: &str = "DEVSHELL_VM_EXEC_TIMEOUT_MS";
 
 /// Per-connection state: after `session_start`, `guest_fs` can use the host staging tree.
 #[derive(Debug, Default)]
@@ -140,6 +144,49 @@ pub fn run_one_tcp_connection(mut stream: TcpStream) -> std::io::Result<()> {
     Ok(())
 }
 
+fn exec_timeout_from_request(v: &serde_json::Value) -> Option<Duration> {
+    if let Some(ms) = v.get("timeout_ms").and_then(serde_json::Value::as_u64) {
+        if ms > 0 {
+            return Some(Duration::from_millis(ms));
+        }
+        return None;
+    }
+    std::env::var(ENV_EXEC_TIMEOUT_MS)
+        .ok()
+        .and_then(|s| s.trim().parse::<u64>().ok())
+        .filter(|&ms| ms > 0)
+        .map(Duration::from_millis)
+}
+
+enum WaitChildOutcome {
+    Status(std::process::ExitStatus),
+    Timeout,
+    Io(std::io::Error),
+}
+
+fn wait_child_with_timeout(
+    child: &mut std::process::Child,
+    timeout: Option<Duration>,
+) -> WaitChildOutcome {
+    let start = Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return WaitChildOutcome::Status(status),
+            Ok(None) => {
+                if let Some(limit) = timeout {
+                    if start.elapsed() >= limit {
+                        let _ = child.kill();
+                        let _ = child.wait();
+                        return WaitChildOutcome::Timeout;
+                    }
+                }
+                thread::sleep(Duration::from_millis(20));
+            }
+            Err(e) => return WaitChildOutcome::Io(e),
+        }
+    }
+}
+
 /// Runs `argv` in `host_cwd`, pipes child stdout/stderr to our stderr, returns JSON `exec_result` or error.
 fn run_exec_command(
     argv: &[String],
@@ -147,6 +194,8 @@ fn run_exec_command(
     v: &serde_json::Value,
     sid: &serde_json::Value,
 ) -> String {
+    let timeout = exec_timeout_from_request(v);
+
     let mut cmd = Command::new(&argv[0]);
     cmd.args(&argv[1..]);
     cmd.current_dir(host_cwd);
@@ -192,12 +241,12 @@ fn run_exec_command(
         }
     });
 
-    let status = child.wait();
+    let wait_outcome = wait_child_with_timeout(&mut child, timeout);
     let _ = drain_out.join();
     let _ = drain_err.join();
 
-    match status {
-        Ok(status) => {
+    match wait_outcome {
+        WaitChildOutcome::Status(status) => {
             let (exit_code, signal) = exec_status_fields(status);
             serde_json::json!({
                 "op": "exec_result",
@@ -207,7 +256,16 @@ fn run_exec_command(
             })
             .to_string()
         }
-        Err(e) => serde_json::json!({
+        WaitChildOutcome::Timeout => {
+            let ms = timeout.map_or(0, |d| d.as_millis());
+            serde_json::json!({
+                "op": "error",
+                "code": "exec_timeout",
+                "message": format!("exec exceeded timeout ({ms} ms); set timeout_ms in exec JSON or {ENV_EXEC_TIMEOUT_MS} on the sidecar, or increase the value"),
+            })
+            .to_string()
+        }
+        WaitChildOutcome::Io(e) => serde_json::json!({
             "op": "error",
             "code": "exec_wait",
             "message": e.to_string(),

@@ -116,15 +116,18 @@
   "session_id": "<uuid>",
   "guest_cwd": "/workspace/hello",
   "argv": ["cargo","build"],
-  "env": { "RUST_BACKTRACE": "1" }
+  "env": { "RUST_BACKTRACE": "1" },
+  "timeout_ms": 600000
 }
 ```
+
+可选 **`timeout_ms`**：正整数毫秒；若省略，侧车可读环境变量 **`DEVSHELL_VM_EXEC_TIMEOUT_MS`** 作为默认。超时时侧车 **终止子进程** 并回复 **`op":"error"`、`"code":"exec_timeout"`** 的错误帧。
 
 **服务端**（实现：**`crates/devshell-vm/src/server.rs`**）：
 
 1. 可选：先处理未决的 `sync_request`（push）。
 2. 在 **`guest_cwd`** 映射到的宿主目录上 **`spawn`** 子进程（**argv[0]…**），继承或覆盖 **`env`**；与 **`staging_dir`** 为 **bind mount** 时即等价于在 guest 内执行。
-3. 收集 **退出码**；客户端可在 **Mode S** 下继续发 **`sync_request` + pull**（库侧行为见 **gamma / session_beta**）。
+3. 收集 **退出码**（若配置了 **`timeout_ms` / `DEVSHELL_VM_EXEC_TIMEOUT_MS`**，超时时 **kill** 子进程）；客户端可在 **Mode S** 下继续发 **`sync_request` + pull**（库侧行为见 **gamma / session_beta**）。
 4. 回复：
 
 ```json
@@ -143,7 +146,7 @@
 {"op":"error","session_id":"<uuid>","code":"staging_io","message":"…"}
 ```
 
-**超时**：客户端对 `exec` 应设 **可配置超时**；超时时发 **`exec_cancel`**（草案，可实现为杀 guest 子进程或会话级 cancel）。
+**超时**：**侧车**在 **`timeout_ms`** 或 **`DEVSHELL_VM_EXEC_TIMEOUT_MS`** 到期时 **终止该 `exec` 子进程** 并返回 **`exec_timeout`**。客户端（**session_beta**）也可在库层设置超时与 **`timeout_ms`** 字段；会话级 **`exec_cancel`** 仍为可选扩展。
 
 ---
 

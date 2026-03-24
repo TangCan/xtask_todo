@@ -53,6 +53,7 @@ cargo build -p devshell-vm --release --target x86_64-unknown-linux-gnu
 | **`DEVSHELL_VM_CONTAINER_IMAGE`** | 覆盖方式 B 的镜像（默认 `ghcr.io/tangcan/xtask_todo/devshell-vm:v{CARGO_PKG_VERSION}`） |
 | **`DEVSHELL_VM_STDIO_TRANSPORT`** | **`auto`**（默认）、**`machine-ssh`**（仅方式 A，缺 ELF 则报错）、**`podman-run`**（仅方式 B） |
 | **`DEVSHELL_VM_BETA_SESSION_STAGING`** | 覆盖发给侧车的 `staging_dir`；未设置时由工具根据方式 A（`/mnt/…`）或 B（`/workspace`）填写 |
+| **`DEVSHELL_VM_EXEC_TIMEOUT_MS`** | 侧车 **`exec`** 默认超时（毫秒）；单次请求可在 JSON 里用 **`timeout_ms`** 覆盖（见侧车 **`server.rs`**） |
 
 ### 4. 可选：TCP 侧车
 
