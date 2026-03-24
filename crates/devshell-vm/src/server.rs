@@ -2,8 +2,9 @@
 
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
-use std::path::PathBuf;
-use std::process::Command;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::thread;
 
 use crate::guest_fs::{guest_fs_on_host, guest_fs_stub};
 
@@ -131,6 +132,82 @@ pub fn serve_tcp(bind_addr: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Runs `argv` in `host_cwd`, pipes child stdout/stderr to our stderr, returns JSON `exec_result` or error.
+fn run_exec_command(
+    argv: &[String],
+    host_cwd: &Path,
+    v: &serde_json::Value,
+    sid: &serde_json::Value,
+) -> String {
+    let mut cmd = Command::new(&argv[0]);
+    cmd.args(&argv[1..]);
+    cmd.current_dir(host_cwd);
+    // Stdio transport uses this process's **stdout** for JSON lines only. Child processes must not
+    // inherit that fd — e.g. `cargo run` would print program output to stdout and break the next
+    // `read_json_line` on the host. Pipe child stdout/stderr and forward both to **our stderr**
+    // (typically still visible in the user's terminal; IPC stays clean).
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+
+    if let Some(env_obj) = v.get("env").and_then(|e| e.as_object()) {
+        for (k, val) in env_obj {
+            if let Some(s) = val.as_str() {
+                cmd.env(k, s);
+            }
+        }
+    }
+
+    let mut child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(e) => {
+            return serde_json::json!({
+                "op": "error",
+                "code": "exec_spawn",
+                "message": e.to_string(),
+            })
+            .to_string();
+        }
+    };
+
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    let drain_out = thread::spawn(move || {
+        if let Some(mut out) = stdout {
+            let mut err = std::io::stderr().lock();
+            let _ = std::io::copy(&mut out, &mut err);
+        }
+    });
+    let drain_err = thread::spawn(move || {
+        if let Some(mut err_in) = stderr {
+            let mut err = std::io::stderr().lock();
+            let _ = std::io::copy(&mut err_in, &mut err);
+        }
+    });
+
+    let status = child.wait();
+    let _ = drain_out.join();
+    let _ = drain_err.join();
+
+    match status {
+        Ok(status) => {
+            let (exit_code, signal) = exec_status_fields(status);
+            serde_json::json!({
+                "op": "exec_result",
+                "session_id": sid,
+                "exit_code": exit_code,
+                "signal": signal,
+            })
+            .to_string()
+        }
+        Err(e) => serde_json::json!({
+            "op": "error",
+            "code": "exec_wait",
+            "message": e.to_string(),
+        })
+        .to_string(),
+    }
+}
+
 fn handle_exec(v: &serde_json::Value, state: &ServerState, sid: &serde_json::Value) -> String {
     let argv: Vec<String> = v
         .get("argv")
@@ -197,36 +274,7 @@ fn handle_exec(v: &serde_json::Value, state: &ServerState, sid: &serde_json::Val
         .to_string();
     }
 
-    let mut cmd = Command::new(&argv[0]);
-    cmd.args(&argv[1..]);
-    cmd.current_dir(&host_cwd);
-
-    if let Some(env_obj) = v.get("env").and_then(|e| e.as_object()) {
-        for (k, val) in env_obj {
-            if let Some(s) = val.as_str() {
-                cmd.env(k, s);
-            }
-        }
-    }
-
-    match cmd.status() {
-        Ok(status) => {
-            let (exit_code, signal) = exec_status_fields(status);
-            serde_json::json!({
-                "op": "exec_result",
-                "session_id": sid,
-                "exit_code": exit_code,
-                "signal": signal,
-            })
-            .to_string()
-        }
-        Err(e) => serde_json::json!({
-            "op": "error",
-            "code": "exec_spawn",
-            "message": e.to_string(),
-        })
-        .to_string(),
-    }
+    run_exec_command(&argv, &host_cwd, v, sid)
 }
 
 pub fn handle_line(line: &str, state: &mut ServerState) -> String {
