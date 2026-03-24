@@ -1,6 +1,6 @@
 # 发布说明 (Publishing)
 
-本仓库为 Cargo workspace，仅 **`crates/todo`**（包名 **`xtask-todo-lib`**）适合发布到 [crates.io](https://crates.io)。该包**同一 Cargo.toml** 内包含 **库**（`[lib]`）和 **二进制**（`[[bin]] name = "cargo-devshell"`），一次 `cargo publish` 同时发布库与 `cargo devshell` 子命令。**xtask** 与 **`crates/devshell-vm`**（β 侧车占位）已设置 `publish = false`，仅工作区内使用，不发布。
+本仓库为 Cargo workspace，仅 **`crates/todo`**（包名 **`xtask-todo-lib`**）适合发布到 [crates.io](https://crates.io)。该包**同一 Cargo.toml** 内包含 **库**（`[lib]`）和 **二进制**（`[[bin]] name = "cargo-devshell"`），一次 `cargo publish` 同时发布库与 `cargo devshell` 子命令。**xtask** 与 **`crates/devshell-vm`**（β 侧车，随仓库构建；OCI 镜像见 **`docs/devshell-vm-oci-release.md`**）已设置 `publish = false`，仅工作区内使用，不发布到 crates.io。
 
 ---
 
@@ -183,14 +183,14 @@ cargo install xtask-todo-lib --features beta-vm
 xtask-todo-lib = { version = "x.y", features = ["beta-vm"] }
 ```
 
-启用后，在 Unix 上设置 **`DEVSHELL_VM_BACKEND=beta`** 与 **`DEVSHELL_VM_SOCKET`**（Unix 域套接字路径）即可（**`DEVSHELL_VM`** 二进制默认已开启，一般无需再设 `on`）。侧车 **`devshell-vm`** 当前为 workspace 内 crate（**`publish = false`**），不会随 `cargo install xtask-todo-lib` 安装，需从**本仓库**构建，例如：
+启用后：**Unix** 可设置 **`DEVSHELL_VM_BACKEND=beta`** 与 **`DEVSHELL_VM_SOCKET`**（Unix 域路径或 **`tcp:`**）；**Windows** 默认 **`beta`**，通常 **`DEVSHELL_VM_SOCKET=stdio`**，由 **`podman`** 运行 OCI 侧车或宿主编译的 Linux ELF（**`DEVSHELL_VM`** 开启 VM 时一般无需再设 `on`）。侧车 **`devshell-vm`** 为 workspace 内 crate（**`publish = false`**），不随 `cargo install` 安装；可从**本仓库**构建，或使用 **GHCR** 镜像（见 **`docs/devshell-vm-windows.md`**），例如：
 
 ```bash
 cargo build -p devshell-vm --release
 # 可执行文件通常在 target/release/devshell-vm
 ```
 
-侧车用法与 γ/β 环境变量摘要见 **`docs/devshell-vm-gamma.md`**（含 §「β 桩」）。
+侧车用法与 γ/β 环境变量摘要见 **`docs/devshell-vm-gamma.md`**（§「β 侧车」）、**`docs/devshell-vm-windows.md`**。
 
 ### 6.4 小结
 

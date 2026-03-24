@@ -1,7 +1,7 @@
 # `devshell-vm` IPC 草案（β）
 
 **日期**：2026-03-11  
-**状态**：草案（β 实现前可改）  
+**状态**：草案（字段仍可演进）；**`exec` / `guest_fs` / 握手**等已在 **`crates/devshell-vm`** 落地，细节以 **[requirements.md](../../requirements.md) §5.8**、**[devshell-vm-windows.md](../../devshell-vm-windows.md)** 为准。  
 **目的**：定义 **`cargo-devshell`**（客户端）与侧车 **`devshell-vm`**（服务端）之间的 **无大块内联负载** 协议，与规格 [`2026-03-11-devshell-microvm-session-design.md`](./2026-03-11-devshell-microvm-session-design.md) §3 同步语义一致。
 
 ---
@@ -10,8 +10,9 @@
 
 | 模式 | 说明 |
 |------|------|
-| **Unix 套接字（首选）** | 抽象地址或文件系统路径，由环境变量 **`DEVSHELL_VM_SOCKET`** 指定（实现可约定 `unix:///path` 或裸路径）。 |
-| **标准输入/输出（调试）** | 每行一条 JSON（JSON Lines），仅用于开发与测试；生产由侧车监听 socket。 |
+| **Unix 套接字** | 文件系统路径或抽象名，由 **`DEVSHELL_VM_SOCKET`** 指定（实现可约定裸路径或 `unix:///path`）。 |
+| **TCP** | **`DEVSHELL_VM_SOCKET=tcp:host:port`**（侧车 **`--serve-tcp`**）。 |
+| **标准输入/输出** | 每行一条 JSON（JSON Lines）。**Windows β 默认**（**`DEVSHELL_VM_SOCKET=stdio`**，**Podman** 管道）；亦用于调试。侧车进程 **stdout** 仅用于协议回包；子进程 **stdout/stderr** 不得写入该 fd（实现见 **requirements §5.8**）。 |
 
 **成帧**：一条逻辑消息 = **一行** UTF-8 JSON 对象（`\n` 结尾），无跨行 JSON。
 
@@ -119,11 +120,11 @@
 }
 ```
 
-**服务端**：
+**服务端**（实现：**`crates/devshell-vm/src/server.rs`**）：
 
 1. 可选：先处理未决的 `sync_request`（push）。
-2. 在 guest 内 `exec` / `spawn` 子进程，继承或覆盖 `env`。
-3. 收集 **退出码**；**无论是否为零**，尽量完成 **pull** 到 `staging_dir`（与 γ / 计划一致）。
+2. 在 **`guest_cwd`** 映射到的宿主目录上 **`spawn`** 子进程（**argv[0]…**），继承或覆盖 **`env`**；与 **`staging_dir`** 为 **bind mount** 时即等价于在 guest 内执行。
+3. 收集 **退出码**；客户端可在 **Mode S** 下继续发 **`sync_request` + pull**（库侧行为见 **gamma / session_beta**）。
 4. 回复：
 
 ```json
@@ -150,10 +151,10 @@
 
 | γ（当前） | β（侧车） |
 |-----------|-----------|
-| `xtask-todo-lib` 直接 `limactl` | 客户端连接 `devshell-vm`，由侧车调 Lima / 其他驱动 |
-| 同步在库内 `push_incremental` / `pull_workspace_to_vfs` | 同步可由侧车协调 + **同一 `staging_dir` 约定** |
+| `xtask-todo-lib` 直接 `limactl` | 客户端连接 **`devshell-vm`**（**Unix**：UDS/TCP；**Windows**：默认 **stdio** + Podman） |
+| 同步在库内 `push_incremental` / `pull_workspace_to_vfs` | **挂载共享 `staging_dir`** 时常为 **noop**；否则由侧车/客户端协调；**`exec`** 在 **`staging_dir`** 上真实 **`spawn`** |
 
-协议 **不强制** guest 内工具链来源（仍由挂载 / 镜像解决）。
+协议 **不强制** guest 内工具链来源（仍由挂载 / 镜像解决；OCI 镜像见 **`containers/devshell-vm/Containerfile`**）。
 
 ---
 
@@ -170,3 +171,4 @@
 - 微 VM 会话设计：[`2026-03-11-devshell-microvm-session-design.md`](./2026-03-11-devshell-microvm-session-design.md)
 - 实现计划：[`../plans/2026-03-11-devshell-microvm-session.md`](../plans/2026-03-11-devshell-microvm-session.md)
 - 用户向 γ 说明：[`../../devshell-vm-gamma.md`](../../devshell-vm-gamma.md)
+- Windows β：[`../../devshell-vm-windows.md`](../../devshell-vm-windows.md)

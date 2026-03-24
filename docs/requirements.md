@@ -32,7 +32,7 @@
 | 维度 | 说明 |
 |------|------|
 | **`xtask-todo-lib` / `cargo install`** | **Linux、macOS、Windows（MSVC）** 均可编译与安装；**`rustyline`** 为通用依赖，REPL 在 Windows 上可用。详见 **`crates/todo/README.md`**（含 Windows 安装说明）。 |
-| **VM / Lima / β / Mode P / Linux mount-namespace sandbox** | **γ（Lima）** 以 **Unix** 为主。**Windows** 默认 **`DEVSHELL_VM_BACKEND=beta`**（库默认 **`beta-vm`**），首次连接可 **自动 Podman** 起侧车；也可用 **`DEVSHELL_VM=off`** / **`DEVSHELL_VM_BACKEND=host`** 仅用宿主沙箱。详见 **`docs/devshell-vm-windows.md`**。 |
+| **VM / Lima / β / Mode P / Linux mount-namespace sandbox** | **γ（Lima）** 以 **Unix** 为主。**Windows** 未设置 **`DEVSHELL_VM_BACKEND`** 时默认 **`beta`**（库默认 **`beta-vm`**）：通过 **Podman Machine** 运行侧车 **`devshell-vm`**（**JSON 行**协议，默认 **`DEVSHELL_VM_SOCKET=stdio`**），在 **`session_start` 的 `staging_dir`** 上对 **`rustup`/`cargo`** 做 **`exec`**（真实子进程；OCI 镜像含 **`cargo`**）。方式：**宿主编译的 Linux ELF**（`podman machine ssh`）或 **`podman run` + GHCR 镜像**（无 ELF 时自动拉取）。**宿主工作区根**解析见 **§5.2**（可为 **`cargo metadata` workspace**、**`DEVSHELL_VM_WORKSPACE_PARENT`** 或 **`…/cargo-devshell-exports/vm-workspace/<实例>/`** 等）。也可用 **`DEVSHELL_VM=off`** / **`DEVSHELL_VM_BACKEND=host`** 仅用宿主沙箱。详见 **`docs/devshell-vm-windows.md`**。 |
 | **交叉编译自检** | 仓库 **pre-commit**（见 **§4**、**§7.2**）对 **`xtask-todo-lib`** 执行 **`x86_64-pc-windows-msvc` 目标 `cargo check`**，避免仅 Linux 开发时引入不可在 Windows 上编译的代码。 |
 
 ---
@@ -46,7 +46,7 @@
 | `todo init-ai` | 生成 AI 命令/技能文件 |
 | xtask：`fmt`、`clippy`、`coverage`、`git`、`gh`、`run`、`clean`、`publish` 等 | 见 §4 |
 | Devshell：VFS、内置命令、管道、重定向、脚本、`source`、Tab 补全 | 见 §5 |
-| VM：`rustup`/`cargo` 经 Lima 或回退宿主 sandbox | 见 **`docs/devshell-vm-gamma.md`** |
+| VM：`rustup`/`cargo` — Unix 经 **Lima（γ）** 或回退宿主 sandbox；**Windows** 经 **β + Podman**（侧车 **`exec`**）或回退宿主 sandbox | 见 **`docs/devshell-vm-gamma.md`**、**`docs/devshell-vm-windows.md`** |
 
 **当前不承诺**：HTTP API、多用户权限、`.todo.json` 自动迁移流水线、内核级强隔离、多进程并发写同一文件的强保证。
 
@@ -105,13 +105,13 @@
 
 ### 5.1 目标
 
-在 **Mode P** 且 γ 就绪时，REPL 对**工程树**的操作与在 **Lima guest** 同一挂载下（默认 **`/workspace/…`**）一致；经 **`GuestFsOps`**。降级为 **Mode S** 时使用内存 VFS + push/pull。
+在 **Mode P** 且 VM 就绪时（**Unix**：**γ（Lima）**；**Windows**：**β（Podman + 侧车）**），REPL 对**工程树**的操作与在 **guest 挂载树**（默认 **`/workspace/…`**）一致；经 **`GuestFsOps`** / β IPC。降级为 **Mode S** 时使用内存 VFS + push/pull（与 γ 协作时另含 **`push_incremental` / `pull_workspace_to_vfs`**）。
 
-### 5.2 工作区路径（γ）
+### 5.2 工作区路径（宿主 ↔ guest）
 
-- **宿主工作区根**（与 guest 挂载对齐）：默认 **`$XDG_CACHE_HOME/cargo-devshell-exports/vm-workspace/<实例名>`**（或 **`DEVSHELL_VM_WORKSPACE_PARENT`** 覆盖）；进程导出 **`DEVSHELL_WORKSPACE_ROOT`**。
+- **宿主工作区根**（与 γ 挂载 / β **`session_start` 的 `staging_dir`** 对齐）：由实现 **`workspace_parent_for_instance`** 解析，顺序为：**`DEVSHELL_VM_WORKSPACE_PARENT`**（若设置且非空）→ 否则在默认 **`DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT`** 下，若 **`cargo metadata`**（自当前目录）可解析 **workspace_root**，则取该目录（便于工程直接落在克隆树内）→ 否则为 **`${导出父目录}/vm-workspace/<实例名>`**。其中 **导出父目录** 为 **`DEVSHELL_EXPORT_BASE`**，或 **`XDG_CACHE_HOME`/`%LOCALAPPDATA%`** 下的 **`…/cargo-devshell-exports`**（见 **`sandbox::devshell_export_parent_dir()`**）。进程导出 **`DEVSHELL_WORKSPACE_ROOT`**。
 - **Guest 逻辑根**：**`DEVSHELL_VM_GUEST_WORKSPACE`**（默认 **`/workspace`**）。
-- **实例名**：**`DEVSHELL_VM_LIMA_INSTANCE`**（默认 **`devshell-rust`**）。
+- **实例名**：**`DEVSHELL_VM_LIMA_INSTANCE`**（默认 **`devshell-rust`**；路径段中的实例名经消毒，非字母数字可变为 **`_`**）。
 
 ### 5.3 启动
 
@@ -127,7 +127,7 @@
 | `save` | 会话状态 → **§1.1** 工作区内 JSON。 |
 | `export-readonly` | Mode S：VFS → 宿主临时目录；Mode P：guest 子树镜像到 VFS **`/.__export_ro_*`**。 |
 | `todo …` | 子集（无 `export`/`import`/`init-ai`）；**`.todo.json`**。 |
-| `rustup` / `cargo` | Mode S：导出 → 宿主执行 → 回写；Mode P：guest 内执行。Unix 默认经 Lima；可 **`DEVSHELL_VM=off`** 等回退。 |
+| `rustup` / `cargo` | Mode S：导出 → 宿主执行 → 回写；Mode P：guest 内执行（**`exec`**）。**Unix** 默认经 **Lima（γ）**；**Windows** 在 VM 开启时经 **β 侧车**（Podman + **`devshell-vm`**），在 **`staging_dir`** 上执行 **`cargo new`/`cargo run`** 等与 **Unix guest 挂载树**一致；可 **`DEVSHELL_VM=off`** 等回退宿主沙箱。 |
 | `exit` / `quit` / `help` | 退出与帮助。 |
 
 ### 5.5 语言特性
@@ -141,12 +141,26 @@
 
 ### 5.7 Mode P 补充
 
-- **β**：`--features beta-vm`，侧车 **`devshell-vm`**，**`DEVSHELL_VM_SOCKET`** 等见 **`docs/devshell-vm-gamma.md`**。
+- **β**：`--features beta-vm`，侧车 **`devshell-vm`**，**`DEVSHELL_VM_SOCKET`**（Unix：**UDS** / **`tcp:`**；**Windows**：默认 **`stdio`**）等见 **`docs/devshell-vm-gamma.md`**、**`docs/devshell-vm-windows.md`**。
 - **验收**：REPL 与 guest 同路径下 **`ls`/`cat`/写文件** 一致；**`source`** 读宿主脚本等例外以设计文档为准。
 
-### 5.8 扩展阅读
+### 5.8 Windows 与 β（Podman）— 当前实现要点
 
-- **`docs/devshell-vm-gamma.md`**
+在 **Mode P**、**`DEVSHELL_VM_BACKEND=beta`**（Windows 默认）且 **Podman** 可用时：
+
+| 要点 | 说明 |
+|------|------|
+| **侧车** | 进程 **`devshell-vm`**；与宿主通过 **一行一条 JSON** 通信（默认 **stdio**，不经由 Windows 本机监听端口）。 |
+| **`session_start`** | **`staging_dir`** 为侧车 OS 视角下的宿主工作区目录（方式 B 下为容器内 **`/workspace`** 的挂载源；**`DEVSHELL_VM_BETA_SESSION_STAGING`** 可覆盖）。 |
+| **`exec`** | 在映射后的宿主目录上 **真实 `spawn`** 子进程（非桩）；OCI 运行时镜像须含 **`cargo`**（**`containers/devshell-vm/Containerfile`**：`apt install cargo`）。 |
+| **stdio 与程序输出** | 子进程 **不得**向侧车用于 IPC 的 **stdout** 写入非 JSON 内容（例如 **`cargo run`** 启动的二进制 **`println!`**）。实现上将子进程 **stdout/stderr 管道化并转发到侧车 stderr**，保证宿主下一行 **`read_json_line`** 仅收到 **`exec_result`** 等协议行；编译与程序输出仍可在终端侧通过 **stderr** 可见（取决于 Podman/终端转发方式）。 |
+| **镜像与版本** | **`cargo install`** 用户默认拉取 **`ghcr.io/tangcan/xtask_todo/devshell-vm:v<与库相同版本>`**；行为以 **`docs/devshell-vm-windows.md`**、**`docs/devshell-vm-oci-release.md`** 为准。 |
+
+### 5.9 扩展阅读
+
+- **`docs/devshell-vm-gamma.md`**（γ / β 总览）
+- **`docs/devshell-vm-windows.md`**（Windows β / Podman / OCI）
+- **`docs/devshell-vm-oci-release.md`**（侧车镜像发布与版本对齐）
 - **`docs/superpowers/specs/2026-03-20-devshell-guest-primary-design.md`**
 - **`docs/superpowers/specs/2026-03-20-devshell-rust-vm-design.md`**
 - **`docs/dev-container.md`**（`DEVSHELL_RUST_MOUNT_NAMESPACE` 等）
@@ -174,7 +188,7 @@
 ### 7.1 目标平台与 `xtask-todo-lib` 构建
 
 - **crates.io**：以 **`xtask-todo-lib`** 当前版本为准；**Windows** 用户请使用 **`crates/todo/README.md`** 中标注的最低版本（例如修复 **`cargo install`** 所需的依赖与 **`cfg`** 调整）。
-- **全功能 devshell（VM、guest 挂载、Mode P 与 Linux 沙箱扩展）**：开发与验收以 **Unix** 环境为准；**Windows** 侧重 **库 + `cargo-devshell` REPL** 与 **Todo** 内置命令，不保证与 Lima 文档 1:1 行为一致。
+- **Devshell + VM**：**Unix** 上以 **Lima（γ）** 为完整参考（**`limactl shell`**、**lima.yaml** 挂载等）。**Windows** 上 **无 Lima**；在 **Podman** 与 **`beta-vm`** 可用时，**`rustup`/`cargo`** 经 **β 侧车**在挂载工作区上执行（**§5.8**），验收场景包括 **`cargo new`**、**`cargo run`** 等与挂载目录一致。**Windows** 仍不保证与 **γ** 文档（如 **`lima-todo`**、**`limactl shell`** 交互流程）逐条一致；**`DEVSHELL_VM=off`** / **`DEVSHELL_VM_BACKEND=host`** 下为宿主沙箱，无 Podman 依赖。
 
 ### 7.2 Pre-commit 与 Windows 交叉编译检查
 
@@ -200,7 +214,7 @@
 | 能力范围与不承诺 | **§2** |
 | Todo、**`cargo xtask todo`** | **§3** |
 | 其他 **`cargo xtask`** 子命令（含 **`acceptance`**） | **§4** |
-| Devshell | **§5** |
+| Devshell（含 **Windows β**） | **§5**（**§5.8**） |
 | **`--json`**、退出码、`init-ai` | **§6** |
 | 非功能约束 | **§7** |
 | 平台、`cargo install`、pre-commit 交叉检查 | **§1.2**、**§7.1**、**§7.2** |
@@ -209,4 +223,5 @@
 - **`docs/publishing.md`** — 发布流程  
 - **`docs/design.md`** — 设计总览  
 - **`docs/acceptance.md` §8** — **`cargo xtask acceptance`** 自动化验收与报告  
+- **`docs/devshell-vm-windows.md`** — Windows **β** / Podman / OCI 侧车  
 - **`docs/reference/requirement_example.md`** — 原始需求示例（仅作参考）

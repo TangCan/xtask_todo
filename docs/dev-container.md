@@ -23,15 +23,18 @@ This does **not** provide a full filesystem jail (the child still sees the host 
 
 On macOS, Windows, and other non-Linux targets, this variable is ignored.
 
-## VM session (γ / β) — default for `cargo devshell` on Unix
+## VM session (γ / β) — default for `cargo devshell`
 
 On **Linux and macOS**, for the **`cargo devshell` binary** (non-`cfg(test)` build), **`DEVSHELL_VM` unset means VM mode is on**, and **`DEVSHELL_VM_BACKEND` unset defaults to `lima`**, so `rustup`/`cargo` run inside **Lima** while the library syncs a host **staging directory** with the VFS. You need **`limactl`** on `PATH` and a Lima instance that mounts that directory at guest **`/workspace`** (or override with `DEVSHELL_VM_GUEST_WORKSPACE`). **Opt out:** **`DEVSHELL_VM=off`** or **`DEVSHELL_VM_BACKEND=host`** / **`auto`**. **`cargo test`** for this crate still defaults to the host sandbox. Details: **[devshell-vm-gamma.md](./devshell-vm-gamma.md)**.
 
-The **`devshell-vm`** binary (workspace crate, currently a **stub**) is the planned **β** sidecar; IPC message shapes are described in **[superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md](./superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md)**.
+On **Windows**, **`DEVSHELL_VM_BACKEND` unset defaults to `beta`** (no Lima). The **`devshell-vm`** sidecar runs under **Podman** (default **stdio** JSON-lines IPC to the host). **`exec`** runs real `cargo`/`rustup` against the bind-mounted workspace; see **[devshell-vm-windows.md](./devshell-vm-windows.md)** and **[requirements.md](./requirements.md) §5.8**.
+
+The **`devshell-vm`** binary (workspace crate, **`publish = false`**) implements the **β** sidecar (**`guest_fs`**, **`exec`**, etc.); IPC shapes are in **[superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md](./superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md)**.
 
 ## Related code
 
 - `crates/todo/src/devshell/sandbox.rs` — `export_vfs_to_temp_dir`, `run_in_export_dir`, `run_rust_tool`, `sync_host_dir_to_vfs`
-- `crates/todo/src/devshell/vm/` — optional `SessionHolder` (host vs Lima γ)
+- `crates/todo/src/devshell/vm/` — `SessionHolder` (host vs Lima γ vs **β** `BetaSession` on Windows / `--features beta-vm`)
+- `crates/devshell-vm/` — β sidecar binary
 
 A root **`Dockerfile`** in the repo (if present) is only for **your own** image builds if you use Docker elsewhere; devshell does not call it.

@@ -1,6 +1,6 @@
 # 验收文档（Acceptance）
 
-对 [requirements.md](./requirements.md) 中的能力与验收标准做**可勾选**验证；发布或迭代结束时可作为签字依据。详细用例与自动化映射见 [test-cases.md](./test-cases.md)（含 **TC-X-ACC-1**、**TC-X-GIT-2**、**TC-NF-5/6**、**TC-D0-4**）；覆盖率目标见 [test-coverage.md](./test-coverage.md)。
+对 [requirements.md](./requirements.md) 中的能力与验收标准做**可勾选**验证；发布或迭代结束时可作为签字依据。详细用例与自动化映射见 [test-cases.md](./test-cases.md)（含 **TC-X-ACC-1**、**TC-X-GIT-2**、**TC-NF-5/6**、**TC-D0-4**、**TC-D-VM-1～5**）；覆盖率目标见 [test-coverage.md](./test-coverage.md)。
 
 ---
 
@@ -100,7 +100,7 @@
 
 ---
 
-## 4. Devshell（requirements §1.1、§5）
+## 4. Devshell（requirements §1.1、§5、§5.8）
 
 
 | #   | 验收标准                                                                       | 验证方式           | 预期结果                       | 结果  |
@@ -109,10 +109,11 @@
 | D2  | VFS：`cd`/`ls`/`cat`/管道/重定向                                                 | `devshell` 测试  | 通过                         |     |
 | D3  | 内置 `todo` 子集与 `**.todo.json`** 一致                                          | `run_todo` 等   | 通过                         |     |
 | D4  | Tab 补全 `**CompletionType::List**`；路径保留前缀                                   | 单元测试           | 通过                         |     |
-| D5  | `rustup`/`cargo` 经 sandbox 或 VM（视 env）                                     | `sandbox` / 手工 | 与 **design §2.5** 一致       |     |
-| D6  | **Mode P**（可选）：`DEVSHELL_VM_WORKSPACE_MODE=guest` 且 VM 可用时，工程树与 guest 挂载一致 | 需 Lima/β 环境    | 与 **requirements §5.1** 一致 |     |
+| D5  | **`rustup`/`cargo`**：Mode S 经 **sandbox**；Mode P 经 **VM** — **Unix** 默认 **γ（Lima）**，**Windows** 默认 **β（Podman + `devshell-vm` `exec`）**；与 **design §2.5**、**§5.8** 一致 | `sandbox` 测试；VM 见 **D6/D9** | 与 env 一致                    |     |
+| D6  | **Mode P**（可选）：`DEVSHELL_VM_WORKSPACE_MODE=guest` 且 VM 可用时，工程树与 **guest 挂载 / `staging_dir`** 一致 — **Unix** 需 **Lima（γ）**；**Windows** 需 **β + Podman**（无 Lima） | 需对应环境         | 与 **requirements §5.1**、**§5.8** 一致 |     |
 | D7  | 会话元数据路径与 **§1.1** 一致（工作区内 JSON，非宿主 cwd 旁规范文件）；**guest-primary** 会话 **`format`** 为 **`devshell_session_v1`**（见实现） | 代码评审 / `session_store` 测试 | 与需求一致                      |     |
-| D8  | **Windows**：**`cargo install`/`check`** 所涉 **`xtask-todo-lib`** 在 **MSVC** 目标可编译（与 **§1.2** 一致）；**VM/Mode P** 全功能仍以 Unix 验收为准 | **TC-NF-5** / 交叉 `cargo check` | 通过或 ⏸ 无 `rustup target`     |     |
+| D8  | **Windows 交叉编译**：**`xtask-todo-lib`** 在 **`x86_64-pc-windows-msvc`** 上可 **`cargo check`**（与 **§1.2**、**§7.2** 一致） | **TC-NF-5** / 交叉 `cargo check` | 通过或 ⏸ 无 `rustup target`     |     |
+| D9  | **Windows β + Podman**（可选，**§5.8**）：**`cargo devshell`**（默认 **`beta`**）下 **`cargo new --bin <name>`**、进入目录后 **`cargo run`** 成功；宿主工作区出现工程；**无**「sidecar response is not JSON」等协议错误（**`exec`** 子进程输出不污染侧车协议 **stdout**） | **手工**（需 Podman Machine、可拉取 OCI 或本地 ELF）；见 **TC-D-VM-4** | 与 **requirements §5.8** 一致 |     |
 
 
 ---
@@ -140,7 +141,7 @@
 | §3 Todo     | §2 各表 |     |     |     |
 | §4 xtask    | §3.1  |     |     |     |
 | §6 AI       | §3.2  |     |     |     |
-| §5 Devshell | §4（含 D1～D8） |     |     |     |
+| §5 Devshell | §4（含 D1～D9） |     |     |     |
 | §7 非功能      | §5（含 NF-1～NF-6） |     |     |     |
 
 
@@ -174,10 +175,10 @@ cargo xtask acceptance
 | 读根 **`Cargo.toml`** 是否含 **`crates/todo`**、**`xtask`** | **NF-1** |
 | 读 **`.cargo/config.toml`** 是否含 **`cargo xtask`** 别名 | **NF-2** |
 | 读 **`.githooks/pre-commit`** 是否含 **`cargo doc --no-deps`**、**MSVC** 交叉 **`cargo check`** 等 | **NF-6** |
-| **`cargo test -p xtask-todo-lib`**、**`-p xtask`**、**`-p devshell-vm`**（**`--test-threads=1`**） | **§2 Todo**、**§3**、**§4 Devshell**（以测试覆盖为准） |
+| **`cargo test -p xtask-todo-lib`**、**`-p xtask`**、**`-p devshell-vm`**（**`--test-threads=1`**） | **§2 Todo**、**§3**、**§4 Devshell**、**TC-D-VM-1～3/5**（以测试覆盖为准） |
 | **`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`**（若 **`rustup target`** 未安装则 **SKIP**） | **NF-5**、**D8** |
 
-**本命令不自动执行**（在报告 **§2** 表中列出原因）：**T6-1**、**T6-2**、**NF-3**、**NF-4**、**D5**、**D6**、**X3-1** 等需终端、文档评审或 Lima/环境。
+**本命令不自动执行**（在报告 **§2** 表中列出原因）：**T6-1**、**T6-2**、**NF-3**、**NF-4**、**D5**、**D6**、**D9**（Windows Podman 全链路）、**X3-1** 等需终端、文档评审、**Lima**/**Podman** 或手工环境。
 
 **退出码**：全部自动化检查通过（含 **SKIP**）为 **0**；**FAIL** 任一检查为 **1**。
 

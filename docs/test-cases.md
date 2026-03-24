@@ -17,10 +17,12 @@
 | requirements §3 Todo | §2 |
 | requirements §4 其他 xtask | §4 |
 | requirements §5 Devshell | §5 |
+| requirements §5.2 / §5.8（工作区路径、Windows β） | §5.10 |
 | requirements §6 AI / 退出码 | §1 |
 | requirements §7 非功能 | §7 |
 | requirements §1.2、§7.1～§7.2（平台、pre-commit、MSVC 检查） | §7 |
 | design §1～§3 | §4～§6 |
+| design §1.4 VM / β 侧车 | §5.10 |
 | design §4 关键决策 | §5、§6 |
 
 ---
@@ -196,7 +198,7 @@
 | TC-D0-1 | §5.3 | 非法 CLI 参数非零退出 | `crates/todo/tests/integration.rs`（`cargo_devshell_usage_error_exits_nonzero`） |
 | TC-D0-2 | §1.1 / design §2.3 | 会话与工作区：VFS 序列化、`session_store`（**`GuestPrimarySessionV1`** / **`devshell_session_v1`**）、**工作区内** `session.json` 路径 | `session_store` 测试、`run_main.rs`、`serialization.rs` |
 | TC-D0-3 | §5.3 | `-f script` / `-e` | `run_main.rs` |
-| TC-D0-4 | §1.2 | **Windows**：**`xtask-todo-lib`** 库目标可编译（**rustyline**、桩 **`vm_workspace_host_root`** 等）；**不**要求在本仓库用集成测试启动真实 Windows 进程 | 交叉 **`cargo check --target x86_64-pc-windows-msvc`** 或 **TC-NF-5** | `crates/todo` **`cfg`** / **`vm/mod.rs`** |
+| TC-D0-4 | §1.2 / §7.1 | **Windows**：**`xtask-todo-lib`** 库目标可编译（**rustyline**、桩 **`vm_workspace_host_root`** 等）；**不**要求在本仓库 CI 中启动真实 Podman/Windows 进程。全链路 **`cargo devshell` + β + `cargo new`/`cargo run`** 见 **§5.10**（手工）。交叉 **`cargo check --target x86_64-pc-windows-msvc`** 或 **TC-NF-5** | `crates/todo` **`cfg`** / **`vm/mod.rs`** |
 
 ### 5.2 VFS（requirements §5.4 + design vfs）
 
@@ -259,6 +261,18 @@
 |----|------|------|----------|
 | TC-D-SER-1 | serialization | Vfs ↔ 快照 round-trip | `devshell/serialization.rs` 内测试 |
 
+### 5.10 VM / β 侧车（`devshell-vm` + requirements §5.8）
+
+与 **Lima（γ）** 的 **`limactl`** 集成测试不同，β 侧车为 **独立 crate**（**`crates/devshell-vm`**），在 **Linux** 上跑单元测试；**Windows** 上 **`cargo devshell` + Podman + OCI** 以 **手工 / 环境** 验证为主（见 **TC-D-VM-4**）。
+
+| ID | 需求/设计 | 描述 | 验证方式 | 预期结果 | 实现映射 |
+|----|-----------|------|----------|----------|----------|
+| TC-D-VM-1 | design §1.4 / requirements §5.8 | **`exec`** 含 **`--devshell-vm-test-fail`** 时返回 **`exit_code: 1`**（不依赖真实 `cargo`） | 单元 | JSON 一行可解析，`exec_result` | `crates/devshell-vm/src/tests.rs`（`handle_exec_fail_flag`） |
+| TC-D-VM-2 | requirements §5.8 | **`session_start`** 后 **`exec`** 在 **`staging_dir`** 上执行子进程并写宿主文件 | 单元（Unix：`sh` 写 `marker.txt`） | `exec_result` 成功，宿主路径存在文件 | `crates/devshell-vm/src/tests.rs`（`handle_exec_runs_subprocess_in_staging_dir`） |
+| TC-D-VM-3 | design §1.4 | **`guest_fs`** 在 **`session_start`** 后读宿主 **`staging_dir`** 内文件 | 单元 | `guest_fs_ok`、内容与基64 一致 | `crates/devshell-vm/src/tests.rs`（`guest_fs_reads_host_file_after_session_start`） |
+| TC-D-VM-4 | requirements §5.8 / §7.1 | **Windows + Podman**：Mode P、**`DEVSHELL_VM_BACKEND=beta`**（默认），OCI 或 ELF 侧车；**`cargo new --bin hello`** 后 **`cd hello`**，**`cargo run`** 成功，宿主工作区出现工程；**无**「sidecar response is not JSON」类错误（子进程 stdout 不得污染侧车协议 stdout） | **手工**（需 Podman Machine、网络拉镜像等） | 与 **requirements §5.8**「stdio 与程序输出」一致 | 手工；日志样例见仓库内 **`006_win.log`** 类记录 |
+| TC-D-VM-5 | design §1.1 图 | **`devshell-vm`** crate 与 **`handle_line`** 可编译、**`cargo test -p devshell-vm`** 通过 | CI / 本地 | 全绿 | `crates/devshell-vm`；**`acceptance`** 编排含该包测试（见 **TC-X-ACC-1**） |
+
 ---
 
 ## 6. 设计决策专项验证（design §4）
@@ -269,6 +283,7 @@
 | TC-DES-4.2 | §4.2 devshell 与 xtask | xtask 二进制不内嵌 REPL | `xtask` crate 依赖不包含 repl 入口 |
 | TC-DES-4.3 | §4.3 补全 | 见 TC-D-COMP-* | `completion.rs`、`repl.rs` |
 | TC-DES-4.4 | §4.4 脚本变量作用域 | 脚本不污染下一条 REPL 行 | `script/tests.rs` 或手工 |
+| TC-DES-4.5 | §1.4 β 侧车 | **`exec`** 子进程 stdout/stderr 与 JSON 协议分离（见 **TC-D-VM-2**、**TC-D-VM-4**） | `crates/devshell-vm/src/server.rs`；回归 **TC-D-VM-4** |
 
 ---
 
@@ -313,6 +328,8 @@
 | `crates/todo/src/devshell/completion.rs`（#[test]） | TC-D-COMP-* |
 | `crates/todo/src/devshell/sandbox.rs`（#[test]） | TC-D-SBX-* |
 | `crates/todo/src/devshell/serialization.rs`（#[test]） | TC-D-SER-1 |
+| `crates/devshell-vm/src/server.rs`、`crates/devshell-vm/src/tests.rs` | TC-D-VM-1～3、TC-DES-4.5 |
+| **Windows 手工**（Podman + `cargo devshell`） | TC-D-VM-4 |
 | `crates/todo/src/devshell/repl.rs`（#[test]） | process_line、脚本入口 |
 | `xtask/src/todo/format.rs` | TC-T5-2、TC-T6、TC-NF-4（逻辑） |
 

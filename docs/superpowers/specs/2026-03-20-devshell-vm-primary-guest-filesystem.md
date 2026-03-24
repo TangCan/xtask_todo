@@ -1,9 +1,9 @@
 # Devshell：以 VM（guest）文件系统为唯一真源
 
-**状态：** 架构选型已确认；**实现未开始**。本文描述目标形态、与当前 γ 的差异、分阶段路线与风险。  
+**状态：** 架构选型已确认；**Mode P + β 侧车已部分落地**（**`GuestFsOps`**、**`devshell-vm` `exec`/`guest_fs`**、**Windows Podman**，见 **[requirements.md](../../requirements.md) §5**、**§5.8**、**[design.md](../../design.md) §1.4**）。本文仍描述**目标形态**、与 Mode S 的差异及分期路线；若与主线需求冲突，以 **`requirements.md`** 为准。  
 **详细设计（头脑风暴收敛稿）：** [`2026-03-20-devshell-guest-primary-design.md`](./2026-03-20-devshell-guest-primary-design.md)（含技术路线 A/B/C、`WorkspaceBackend`、路径模型、开放决策勾选）。  
-**关联：** `docs/design.md` §1.4、`docs/devshell-vm-gamma.md`、`docs/superpowers/specs/2026-03-11-devshell-microvm-session-design.md`。  
-**产品需求**：[requirements.md](../../requirements.md) **§1.1**、**§5**。
+**关联：** `docs/design.md` §1.4、`docs/devshell-vm-gamma.md`、`docs/devshell-vm-windows.md`、`docs/superpowers/specs/2026-03-11-devshell-microvm-session-design.md`。  
+**产品需求**：[requirements.md](../../requirements.md) **§1.1**、**§5**、**§5.8**。
 
 ---
 

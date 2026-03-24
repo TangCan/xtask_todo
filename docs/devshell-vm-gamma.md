@@ -4,7 +4,7 @@
 
 在 **Linux / macOS** 上，可将 `rustup` / `cargo` 放到 **Lima** 虚拟机里执行，同时在内存 **VFS** 与主机工作区之间做 **增量 push / pull**（见规格 `docs/superpowers/specs/2026-03-11-devshell-microvm-session-design.md` §3）。
 
-β 阶段为侧车进程 + IPC（Unix 上可用 **Unix socket** 或 **TCP**；**Windows** 上仅 **TCP**，见 **`docs/devshell-vm-windows.md`**）。γ 依赖本机安装的 `limactl`。
+β 阶段为侧车进程 + IPC（**Unix**：**Unix domain socket** 或 **`tcp:`**；**Windows**：默认 **`stdio`**（JSON 行），可选 **`tcp:`**，见 **`docs/devshell-vm-windows.md`**）。γ 依赖本机安装的 `limactl`。
 
 ### 简单心智模型（与交互 REPL 统一）
 
@@ -237,26 +237,27 @@ sudo apt install -y build-essential
 
 ---
 
-## β 桩（Unix，需 `beta-vm` feature）
+## β 侧车（需 `beta-vm` feature）
 
-用于本地联调 **JSON-lines IPC**，不替代 γ Lima。
+与 γ 并行：**Unix** 可用于本地联调 **UDS/TCP**；**Windows** 默认 **Podman + stdio**（见 **`docs/devshell-vm-windows.md`**）。侧车实现为 **`crates/devshell-vm`**。
 
 | 步骤 | 说明 |
 |------|------|
 | 编译库 | `cargo build -p xtask-todo-lib --features beta-vm`（或 `cargo devshell` 所在包带上该 feature） |
-| 后端 | **`DEVSHELL_VM_BACKEND=beta`**（`DEVSHELL_VM` 二进制默认已开启，一般不必再设 `on`） |
-| 套接字 | **`DEVSHELL_VM_SOCKET`**：Unix 域套接字路径（与 `ENV_DEVSHELL_VM_SOCKET` 一致） |
-| 侧车 | `devshell-vm --serve-socket <path>` 在 `<path>` 上 `listen` + 逐行 JSON 处理（见 IPC 草案） |
-| **`guest_fs`** | **`session_start`** 提供 **`staging_dir`**（与客户端一致）后，**`guest_path`** 在 **`guest_workspace`**（默认 `/workspace`）下的相对部分映射到该宿主目录；无会话时仍为固定桩响应（单测）。 |
-| 测试 | 若 `exec` 的 argv 含 **`--devshell-vm-test-fail`**，桩返回退出码 **1** |
+| 后端 | **`DEVSHELL_VM_BACKEND=beta`**（**Windows** 未设置时亦为默认；`DEVSHELL_VM` 开启 VM 时一般不必再设 `on`） |
+| 套接字 | **`DEVSHELL_VM_SOCKET`**：**Unix** 域路径或 **`tcp:…`**；**Windows** 默认 **`stdio`** |
+| 侧车 | **`devshell-vm --serve-socket <path>`** / **`--serve-tcp`** / **`--serve-stdio`**（见 IPC 草案与 **`docs/devshell-vm-windows.md`**） |
+| **`guest_fs`** | **`session_start`** 提供 **`staging_dir`** 后，**`guest_path`** 映射到该宿主目录；无会话时可为固定桩响应（单测） |
+| **`exec`** | **`session_start`** 之后在 **`guest_cwd`** 映射目录上 **真实 `spawn` 子进程**；OCI 镜像需含 **`cargo`**（见 **`containers/devshell-vm/Containerfile`**）。**stdio** 传输时子进程 **stdout/stderr** 管道化并写入侧车 **stderr**，避免污染协议 **stdout**（**requirements §5.8**） |
+| 测试 | argv 含 **`--devshell-vm-test-fail`** 时侧车直接返回 **`exit_code: 1`**（单元测试，不启动子进程） |
 
-与 γ 相同：工作区父目录仍用 `DEVSHELL_VM_WORKSPACE_PARENT` / 默认缓存布局；**pull 失败**时仅警告，仍以 **guest 工具退出码** 为准。
+与 γ 相同：工作区父目录仍用 **`DEVSHELL_VM_WORKSPACE_PARENT`** / **`workspace_parent_for_instance`**（**requirements §5.2**）；**pull 失败**时仅警告，仍以 **guest 工具退出码** 为准。
 
 ---
 
 ## 限制与排错
 
-- **Windows**：当前 crate 不在 Windows 上编译 Lima 后端；请用 `DEVSHELL_VM=off` 或 `DEVSHELL_VM_BACKEND=host`。
+- **Windows**：**无 Lima（γ）**；默认 **`DEVSHELL_VM_BACKEND=beta`**，经 **Podman** 与 **`devshell-vm`**（**stdio** / OCI）。仅需宿主沙箱时：**`DEVSHELL_VM=off`** 或 **`DEVSHELL_VM_BACKEND=host`**。详见 **`docs/devshell-vm-windows.md`**。
 - **`template "default.yaml" not found`**：若只把 **`lima` / `limactl` 拷进 `PATH`**（例如仅解压了 `bin/`），没有把发行包里的 **`share/lima`** 装到 Lima 能找到的位置，第一次 **`limactl start <名>`**（尚无实例时会按模板创建）就会报此错。应把同一 tarball 里的 **`share/lima` 整棵目录**放到 **`$HOME/.local/share/lima`**（与 `~/.local/bin/limactl` 搭配），或按官方说明解压到 **`/usr/local`**（含 `bin` 与 `share`）。可用 **`limactl info`** 看是否已列出模板路径。
 - **`Failed to open TUI` / `error=EOF`**：在 REPL 里跑 `cargo` 时，子进程往往**没有完整 TTY**，Lima 若走交互式 TUI 会读 stdin 失败。本仓库的 γ 实现已对 **`limactl start`** 传入 **`-y`**（等价 **`--tty=false`**），避免该路径；若你**手动**执行 `limactl start`，请加 **`-y`**。
 - **QEMU `exit status 1` / `Driver stopped due to error`**：先看 **`~/.lima/<实例名>/ha.stderr.log`**（JSON 行里常有 **`qemu[stderr]:`**）。若出现 **`Could not access KVM kernel module: Permission denied`** 或 **`failed to initialize kvm: Permission denied`**：当前用户对 **`/dev/kvm`** 无权限。
@@ -277,4 +278,5 @@ sudo apt install -y build-essential
 - 设计：`docs/design.md`（devshell / vm）
 - 规格：`docs/superpowers/specs/2026-03-11-devshell-microvm-session-design.md`
 - β IPC 草案：`docs/superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md`
+- Windows β：`docs/devshell-vm-windows.md`
 - 计划：`docs/superpowers/plans/2026-03-11-devshell-microvm-session.md`

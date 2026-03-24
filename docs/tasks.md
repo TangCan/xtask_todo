@@ -13,7 +13,7 @@
 | **§1** / **§1.1** | 概述、Mode S/P、会话路径、qcow2/挂载 | **D1–D7**（Devshell / VM） |
 | **§3** | Todo 领域 + **`cargo xtask todo`** | **T1–T23**，**X3–X7** |
 | **§4** | 其他 **`cargo xtask`**（`run` / `fmt` / `clippy` / …） | **X1–X2** 及 xtask crate 内实现（未逐条编号） |
-| **§5** | Devshell（`cargo-devshell`） | **D1–D7** |
+| **§5** / **§5.2** / **§5.8** | Devshell（`cargo-devshell`）；工作区路径；**Windows β**（Podman、**`exec`**、stdio） | **D1–D7** |
 | **§6** | **`--json`**、退出码、`init-ai`、**`--dry-run`** | **X8–X11** |
 | **§7** | 非功能（Clippy、stderr、TTY、兼容性） | 各 crate **`Cargo.toml`** / CI，未单独任务行 |
 
@@ -131,7 +131,7 @@ flowchart TD
 
 ### 3.4 Devshell / VM（`xtask-todo-lib::devshell`）— **已实现为主，部分持续**
 
-对应 **§1.1**、**§5**、[design.md](./design.md) §1.4、[devshell-vm-gamma.md](./devshell-vm-gamma.md)、[guest-primary-design](./superpowers/specs/2026-03-20-devshell-guest-primary-design.md)。
+对应 **§1.1**、**§5**、**§5.2**、**§5.8**、[design.md](./design.md) §1.4、[devshell-vm-gamma.md](./devshell-vm-gamma.md)、[devshell-vm-windows.md](./devshell-vm-windows.md)、[guest-primary-design](./superpowers/specs/2026-03-20-devshell-guest-primary-design.md)。
 
 | ID | 任务 | 状态 | 说明 |
 |----|------|------|------|
@@ -139,9 +139,9 @@ flowchart TD
 | **D2** | 内存 **VFS**、`cd`/`ls`/文件 builtin | 已完成 | **§5.4** |
 | **D3** | **`rustup`/`cargo`** sandbox（导出 → 临时目录 → 同步） | 已完成 | **§5.4**；Linux 可选 mount namespace 见 **dev-container.md** |
 | **D4** | γ **Lima** 会话、`push_incremental` / `pull_workspace_to_vfs`、**`DEVSHELL_WORKSPACE_ROOT`** | 已完成 | **§1.1** Mode **S**、[devshell-vm-gamma.md](./devshell-vm-gamma.md) |
-| **D5** | **Mode P**：**`GuestFsOps`**、工程树与 guest 挂载一致、**`export-readonly`**（guest 镜像） | 持续 | **§5.1**、**§5.7**；与规格迭代对齐 |
+| **D5** | **Mode P**：**`GuestFsOps`**、工程树与 guest 挂载一致、**`export-readonly`**（guest 镜像） | 持续 | **§5.1**、**§5.7**；**Unix** 以 γ 为主、**Windows** 以 **β**（无 Lima）；与规格迭代对齐 |
 | **D6** | 会话持久化：**`logical_cwd`** 等 → **`$DEVSHELL_WORKSPACE_ROOT/.cargo-devshell/session.json`**（**§1.1**）；无 env 时写入 **`./.cargo-devshell/session.json`**（`current_dir`）；**加载**仍尝试旧版 **`*.session.json`**（与 `.bin` 同目录）以迁移 | 已完成 | `crates/todo/src/devshell/session_store.rs` |
-| **D7** | β：**`beta-vm`**、**`devshell-vm`** 侧车、**`guest_fs` IPC** | 可选 / 持续 | **§5.7** |
+| **D7** | β：**`beta-vm`**、**`devshell-vm`** 侧车、**`workspace_host`**、**`guest_fs` / `exec` IPC**（**`exec`** 在 **`staging_dir`** 上真实 **`spawn`**；OCI 运行时含 **`cargo`**）；**Windows**：**Podman** + 默认 **`stdio`**、子进程 **stdout/stderr** 不污染协议 **stdout**（**requirements §5.8**） | **已完成（主干）** | 单元测试 **`cargo test -p devshell-vm`**；**Windows** 全链路 **手工** 见 **[acceptance.md](./acceptance.md) §4 D9**、**[test-cases.md](./test-cases.md) TC-D-VM-4** |
 
 ---
 
@@ -159,7 +159,7 @@ flowchart TD
 | export / import | §3 | T21, T22, X6 |
 | 重复任务 / `--no-next` | §3 | T23, X7 |
 | `--json` / 退出码 / `init-ai` / `--dry-run` | §6 | X8–X11 |
-| Mode S/P、VFS、VM、内置语言、会话路径 | §1.1, §5 | D1–D7 |
+| Mode S/P、VFS、VM、内置语言、会话路径、**Windows β** | §1.1, §5, **§5.8** | D1–D7 |
 
 ---
 
@@ -170,7 +170,7 @@ flowchart TD
 1. T1, T3, T4 → T2 → T5 → T6 → T7 → T8–T11 → T12–T15  
 2. X1, X2 → X4, X3, X5  
 3. T16–T23 与 X6–X11（扩展）  
-4. Devshell：实现顺序见 **design.md** 与 **superpowers/plans/**（D1–D5 主线；D6–D7 随契约）
+4. Devshell：实现顺序见 **design.md** 与 **superpowers/plans/**（D1–D5 主线；D6；**D7** β 侧车 **IPC + `exec` + Windows Podman** 见 **devshell-vm-windows.md**）
 
 ---
 
@@ -179,4 +179,4 @@ flowchart TD
 - 新增能力：在 **requirements.md** 落条 → 本表增 ID 或子行 → **test-cases.md** / **acceptance.md** 同步。  
 - 文档与实现不一致时，以 [requirements.md](./requirements.md) 与 [design.md](./design.md) 为准，并更新本任务说明。
 - **`xtask` 单测**：改动 **`PATH`** 的用例经 **`path_test_lock()`** 串行；改动 **`cwd`** 的经 **`cwd_test_lock()`**；**`git` / `sh`** 相关 pre-commit 用例在宿主无 **`git`** 或 **`sh`** 时提前返回（不失败）。
-- **D5 / D7**（Mode P 与 β 侧车）在表中为 **持续 / 可选**：主线能力已接好，后续随 Lima / IPC 契约迭代；非「未实现缺口」。
+- **D5**（Mode P 与 guest 真源）仍为 **持续**：与规格迭代对齐。**D7**（β 侧车）**主干已完成**（**`exec`**、**`guest_fs`**、Windows **stdio**、子进程与 JSON 分离）；镜像版本与边界场景见 **devshell-vm-oci-release.md**、**acceptance §4 D9**（手工）。

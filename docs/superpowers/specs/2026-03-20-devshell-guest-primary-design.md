@@ -5,7 +5,7 @@
 **前置选型**：用户已确认采用 **Mode P（guest 真源）**，与当前 **Mode S（内存 VFS + push/pull）** 并存，**默认保持 Mode S** 直至实现切换。  
 **关联短文**：[`2026-03-20-devshell-vm-primary-guest-filesystem.md`](./2026-03-20-devshell-vm-primary-guest-filesystem.md)（目标与阶段总览）  
 **历史规格**：[`2026-03-11-devshell-microvm-session-design.md`](./2026-03-11-devshell-microvm-session-design.md)（原「VFS 权威 + 同步」模型 — Mode P 在工程树语义上 **替代** 该文档 §3.2 对「REPL 与 guest 双份树」的假设，**不**否定会话级 VM、工具链挂载等约束）  
-**产品需求**（仓库根）：[`requirements.md`](../../requirements.md) **§1.1**、**§5**（下文 **§** 号均指**本文**）。
+**产品需求**（仓库根）：[`requirements.md`](../../requirements.md) **§1.1**、**§5**、**§5.8**（Windows β / **`exec`**）（下文 **§** 号均指**本文**）。
 
 ---
 
