@@ -318,7 +318,8 @@ fn podman_pull(image: &str) -> Result<(), VmError> {
     }
     Err(VmError::Ipc(format!(
         "podman pull {image} failed (offline, auth, or image not published).\n\
-         Options: set {} to a Linux devshell-vm ELF path, or {} to an image you can pull, or {}=machine-ssh with a built ELF.",
+         Options: set {} to a Linux devshell-vm ELF path, or {} to an image you can pull, or {}=machine-ssh with a built ELF.\n\
+         GHCR tags vs crates.io version: see docs/devshell-vm-oci-release.md",
         ENV_DEVSHELL_VM_LINUX_BINARY,
         ENV_DEVSHELL_VM_CONTAINER_IMAGE,
         ENV_DEVSHELL_VM_STDIO_TRANSPORT

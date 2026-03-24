@@ -81,6 +81,17 @@ Podman 在 Windows 上使用 **`%USERPROFILE%\.ssh\known_hosts`**。默认将 **
 
 协议见 **`crates/devshell-vm`**。
 
+### 9. 排错：程序输出、JSON 与终端
+
+侧车与宿主之间只有 **`stdout` 用于一行一条 JSON**（**`exec_result`**、**`handshake_ok`** 等）。**`cargo build`** / **`cargo run`** 时：
+
+- **Rust 编译器**多数信息在 **stderr**；
+- 被运行的程序若往 **stdout** 打印，实现上会经侧车 **stderr** 转发，**不**混入协议 **stdout**，宿主才能继续 **`read_json_line`**。
+
+若仍出现 **`beta sidecar response is not JSON`**（首行像普通文本），多为**旧侧车**把子进程 stdout 接到了协议流上；请 **重建/拉取** 含当前 **`crates/devshell-vm`** 与 **`Containerfile`** 的镜像或 ELF（见 **§1**、**[requirements.md](./requirements.md) §5.8**）。
+
+**PowerShell / CMD** 下 **`podman`** 子进程的 stderr 是否与交互窗口一致，取决于 **Podman** 与终端；若看不到编译输出，可先 **`DEVSHELL_VM_STDIO_TRANSPORT=podman-run`** 单独试 **`podman run -i …`** 对比。
+
 ## 交叉编译自检
 
 Pre-commit 对 **`xtask-todo-lib`** 做 **`x86_64-pc-windows-msvc`** 的 **`cargo check`**。

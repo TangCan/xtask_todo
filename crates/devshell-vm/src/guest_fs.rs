@@ -1,4 +1,9 @@
-//! `guest_fs` JSON op handlers: host-backed (session) and stub (no session).
+//! `guest_fs` JSON op handlers.
+//!
+//! - **With [`SessionCtx`]** (`session_start` done): **`guest_fs_on_host`**
+//!   reads/writes the real host tree under **`staging_root`**.
+//! - **Without a session**: **`guest_fs_stub`** returns deterministic canned JSON (e.g. **`stub-entry`**
+//!   for `list_dir`) so unit tests do not need disk — this is **not** production guest semantics.
 
 use std::path::Path;
 

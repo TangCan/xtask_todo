@@ -1,7 +1,7 @@
 //! Per-connection state and JSON-line handling for the β sidecar.
 
 use std::io::{BufRead, BufReader, Write};
-use std::net::TcpListener;
+use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
@@ -112,22 +112,30 @@ pub fn serve_tcp(bind_addr: &str) -> std::io::Result<()> {
     let listener = TcpListener::bind(bind_addr)?;
     eprintln!("devshell-vm: listening on tcp {bind_addr}");
     for incoming in listener.incoming() {
-        let mut stream = match incoming {
+        let stream = match incoming {
             Ok(s) => s,
             Err(e) => {
                 eprintln!("devshell-vm: accept: {e}");
                 continue;
             }
         };
-        let mut reader = BufReader::new(stream.try_clone()?);
-        let mut line = String::new();
-        let mut state = ServerState::default();
-        while reader.read_line(&mut line)? > 0 {
-            let out = handle_line(line.trim(), &mut state);
-            writeln!(stream, "{out}")?;
-            stream.flush()?;
-            line.clear();
+        if let Err(e) = run_one_tcp_connection(stream) {
+            eprintln!("devshell-vm: connection: {e}");
         }
+    }
+    Ok(())
+}
+
+/// One TCP client: read JSON lines until EOF, reply on the same stream (used by [`serve_tcp`] and tests).
+pub fn run_one_tcp_connection(mut stream: TcpStream) -> std::io::Result<()> {
+    let mut reader = BufReader::new(stream.try_clone()?);
+    let mut line = String::new();
+    let mut state = ServerState::default();
+    while reader.read_line(&mut line)? > 0 {
+        let out = handle_line(line.trim(), &mut state);
+        writeln!(stream, "{out}")?;
+        stream.flush()?;
+        line.clear();
     }
     Ok(())
 }

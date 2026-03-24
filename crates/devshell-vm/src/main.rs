@@ -1,12 +1,15 @@
-//! `devshell-vm` — β sidecar: JSON-lines IPC over a Unix socket.
+//! `devshell-vm` — β sidecar: JSON-lines IPC (Unix socket, **TCP**, or **stdio**).
 //!
-//! - Default: print stub line (stdout).
-//! - `devshell-vm --serve-socket <path>`: listen for JSON-lines; see
-//!   `docs/superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md`.
+//! - No args: print version and usage hints (**stderr**).
+//! - **`--serve-stdio`** / **`--serve-tcp`** / (**Unix**) **`--serve-socket`**: protocol in
+//!   `docs/superpowers/specs/2026-03-11-devshell-vm-ipc-draft.md` and `docs/requirements.md` §5.8.
 //!
-//! After a **`session_start`** with **`staging_dir`**, **`guest_fs`** maps **`guest_path`** under
-//! **`guest_workspace`** (e.g. `/workspace`) to files under that host directory (development /
-//! local testing). Without a session, **`guest_fs`** falls back to canned stub responses (unit tests).
+//! **`guest_fs`**: after **`session_start`** with **`staging_dir`**, paths under **`guest_workspace`**
+//! map to the host staging tree. **Without** **`session_start`**, `guest_fs` returns **fixed canned
+//! responses** (for unit tests only — not a real filesystem).
+//!
+//! **`exec`**: runs a real child process on the mapped host directory; child **stdout/stderr** are
+//! piped to this process’s **stderr** so **stdout** stays JSON-only (stdio transport).
 
 mod guest_fs;
 mod server;

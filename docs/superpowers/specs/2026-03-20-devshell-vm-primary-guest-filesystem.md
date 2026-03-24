@@ -91,3 +91,14 @@
 
 - 实现某一 Phase 后，更新 **`docs/design.md`** 数据流图与 **`docs/requirements.md`** 中 devshell 相关条目。
 - **任务勾选清单：** [`docs/superpowers/plans/2026-03-20-devshell-guest-primary-workspace.md`](../plans/2026-03-20-devshell-guest-primary-workspace.md)。
+
+---
+
+## 7. 实现进度快照（仓库维护，非规格承诺）
+
+| 主题 | 状态（截至文档更新） |
+|------|----------------------|
+| **β 侧车 `devshell-vm`** | **`guest_fs`**（`session_start` 后宿主映射）、**`exec`**（真实子进程）、**stdio** 下子进程输出与 JSON **stdout** 分离；见 **requirements §5.8** |
+| **Windows** | 默认 **β + Podman**，无 **γ**；见 **devshell-vm-windows.md** |
+| **Mode P 全量**（与本文 §3 所有阶段） | 部分落地；与 **guest-primary-design** 对照时以 **requirements.md**、**design.md §1.4** 为准 |
+| **§4 风险「Windows Mode P Unix-centric」** | **β** 已提供 Windows 路径；γ 仍为 Unix only |
