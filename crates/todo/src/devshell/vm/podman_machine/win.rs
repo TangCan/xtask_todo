@@ -377,7 +377,7 @@ fn spawn_podman_run_stdio(
     cmd.arg("--workdir");
     cmd.arg("/workspace");
     cmd.arg(image);
-    cmd.arg("/usr/local/bin/devshell-vm");
+    // Image ENTRYPOINT is already `/usr/local/bin/devshell-vm`; only pass mode args (see containers/devshell-vm/Containerfile).
     cmd.arg("--serve-stdio");
     cmd.stdin(Stdio::piped());
     cmd.stdout(Stdio::piped());
