@@ -95,8 +95,10 @@
 |--------|------|
 | `run` / `fmt` / `clippy` / `coverage` / `clean` | 开发者任务，行为以 xtask 实现为准。 |
 | `gh log` | 依赖宿主 **`gh`**。 |
+| `ghcr` | 查询最新 devshell-vm OCI 标签并打印 `podman pull` 示例命令。 |
 | `git add` / `git pre-commit` / `git commit` | 暂存与带检查的提交；**`git pre-commit`** 与 **`cargo xtask git pre-commit`** 执行 **`.githooks/pre-commit`**：`cargo fmt --check`、暂存 **`.rs` 行数 ≤500**、**`cargo clippy`**（pedantic/nursery、**`-D warnings`**）、**`RUSTDOCFLAGS='-D warnings' cargo doc --no-deps`**（与 **CI** 一致）、**`cargo test`**、**`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`**（需 **`rustup target add x86_64-pc-windows-msvc`**）。 |
 | `publish` | 见 **`docs/publishing.md`**。 |
+| `lima-todo` | 构建 `target/release/todo` 并将挂载与 PATH 合并到 `~/.lima/<instance>/lima.yaml`。 |
 | **`acceptance`** | 按 **`docs/acceptance.md`** 运行可自动化验收（`cargo test` 各包、**NF-1/2/6** 文件检查、**NF-5/D8** Windows **`cargo check`** 等），并生成 **`docs/acceptance-report.md`**（可用 **`-o`** / **`--stdout-only`**）；无法自动化的项在报告中列为人工/环境。 |
 
 ---

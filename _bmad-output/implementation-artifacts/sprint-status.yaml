@@ -1,5 +1,5 @@
 # generated: 2026-03-25T12:00:00Z
-# last_updated: 2026-03-27T00:00:00Z
+# last_updated: 2026-03-27T04:30:00Z
 # project: xtask_todo
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,14 +35,14 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-25T12:00:00Z"
-last_updated: "2026-03-27T00:00:00Z"
+last_updated: "2026-03-27T04:30:00Z"
 project: xtask_todo
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/implementation-artifacts"
 
 development_status:
-  epic-1: in-progress
+  epic-1: done
   1-1-create-todo-validation-no-dirty-write: done
   1-2-list-todos-empty-result: done
   1-3-filter-sort-list-browse: done
@@ -50,12 +50,12 @@ development_status:
   1-5-detail-update-optional-fields: done
   1-6-search-stats-summary: done
   1-7-import-export: done
-  1-8-recurring-tasks: backlog
+  1-8-recurring-tasks: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-unified-xtask-dev-commands: backlog
-  2-2-git-assist: backlog
+  epic-2: in-progress
+  2-1-unified-xtask-dev-commands: done
+  2-2-git-assist: ready-for-dev
   2-3-publish-assist: backlog
   2-4-one-click-acceptance: backlog
   2-5-pre-commit-ci-alignment: backlog

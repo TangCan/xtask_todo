@@ -98,6 +98,114 @@ fn xtask_todo_json_complete_no_next_success() {
     let _ = fs::remove_file(dir.join(".todo.json"));
 }
 
+/// Story 1.8 / TC-T13-1, TC-T13-3: completing recurring task creates next instance.
+#[test]
+fn xtask_todo_complete_recurring_creates_next_instance() {
+    let dir = std::env::temp_dir().join(format!(
+        "xtask_integ_todo_comp_repeat_next_{}",
+        std::process::id()
+    ));
+    let _ = fs::create_dir_all(&dir);
+    let _ = fs::remove_file(dir.join(".todo.json"));
+
+    assert!(xtask_bin()
+        .arg("todo")
+        .arg("add")
+        .arg("daily standup")
+        .arg("--due-date")
+        .arg("2026-01-10")
+        .arg("--repeat-rule")
+        .arg("daily")
+        .current_dir(&dir)
+        .status()
+        .unwrap()
+        .success());
+
+    let comp = xtask_bin()
+        .arg("todo")
+        .arg("--json")
+        .arg("complete")
+        .arg("1")
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(comp.status.success(), "{:?}", comp.stderr);
+
+    let list = xtask_bin()
+        .arg("todo")
+        .arg("--json")
+        .arg("list")
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(list.status.success(), "{:?}", list.stderr);
+    let v: serde_json::Value =
+        serde_json::from_str(String::from_utf8_lossy(&list.stdout).trim()).expect("json");
+    let items = v["data"]["items"].as_array().expect("items");
+    assert_eq!(items.len(), 2);
+    assert!(items.iter().any(|it| {
+        it["title"] == "daily standup" && it["completed"] == true && it["due_date"] == "2026-01-10"
+    }));
+    assert!(items.iter().any(|it| {
+        it["title"] == "daily standup" && it["completed"] == false && it["due_date"] == "2026-01-11"
+    }));
+
+    let _ = fs::remove_file(dir.join(".todo.json"));
+}
+
+/// Story 1.8 / TC-T13-2: `complete --no-next` on recurring task does not create next instance.
+#[test]
+fn xtask_todo_complete_recurring_no_next_skips_generation() {
+    let dir = std::env::temp_dir().join(format!(
+        "xtask_integ_todo_comp_repeat_no_next_{}",
+        std::process::id()
+    ));
+    let _ = fs::create_dir_all(&dir);
+    let _ = fs::remove_file(dir.join(".todo.json"));
+
+    assert!(xtask_bin()
+        .arg("todo")
+        .arg("add")
+        .arg("daily standup")
+        .arg("--due-date")
+        .arg("2026-01-10")
+        .arg("--repeat-rule")
+        .arg("daily")
+        .current_dir(&dir)
+        .status()
+        .unwrap()
+        .success());
+
+    let comp = xtask_bin()
+        .arg("todo")
+        .arg("--json")
+        .arg("complete")
+        .arg("1")
+        .arg("--no-next")
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(comp.status.success(), "{:?}", comp.stderr);
+
+    let list = xtask_bin()
+        .arg("todo")
+        .arg("--json")
+        .arg("list")
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(list.status.success(), "{:?}", list.stderr);
+    let v: serde_json::Value =
+        serde_json::from_str(String::from_utf8_lossy(&list.stdout).trim()).expect("json");
+    let items = v["data"]["items"].as_array().expect("items");
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0]["title"], "daily standup");
+    assert_eq!(items[0]["completed"], true);
+    assert_eq!(items[0]["due_date"], "2026-01-10");
+
+    let _ = fs::remove_file(dir.join(".todo.json"));
+}
+
 /// TC-A2-2: `complete` id 0 exits 2 from real xtask + `--json`.
 #[test]
 fn xtask_todo_json_complete_id_zero_exit_2() {
