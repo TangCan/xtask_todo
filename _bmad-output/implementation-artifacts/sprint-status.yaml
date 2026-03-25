@@ -1,5 +1,5 @@
 # generated: 2026-03-25T12:00:00Z
-# last_updated: 2026-03-26T12:00:00Z
+# last_updated: 2026-03-26T16:15:00Z
 # project: xtask_todo
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-25T12:00:00Z"
-last_updated: "2026-03-26T12:00:00Z"
+last_updated: "2026-03-26T16:15:00Z"
 project: xtask_todo
 project_key: NOKEY
 tracking_system: file-system
@@ -46,7 +46,7 @@ development_status:
   1-1-create-todo-validation-no-dirty-write: done
   1-2-list-todos-empty-result: done
   1-3-filter-sort-list-browse: done
-  1-4-complete-delete-invalid-ref: backlog
+  1-4-complete-delete-invalid-ref: done
   1-5-detail-update-optional-fields: backlog
   1-6-search-stats-summary: backlog
   1-7-import-export: backlog
