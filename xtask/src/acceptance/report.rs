@@ -14,6 +14,7 @@ pub(super) fn manual_skip_rows() -> Vec<(&'static str, &'static str)> {
         ("NF-4", "`--help` 与 README 一致 — 文档评审"),
         ("D5", "`rustup`/`cargo` sandbox 或 VM — 依赖宿主 PATH/环境"),
         ("D6", "Mode P / Lima — 需 limactl 与实例"),
+        ("D9", "Windows β + Podman 全链路 — 需专用环境手工验证"),
         ("X3-1", "新子命令注册模式 — 代码评审"),
     ]
 }
@@ -93,7 +94,7 @@ pub(super) fn build_report(
     s.push_str("| **§4 Devshell（D1～D4、D7）** | `cargo test -p xtask-todo-lib`（devshell 集成/单元） |\n");
     s.push_str("| **§5 非功能 NF-1、NF-2、NF-6** | 本命令文件检查 |\n");
     s.push_str("| **NF-5、D8（Windows MSVC）** | `cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`（未安装 target 时 **SKIP**） |\n");
-    s.push_str("| **T6-1、T6-2、NF-3、NF-4、D5、D6、X3-1** | 见 §2 表（人工/环境） |\n");
+    s.push_str("| **T6-1、T6-2、NF-3、NF-4、D5、D6、D9、X3-1** | 见 §2 表（人工/环境） |\n");
     s.push('\n');
 
     s.push_str("## 4. 结论\n\n");

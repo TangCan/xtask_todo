@@ -93,5 +93,7 @@ fn build_report_skip_shows_reason() {
 
 #[test]
 fn manual_skip_rows_non_empty() {
-    assert!(!manual_skip_rows().is_empty());
+    let rows = manual_skip_rows();
+    assert!(!rows.is_empty());
+    assert!(rows.iter().any(|(id, _)| *id == "D9"));
 }

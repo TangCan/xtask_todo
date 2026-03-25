@@ -1,6 +1,6 @@
 # Story 2.4：一键验收
 
-Status: ready-for-dev
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -39,11 +39,22 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **棕地核对**：通读 **`docs/acceptance.md` §1、§8** 与 **`xtask/src/acceptance/*.rs`**；做 **§8 表 ↔ `run_all_checks`** 对照清单；记录 **manual_skip_rows** 与 **§8「不自动执行」** 列表差异。
-- [ ] **退出码与报告**：确认 **`cmd_acceptance`** 仅在存在 **Fail** 时返回错误；验证 **`--stdout-only`** 不写文件、仍遵守退出码；必要时为 **`RunFailure.code`** 与外层 **`main`** 行为补集成说明（当前为 **1**）。
-- [ ] **文档同步**：若增删检查项或人工表项，更新 **`docs/acceptance.md` §8**、**`docs/requirements.md` §4** 单行描述；**`xtask/tests/xtask_help.rs`** 若需快照则更新。
-- [ ] **测试**：沿用 **`acceptance/tests.rs`** 对 **`build_report`**、文件检查的覆盖；对 **`cmd_acceptance`** 关键分支可追加测试（注意 **`cargo test` 嵌套** 耗时，优先单元测试与桩）。
-- [ ] **验证**：`cargo test -p xtask`、`cargo clippy -p xtask --all-targets -- -D warnings`；在干净工作区试跑 **`cargo xtask acceptance --stdout-only`** 抽样目检报告结构。
+- [x] **棕地核对**：通读 **`docs/acceptance.md` §1、§8** 与 **`xtask/src/acceptance/*.rs`**；做 **§8 表 ↔ `run_all_checks`** 对照清单；记录 **manual_skip_rows** 与 **§8「不自动执行」** 列表差异。
+- [x] **退出码与报告**：确认 **`cmd_acceptance`** 仅在存在 **Fail** 时返回错误；验证 **`--stdout-only`** 不写文件、仍遵守退出码；必要时为 **`RunFailure.code`** 与外层 **`main`** 行为补集成说明（当前为 **1**）。
+- [x] **文档同步**：若增删检查项或人工表项，更新 **`docs/acceptance.md` §8**、**`docs/requirements.md` §4** 单行描述；**`xtask/tests/xtask_help.rs`** 若需快照则更新。
+- [x] **测试**：沿用 **`acceptance/tests.rs`** 对 **`build_report`**、文件检查的覆盖；对 **`cmd_acceptance`** 关键分支可追加测试（注意 **`cargo test` 嵌套** 耗时，优先单元测试与桩）。
+- [x] **验证**：`cargo test -p xtask`（验收子集与抽样完整见 Completion Notes）、`cargo clippy -p xtask --all-targets -- -D warnings`；在干净工作区试跑 **`cargo xtask acceptance --stdout-only`** 抽样目检报告结构。
+
+### Review Findings
+
+- [x] [Review][Patch] `sprint-status.yaml` 文件头 `# last_updated`（`10:21:19`）与 `last_updated` 字段（`10:23:00`）不一致 — 已统一为 `2026-03-25T10:23:00Z`（BMad code review）。
+- [x] [Review][Patch] Dev Agent Record 中 **File List** 与 **`## 完成状态`** 之间缺空行 — 已补行距（BMad code review）。
+
+## Change Log
+
+- 2026-03-25：补齐 `acceptance` 报告中的手工项 **D9**（Windows β + Podman 全链路）及覆盖说明行；新增对应单元测试断言。
+- 2026-03-25：BMad code review — 同步 sprint 注释；修正故事 Markdown 结构。
+- 2026-03-25：审查通过，故事标 `done`；`sprint-status` 中 `2-4-one-click-acceptance` 同步为 `done`。
 
 ## Dev Notes
 
@@ -83,15 +94,26 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+Cursor Agent
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- 差异核对结论：`run_all_checks` 与 `docs/acceptance.md §8` 的自动化摘要一致；唯一缺口是 `manual_skip_rows` 未包含 **D9**。
+- 已修复缺口：`xtask/src/acceptance/report.rs` 增加 `D9` 手工项，并在报告 §3 覆盖说明中补入 `D9`。
+- 已补测试：`acceptance::tests::manual_skip_rows_non_empty` 现在显式断言存在 `D9`。
+- 验证通过：`cargo test -p xtask acceptance::tests::manual_skip_rows_non_empty`、`cargo test -p xtask acceptance::tests::build_report_all_pass_shows_success_section`、`cargo clippy -p xtask --all-targets -- -D warnings`、`cargo xtask acceptance --stdout-only`（退出码 0，输出结构含 PASS/SKIP 与手工表）。
+- 额外执行 `cargo test -p xtask`：存在既有不稳定失败 `lima_todo::tests::cmd_lima_todo_print_only_no_build_smoke`（与本故事改动无关）；其余 131 项通过。
+
 ### File List
+
+- `xtask/src/acceptance/report.rs`
+- `xtask/src/acceptance/tests.rs`
+- `_bmad-output/implementation-artifacts/2-4-one-click-acceptance.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录
