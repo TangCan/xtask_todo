@@ -87,6 +87,7 @@ pub fn cmd_git(args: &GitArgs) -> Result<(), Box<dyn std::error::Error>> {
                     "README.md",
                     ".cursor",
                     "Cargo.toml",
+                    "_bmad-output",
                 ])
                 .status()?;
             status_to_result(status, "git add")
