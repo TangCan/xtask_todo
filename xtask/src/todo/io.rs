@@ -106,6 +106,33 @@ pub fn load_todos_from_path(path: &Path) -> Result<Vec<Todo>, Box<dyn std::error
     }
 }
 
+/// Load todos from a file for **`import`** (stricter than [`load_todos_from_path`]):
+/// the file must exist, and JSON imports must parse as a valid JSON array (invalid syntax errors).
+///
+/// CSV uses the same row-based loading as [`load_todos_from_path`].
+///
+/// # Errors
+/// Returns an error if the file is missing, cannot be read, or JSON is syntactically invalid.
+pub fn load_todos_for_import(path: &Path) -> Result<Vec<Todo>, Box<dyn std::error::Error>> {
+    if !path.exists() {
+        return Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("no such file: {}", path.display()),
+        )));
+    }
+    let is_csv = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("csv"));
+    let s = std::fs::read_to_string(path)?;
+    if is_csv {
+        Ok(load_todos_from_csv(&s))
+    } else {
+        let dtos: Vec<TodoDto> = serde_json::from_str(&s)?;
+        Ok(dtos.into_iter().filter_map(dto_to_todo).collect())
+    }
+}
+
 /// Save todos to a file (format: "json" or "csv").
 ///
 /// # Errors

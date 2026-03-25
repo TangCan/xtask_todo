@@ -14,7 +14,7 @@ use super::super::error::{print_json_success, todo_list_json_payload, todo_to_js
 use super::super::format::{format_duration, format_time_ago, print_todo_list_items};
 use super::super::init_ai::run_init_ai;
 use super::super::io::{
-    load_todos, load_todos_from_path, save_todos, save_todos_to_path_with_format,
+    load_todos, load_todos_for_import, save_todos, save_todos_to_path_with_format,
 };
 use super::parse::{list_options_from_args, patch_from_add_args};
 
@@ -380,7 +380,7 @@ fn handle_import(
     json: bool,
     dry_run: bool,
 ) -> Result<(), TodoCliError> {
-    let imported = load_todos_from_path(&a.file).map_err(TodoCliError::General)?;
+    let imported = load_todos_for_import(&a.file).map_err(TodoCliError::General)?;
     if a.replace {
         let store = InMemoryStore::from_todos(imported.clone());
         let new_list = TodoList::with_store(store);

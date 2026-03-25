@@ -1,6 +1,6 @@
 # Story 1.6：搜索与统计摘要
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -48,6 +48,7 @@ Status: review
 
 - 2026-03-25：补充 `search_is_case_insensitive`（领域）；`xtask/tests/todo_list/mod.rs` 增补 TC-T10-1/T10-2/T11-1 集成与空关键词 `--json` 用例；`sprint-status` 更新为 review。
 - 2026-03-26：code review 修正 `sprint-status.yaml` 时间戳一致性。
+- 2026-03-26：code review 通过；故事从 `review` 标为 `done`。
 
 ## Dev Notes
 
