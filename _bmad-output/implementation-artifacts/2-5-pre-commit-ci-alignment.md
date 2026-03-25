@@ -1,6 +1,6 @@
 # Story 2.5：提交前检查对齐 CI
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -39,10 +39,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **棕地核对**：精读 **`.githooks/pre-commit`**、**`.github/workflows/ci.yml`**、**`docs/requirements.md` §4、§7.2**；输出 **Markdown 对照表**（可附于故事 Completion Notes 或 **`docs/`** 若团队希望单独成文）。
-- [ ] **差距处理**：对每个差异选择 **(a)** 改 **CI**、**(b)** 改 **pre-commit**、或 **(c)** 仅文档化；实施所选项并更新 **`requirements`** / **workflow 注释**。
-- [ ] **验收引用**：若 **NF-6**（**`acceptance` 对 pre-commit 脚本**的静态检查）与脚本变更相关，同步 **`xtask/src/acceptance/checks.rs`** 中的关键字检测或说明。
-- [ ] **验证**：本地试跑 **`cargo xtask git pre-commit`**（或 **`sh .githooks/pre-commit`**）；**`cargo test -p xtask`**、**clippy**。
+- [x] **棕地核对**：精读 **`.githooks/pre-commit`**、**`.github/workflows/ci.yml`**、**`docs/requirements.md` §4、§7.2**；输出 **Markdown 对照表**（可附于故事 Completion Notes 或 **`docs/`** 若团队希望单独成文）。
+- [x] **差距处理**：对每个差异选择 **(a)** 改 **CI**、**(b)** 改 **pre-commit**、或 **(c)** 仅文档化；实施所选项并更新 **`requirements`** / **workflow 注释**。
+- [x] **验收引用**：若 **NF-6**（**`acceptance` 对 pre-commit 脚本**的静态检查）与脚本变更相关，同步 **`xtask/src/acceptance/checks.rs`** 中的关键字检测或说明。
+- [x] **验证**：本地试跑 **`cargo xtask git pre-commit`**（或 **`sh .githooks/pre-commit`**）；**`cargo test -p xtask`**、**clippy**。
 
 ## Dev Notes
 
@@ -52,7 +52,7 @@ Status: ready-for-dev
 |------|-------------|
 | Git 钩子脚本 | **`.githooks/pre-commit`**（**`sh`**；**`MAX_RS_LINES=500`** → **fmt** → **clippy** → **`RUSTDOCFLAGS=-D warnings` `cargo doc --no-deps`** → **`cargo test -- --test-threads=1`** → **MSVC `cargo check`**） |
 | xtask 封装 | **`xtask/src/git.rs`** — **`GitSub::PreCommit`** 执行上述脚本 |
-| CI | **`.github/workflows/ci.yml`** — 顺序为 **fmt → build → test → clippy → doc**；**doc** 步骤当前**未**设置 **`RUSTDOCFLAGS=-D warnings`**；**无**单独 **MSVC** 步骤（与 **pre-commit** 可能不一致，须在 AC2 中裁决） |
+| CI | **`.github/workflows/ci.yml`** — 顺序为 **fmt → build → test → clippy → doc**；**doc** 步骤已设置 **`RUSTDOCFLAGS=-D warnings`**；**无**单独 **MSVC** 步骤（该差异在 CI 注释与 `requirements` §7.2 说明） |
 
 ### 须触摸的常见路径
 
@@ -83,15 +83,32 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+Cursor Agent
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- **pre-commit ↔ CI 对照矩阵**
+  - 双方都有：`cargo fmt -- --check`、`cargo clippy --all-targets ... -D warnings`、`cargo test -- --test-threads=1`（CI 为 workspace 测试）、`cargo doc --no-deps` 且均 `RUSTDOCFLAGS=-D warnings`。
+  - 仅 pre-commit：暂存 `.rs` 行数上限检查（`MAX_RS_LINES=500`）、`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`。
+  - 仅 CI：`cargo build`（pre-commit 未单独执行）。
+- 差距处理结论：
+  - 选择 **(a) 改 CI + (c) 文档化**：已把 CI doc 步骤改为 `RUSTDOCFLAGS='-D warnings' cargo doc --no-deps`；
+  - 对“MSVC 仅本地 pre-commit/acceptance”差异，在 `.github/workflows/ci.yml` 注释中明确说明，并与 `docs/requirements.md` §7.2 对齐。
+- NF-6 验收引用检查：`xtask/src/acceptance/checks.rs` 的静态关键字检测仍覆盖 `cargo doc --no-deps` 与 `x86_64-pc-windows-msvc`，无需改动。
+- 验证结果：
+  - `cargo xtask git pre-commit` 通过；
+  - `cargo test -p xtask` 通过（本次 132/132）；
+  - `cargo clippy -p xtask --all-targets -- -D warnings` 通过。
+
 ### File List
+
+- `.github/workflows/ci.yml`
+- `_bmad-output/implementation-artifacts/2-5-pre-commit-ci-alignment.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

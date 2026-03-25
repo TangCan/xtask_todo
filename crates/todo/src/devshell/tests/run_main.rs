@@ -101,6 +101,68 @@ fn run_main_from_args_script_mode_set_e() {
 }
 
 #[test]
+fn run_main_from_args_script_mode_requires_script_path() {
+    let args = vec!["dev_shell".to_string(), "-f".to_string()];
+    let mut stdin = Cursor::new("");
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_main_from_args(&args, false, &mut stdin, &mut stdout, &mut stderr);
+    assert!(r.is_err(), "missing script path should be usage error");
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(err.contains("usage: dev_shell [-e] -f script.dsh"));
+}
+
+#[test]
+fn run_main_from_args_script_mode_rejects_extra_positionals() {
+    let args = vec![
+        "dev_shell".to_string(),
+        "-f".to_string(),
+        "a.dsh".to_string(),
+        "extra".to_string(),
+    ];
+    let mut stdin = Cursor::new("");
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_main_from_args(&args, false, &mut stdin, &mut stdout, &mut stderr);
+    assert!(r.is_err(), "extra positional args should be usage error");
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(err.contains("usage: dev_shell [-e] -f script.dsh"));
+}
+
+#[test]
+fn run_main_from_args_script_mode_missing_file_reports_path() {
+    let missing = std::env::temp_dir().join(format!(
+        "devshell_missing_script_{}.dsh",
+        std::process::id()
+    ));
+    let args = vec![
+        "dev_shell".to_string(),
+        "-f".to_string(),
+        missing.display().to_string(),
+    ];
+    let mut stdin = Cursor::new("");
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_main_from_args(&args, false, &mut stdin, &mut stdout, &mut stderr);
+    assert!(r.is_err(), "missing script should return error");
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(err.contains("dev_shell:"));
+    assert!(err.contains(&missing.display().to_string()));
+}
+
+#[test]
+fn run_main_from_args_repl_branch_executes_until_exit() {
+    let args = vec!["dev_shell".to_string()];
+    let mut stdin = Cursor::new("echo repl_ok\nexit\n");
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_main_from_args(&args, false, &mut stdin, &mut stdout, &mut stderr);
+    assert!(r.is_ok(), "repl branch should execute and exit cleanly");
+    let out = String::from_utf8(stdout).unwrap();
+    assert!(out.contains("repl_ok"), "stdout: {out}");
+}
+
+#[test]
 fn run_main_from_args_repl_source() {
     let dir = std::env::temp_dir().join(format!("devshell_repl_src_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
