@@ -55,6 +55,8 @@ cargo build -p devshell-vm --release --target x86_64-unknown-linux-gnu
 | **`DEVSHELL_VM_BETA_SESSION_STAGING`** | 覆盖发给侧车的 `staging_dir`；未设置时由工具根据方式 A（`/mnt/…`）或 B（`/workspace`）填写 |
 | **`DEVSHELL_VM_EXEC_TIMEOUT_MS`** | 侧车 **`exec`** 默认超时（毫秒）；单次请求可在 JSON 里用 **`timeout_ms`** 覆盖（见侧车 **`server.rs`**） |
 
+**`exec` 超时与进程终止（Windows 宿主 vs 侧车 OS）**：默认 **方式 A/B** 下，侧车为 **Podman 内的 Linux** `devshell-vm`，**`exec` 超时** 与 **`[requirements.md](./requirements.md)` §5.8**、**[test-cases.md](./test-cases.md) TC-D-VM-7** 一致（Linux 上为**进程组**终止，可结束 **`sh -c`** 子树）。若你自行编译并运行 **Windows 原生** `devshell-vm`（**MSVC** 目标，非本文档推荐的 Linux ELF/容器路径），超时时实现仅保证终止侧车 **直接** `spawn` 的子进程，**不**保证 Shell 管线内全部孙进程已退出；复杂命令宜 **`exec`** 直达二进制或沿用 **Linux 侧车**。
+
 ### 4. 可选：TCP 侧车
 
 **`DEVSHELL_VM_SOCKET=tcp:127.0.0.1:9847`** 时仍走本机 TCP（需自行运行 **`devshell-vm --serve-tcp`**）。默认 stdio 不占用宿主机端口。

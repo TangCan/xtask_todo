@@ -153,7 +153,7 @@
 | **侧车** | 进程 **`devshell-vm`**；与宿主通过 **一行一条 JSON** 通信（默认 **stdio**，不经由 Windows 本机监听端口）。 |
 | **`session_start`** | **`staging_dir`** 为侧车 OS 视角下的宿主工作区目录（方式 B 下为容器内 **`/workspace`** 的挂载源；**`DEVSHELL_VM_BETA_SESSION_STAGING`** 可覆盖）。 |
 | **`exec`** | 在映射后的宿主目录上 **真实 `spawn`** 子进程（非桩）；OCI 运行时镜像须含 **`cargo`**（**`containers/devshell-vm/Containerfile`**：`apt install cargo`）。 |
-| **`exec` 超时** | 请求可带 **`timeout_ms`**；侧车可读 **`DEVSHELL_VM_EXEC_TIMEOUT_MS`** 作为默认。超时时侧车 **终止子进程（Unix 上为进程组，含 `sh -c` 子树）** 并返回 **`exec_timeout`**（见 **`crates/devshell-vm`**、**`docs/devshell-vm-windows.md`**）。 |
+| **`exec` 超时** | 请求可带 **`timeout_ms`**；侧车可读 **`DEVSHELL_VM_EXEC_TIMEOUT_MS`** 作为默认。超时时侧车 **终止子进程** 并返回 **`exec_timeout`**：**Linux/Unix 侧车** 为**进程组**（含 **`sh -c`** 子树）；**Windows 宿主上若运行原生 MSVC 侧车**则仅保证终止**直接**子进程（见 **`docs/devshell-vm-windows.md`** 说明）。 |
 | **stdio 与程序输出** | 子进程 **不得**向侧车用于 IPC 的 **stdout** 写入非 JSON 内容（例如 **`cargo run`** 启动的二进制 **`println!`**）。实现上将子进程 **stdout/stderr 管道化并转发到侧车 stderr**，保证宿主下一行 **`read_json_line`** 仅收到 **`exec_result`** 等协议行；编译与程序输出仍可在终端侧通过 **stderr** 可见（取决于 Podman/终端转发方式）。 |
 | **镜像与版本** | **`cargo install`** 用户默认拉取 **`ghcr.io/tangcan/xtask_todo/devshell-vm:v<与库相同版本>`**；行为以 **`docs/devshell-vm-windows.md`**、**`docs/devshell-vm-oci-release.md`** 为准。 |
 

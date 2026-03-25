@@ -1,5 +1,8 @@
 # Devshell microVM 会话（γ → β）Implementation Plan
 
+> **状态（历史文档）：** 下文 **checkbox** 为 **2026-03 前后** 分步追踪快照；**主线实现与后续 Mode P / guest-primary / β 侧车** 已并入 **`[2026-03-20-devshell-guest-primary-workspace.md](./2026-03-20-devshell-guest-primary-workspace.md)`** 与 **`[requirements.md](../../requirements.md)`**、**`[test-cases.md](../../test-cases.md)`**。未勾选项 **不**表示当前仓库仍待办；以 **guest-primary 计划**、**requirements** 与 **`cargo xtask acceptance`** 为准。  
+> 规格背景仍可读：**`[2026-03-11-devshell-microvm-session-design.md](../specs/2026-03-11-devshell-microvm-session-design.md)`**、**IPC 草案** **`[2026-03-11-devshell-vm-ipc-draft.md](../specs/2026-03-11-devshell-vm-ipc-draft.md)`**。
+
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add optional **session-scoped VM execution** for `rustup`/`cargo` per `docs/superpowers/specs/2026-03-11-devshell-microvm-session-design.md`, starting with **γ (external CLI orchestration)** and later **β (sidecar `devshell-vm` + IPC)**; default **`DEVSHELL_VM=off`** keeps current host-directory `sandbox` behavior.

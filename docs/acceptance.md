@@ -8,6 +8,7 @@
 
 - **范围**：以 **requirements.md** 当前版本为准。
 - **方式**：自动化（测试名 / 命令）或手工；CI 通过的测试可标「由 CI 执行」。**一键自动化**：在仓库根执行 **`cargo xtask acceptance`**（见 **§8**），默认生成 **`docs/acceptance-report.md`**。
+- **例行回归**：是否通过自动化门禁，以 **`cargo xtask acceptance`**（及生成的 **`acceptance-report.md`**，或 **`--stdout-only`** 输出）为准；下方 **§2～§7** 勾选表仍用于发布/迭代**人工签字**或逐条对照。
 - **结果**：✅ 通过 / ❌ 未通过 / ⏸ 跳过（注明原因）。
 
 ---

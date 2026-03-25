@@ -26,7 +26,8 @@ jobs:
       - name: Build
         run: cargo build
 
-      - name: Test
+      # Workspace members: xtask-todo-lib (default `beta-vm`), devshell-vm, xtask — 全覆盖侧车与 β 客户端。
+      - name: Test (workspace, includes devshell-vm and beta-vm default features)
         run: cargo test -- --test-threads=1
 
       - name: Clippy

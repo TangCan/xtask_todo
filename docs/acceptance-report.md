@@ -2,7 +2,7 @@
 
 本报告由 `cargo xtask acceptance` 生成，与 [acceptance.md](./acceptance.md) 对照。
 
-- **生成时间（UTC）**: 2026-03-23T04:22:28Z
+- **生成时间（UTC）**: 2026-03-25T03:30:41Z
 - **仓库根**: `/ssd_211032807004/richard/2026/pvm_2/xtask_todo`
 
 ## 1. 自动化检查结果
@@ -11,7 +11,7 @@
 |----|------|-------------|------|
 | NF-1 | Workspace `Cargo.toml` lists `crates/todo` and `xtask` | `read /ssd_211032807004/richard/2026/pvm_2/xtask_todo/Cargo.toml` | ✅ PASS |
 | NF-2 | `.cargo/config.toml` defines `cargo xtask` alias | `read /ssd_211032807004/richard/2026/pvm_2/xtask_todo/.cargo/config.toml` | ✅ PASS |
-| NF-6 | `.githooks/pre-commit` runs Windows MSVC cross-check for xtask-todo-lib | `read /ssd_211032807004/richard/2026/pvm_2/xtask_todo/.githooks/pre-commit` | ✅ PASS |
+| NF-6 | `.githooks/pre-commit` includes fmt, line limit, clippy, rustdoc, test, MSVC check | `read /ssd_211032807004/richard/2026/pvm_2/xtask_todo/.githooks/pre-commit` | ✅ PASS |
 | AC-TODO-LIB | xtask-todo-lib crate tests | `cargo test -p xtask-todo-lib -- --test-threads=1` | ✅ PASS |
 | AC-XTASK | xtask crate tests | `cargo test -p xtask -- --test-threads=1` | ✅ PASS |
 | AC-DEVSHELL-VM | devshell-vm crate tests | `cargo test -p devshell-vm -- --test-threads=1` | ✅ PASS |
