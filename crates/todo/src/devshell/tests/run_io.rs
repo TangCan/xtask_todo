@@ -176,6 +176,73 @@ fn run_with_touch() {
 }
 
 #[test]
+fn run_with_cd_invalid_path_reports_error() {
+    let input = "cd /no_such_dir\npwd\nexit\n";
+    let mut stdin = Cursor::new(input);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    run_with(
+        &["dev_shell".to_string()],
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(
+        err.contains("cd failed") || err.contains("error:"),
+        "stderr: {err}"
+    );
+    let out = String::from_utf8(stdout).unwrap();
+    assert!(
+        out.contains('/'),
+        "pwd should still run after cd failure: {out}"
+    );
+}
+
+#[test]
+fn run_with_cat_missing_file_reports_error() {
+    let input = "cat /missing_file_321\nexit\n";
+    let mut stdin = Cursor::new(input);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    run_with(
+        &["dev_shell".to_string()],
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(
+        err.contains("cat failed") || err.contains("error:"),
+        "stderr: {err}"
+    );
+}
+
+#[test]
+fn run_with_sh_literal_is_not_executed_as_host_shell() {
+    let input = "sh -c echo should_not_run\nexit\n";
+    let mut stdin = Cursor::new(input);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    run_with(
+        &["dev_shell".to_string()],
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(err.contains("unknown command: sh"), "stderr: {err}");
+    let out = String::from_utf8(stdout).unwrap();
+    assert!(
+        !out.contains("should_not_run"),
+        "stdout must not contain shell output: {out}"
+    );
+}
+
+#[test]
 fn run_with_eof_triggers_save_on_exit() {
     let input = "pwd\n";
     let mut stdin = Cursor::new(input);

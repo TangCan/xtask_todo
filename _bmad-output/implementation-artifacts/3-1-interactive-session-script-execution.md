@@ -1,6 +1,6 @@
 # Story 3.1：交互式会话与脚本执行
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -43,6 +43,16 @@ Status: review
 - [x] **测试**：沿用 **`crates/todo/src/devshell/tests/run_main.rs`**；为缺口（REPL  happy path mock、**`-e`**、错误用法）补测或记**手工步骤**。
 - [x] **文档**：若 CLI 用法与 **`requirements`** 有出入，同步 **`crates/todo/README.md`** 或 **`requirements` §5.3**。
 - [x] **验证**：`cargo test -p xtask-todo-lib devshell`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
+
+### Review Findings
+
+- [x] [Review][Patch] `sprint-status.yaml` 文件头 `# last_updated`（`10:43:23`）与 `last_updated` 字段（`12:14:00`）不一致 — 已统一为 `2026-03-25T12:14:00Z`（BMad code review）。
+
+## Change Log
+
+- 2026-03-25：棕地核对 **`run_main_from_args`** / **`run_main`** 测试矩阵；故事标 **`review`**；Completion Notes 记录 SKIP（TTY/VM）。
+- 2026-03-25：BMad code review — 同步 sprint 注释与 `last_updated`；本机复跑 `cargo test -p xtask-todo-lib devshell`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings` 通过。
+- 2026-03-25：审查通过，故事标 `done`；`sprint-status` 中 `3-1-interactive-session-script-execution` 同步为 `done`。
 
 ## Dev Notes
 

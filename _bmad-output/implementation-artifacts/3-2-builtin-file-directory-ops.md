@@ -1,6 +1,6 @@
 # Story 3.2：内置文件与目录操作
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -39,10 +39,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **棕地核对**：阅读 **`dispatch/builtin_impl.rs`** 与 **`requirements.md` §5.4** 表；列出 **白名单命令** 与参数矩阵；标出与 **`help`** 文案差异。
-- [ ] **VFS**：核对 **`cd`/`ls`** 在 **Mode S / Mode P** 下路径解析（**`workspace`/`vfs`**）；缺测试则补 **`devshell` 测试**或记手工矩阵。
-- [ ] **安全**：确认无**非白名单**命令路径；grep **`Command::new("sh")`** 等仅出现在 **`rustup`/`cargo`/`source`** 等**已文档化**分支，而非 **`cat`/`ls`** 等。
-- [ ] **验证**：`cargo test -p xtask-todo-lib`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
+- [x] **棕地核对**：阅读 **`dispatch/builtin_impl.rs`** 与 **`requirements.md` §5.4** 表；列出 **白名单命令** 与参数矩阵；标出与 **`help`** 文案差异。
+- [x] **VFS**：核对 **`cd`/`ls`** 在 **Mode S / Mode P** 下路径解析（**`workspace`/`vfs`**）；缺测试则补 **`devshell` 测试**或记手工矩阵。
+- [x] **安全**：确认无**非白名单**命令路径；grep **`Command::new("sh")`** 等仅出现在 **`rustup`/`cargo`/`source`** 等**已文档化**分支，而非 **`cat`/`ls`** 等。
+- [x] **验证**：`cargo test -p xtask-todo-lib`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
 
 ## Dev Notes
 
@@ -73,15 +73,32 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask-todo-lib devshell::tests::run_io`
+- `cargo test -p xtask-todo-lib`
+- `cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`
+- `rg "Command::new\\(" crates/todo/src/devshell`
+- `rg "sh\\s*-c|\"sh\"" crates/todo/src/devshell`
+
 ### Completion Notes List
+
+- 白名单与参数矩阵核对：`run_builtin_core` 仅分派 `pwd/cd/ls/mkdir/cat/touch/echo/export-readonly/save/todo/rustup/cargo/help`，与 `requirements` §5.4 一致，未发现需改动的 `help` 文案差异。
+- 补充 `devshell` 测试：`run_with_cd_invalid_path_reports_error`、`run_with_cat_missing_file_reports_error`、`run_with_sh_literal_is_not_executed_as_host_shell`，覆盖非法路径错误可观察性与非白名单命令拒绝路径。
+- VFS/Mode P 路径解析核对：`workspace_*` 通过 `logical_path_to_guest` + `guest_primary_fs_ops_mut` 处理 Mode P，错误映射到 `BuiltinError`（如 `WorkspacePathOutside` / `GuestFsOpFailed`）；Mode S 走 `Vfs` 分支。
+- 安全核对：`Command::new` 与 `sh -c` 仅出现在 VM/sandbox 及已文档化的 rust 工具链分支，不在 `cat/ls/touch/echo` 等内置命令路径；测试也验证 `sh` 输入被当作未知命令。
+- 已测矩阵：自动化覆盖 Mode S 下内置命令/错误路径/未知命令拒绝；Mode P 真实 VM 环境端到端未在本机执行（依赖专用环境），但相关单元测试与路径映射逻辑已跑通。
+- 文档核对结果：实现与 `requirements` §5.4 保持一致，无需文档改动。
 
 ### File List
 
+- `crates/todo/src/devshell/tests/run_io.rs`
+- `_bmad-output/implementation-artifacts/3-2-builtin-file-directory-ops.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录
