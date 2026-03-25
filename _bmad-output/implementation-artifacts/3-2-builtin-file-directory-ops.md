@@ -1,6 +1,6 @@
 # Story 3.2：内置文件与目录操作
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -43,6 +43,16 @@ Status: review
 - [x] **VFS**：核对 **`cd`/`ls`** 在 **Mode S / Mode P** 下路径解析（**`workspace`/`vfs`**）；缺测试则补 **`devshell` 测试**或记手工矩阵。
 - [x] **安全**：确认无**非白名单**命令路径；grep **`Command::new("sh")`** 等仅出现在 **`rustup`/`cargo`/`source`** 等**已文档化**分支，而非 **`cat`/`ls`** 等。
 - [x] **验证**：`cargo test -p xtask-todo-lib`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
+
+### Review Findings
+
+- [x] [Review][Patch] `sprint-status.yaml` 文件头 `# last_updated`（`10:48:00`）与 `last_updated` 字段（`12:33:00`）不一致 — 已统一为 `2026-03-25T12:33:00Z`（BMad code review）。
+
+## Change Log
+
+- 2026-03-25：在 **`run_io.rs`** 增加 **`cd`/`cat` 错误路径**与 **`sh` 非白名单** 集成式单测；故事标 **`review`**。
+- 2026-03-25：BMad code review — 同步 sprint 注释与 `last_updated`；复验 `cargo test -p xtask-todo-lib devshell::tests::run_io::`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings` 通过。
+- 2026-03-25：审查通过，故事标 `done`；`sprint-status` 中 `3-2-builtin-file-directory-ops` 同步为 `done`。
 
 ## Dev Notes
 

@@ -1,6 +1,6 @@
 # Story 3.3：管道与重定向及缓冲上限
 
-Status: ready-for-dev
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -39,10 +39,20 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **棕地核对**：对照 **`docs/requirements.md` §5.5** 与 **`execute_pipeline`** 实现；确认 **`|`** 与重定向语义在 **`parser`** + **`dispatch`** 中的分工。
-- [ ] **边界测试**：保留 **`pipeline_limit_tests`**；若缺**端到端**「管道产生 >16MiB 中间输出」用例，评估**性能/CI 时间**后添加**生成固定大小**的集成测试或**文档化手工步骤**。
-- [ ] **文档**：确认 **`docs/devshell-vm-gamma.md`**（管道 §8.2 引用）、**`command` 模块导出** **`PIPELINE_INTER_STAGE_MAX_BYTES`** 的公开说明与 **`cargo doc`** 可见性。
-- [ ] **验证**：`cargo test -p xtask-todo-lib devshell`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
+- [x] **棕地核对**：对照 **`docs/requirements.md` §5.5** 与 **`execute_pipeline`** 实现；确认 **`|`** 与重定向语义在 **`parser`** + **`dispatch`** 中的分工。
+- [x] **边界测试**：保留 **`pipeline_limit_tests`**；若缺**端到端**「管道产生 >16MiB 中间输出」用例，评估**性能/CI 时间**后添加**生成固定大小**的集成测试或**文档化手工步骤**。
+- [x] **文档**：确认 **`docs/devshell-vm-gamma.md`**（管道 §8.2 引用）、**`command` 模块导出** **`PIPELINE_INTER_STAGE_MAX_BYTES`** 的公开说明与 **`cargo doc`** 可见性。
+- [x] **验证**：`cargo test -p xtask-todo-lib devshell`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
+
+### Review Findings
+
+- [x] [Review][Patch] `sprint-status.yaml` 文件头 `# last_updated`（`12:45:00`）与 `last_updated` 字段（`12:58:00`）不一致 — 已统一为 `2026-03-25T12:58:00Z`（BMad code review）。
+
+## Change Log
+
+- 2026-03-25：新增 `execute_pipeline_stops_on_non_terminal_stage_overflow`（两段管道、首段 stdout 超 **`PIPELINE_INTER_STAGE_MAX_BYTES`**，断言 **`PipelineInterStageBufferExceeded`** 且第二段未执行）；故事标 **`review`**。
+- 2026-03-25：BMad code review — 同步 sprint 注释与 `last_updated`；复验 `cargo test -p xtask-todo-lib execute_pipeline_stops_on_non_terminal_stage_overflow`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings` 通过。
+- 2026-03-25：审查通过，故事标 `done`；`sprint-status` 中 `3-3-pipeline-redirect-buffer-limit` 同步为 `done`。
 
 ## Dev Notes
 
@@ -74,15 +84,30 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask-todo-lib execute_pipeline_stops_on_non_terminal_stage_overflow`
+- `cargo test -p xtask-todo-lib devshell`
+- `cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`
+- `rg "PIPELINE_INTER_STAGE_MAX_BYTES|PipelineInterStageBufferExceeded" crates/todo/src/devshell`
+
 ### Completion Notes List
+
+- 已核对 `parser`/`dispatch` 分工：`parser` 负责解析 `|` 与 `< > 2>`，`dispatch::execute_pipeline` 负责阶段执行与非末段缓冲上限检查；重定向由 `run_builtin_with_streams` 经 `workspace_read_file/workspace_write_file` 实现。
+- 新增端到端边界测试 `execute_pipeline_stops_on_non_terminal_stage_overflow`：构造两段管道，首段输出 `> 16MiB`，断言返回 `BuiltinError::PipelineInterStageBufferExceeded{limit,actual}` 且后续阶段未执行。
+- 已确认末段输出不套用段间上限：限制仅在 `!is_last` 分支调用 `check_pipeline_inter_stage_size`，与 AC2 与代码注释一致。
+- 文档与导出核对：`command/mod.rs` 继续公开导出 `PIPELINE_INTER_STAGE_MAX_BYTES`；`docs/devshell-vm-gamma.md` 现有常量引用与当前实现一致，本次无需改文档。
+- 已测矩阵：自动化覆盖 `devshell` 全量、上限边界与超限中止路径；未在本故事内新增 Mode P 专用环境端到端手工验证（不影响本 AC）。
 
 ### File List
 
+- `crates/todo/src/devshell/command/dispatch/mod.rs`
+- `_bmad-output/implementation-artifacts/3-3-pipeline-redirect-buffer-limit.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

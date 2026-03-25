@@ -169,6 +169,10 @@ pub fn execute_pipeline(
 #[cfg(test)]
 mod pipeline_limit_tests {
     use super::*;
+    use crate::devshell::parser::{Pipeline, SimpleCommand};
+    use crate::devshell::vfs::Vfs;
+    use crate::devshell::vm::SessionHolder;
+    use std::io::Cursor;
 
     #[test]
     fn pipeline_inter_stage_limit_boundary() {
@@ -181,5 +185,48 @@ mod pipeline_limit_tests {
             }
             _ => panic!("expected PipelineInterStageBufferExceeded"),
         }
+    }
+
+    #[test]
+    fn execute_pipeline_stops_on_non_terminal_stage_overflow() {
+        let mut vfs = Vfs::new();
+        let mut vm_session = SessionHolder::new_host();
+        let mut stdin = Cursor::new(Vec::<u8>::new());
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let mut ctx = ExecContext {
+            vfs: &mut vfs,
+            stdin: &mut stdin,
+            stdout: &mut stdout,
+            stderr: &mut stderr,
+            vm_session: &mut vm_session,
+        };
+        let oversized = "x".repeat(PIPELINE_INTER_STAGE_MAX_BYTES + 1);
+        let pipeline = Pipeline {
+            commands: vec![
+                SimpleCommand {
+                    argv: vec!["echo".to_string(), oversized],
+                    redirects: vec![],
+                },
+                SimpleCommand {
+                    argv: vec!["echo".to_string(), "stage2_should_not_run".to_string()],
+                    redirects: vec![],
+                },
+            ],
+        };
+
+        let err = execute_pipeline(&mut ctx, &pipeline).unwrap_err();
+        match err {
+            BuiltinError::PipelineInterStageBufferExceeded { limit, actual } => {
+                assert_eq!(limit, PIPELINE_INTER_STAGE_MAX_BYTES);
+                assert!(actual > PIPELINE_INTER_STAGE_MAX_BYTES);
+            }
+            _ => panic!("expected PipelineInterStageBufferExceeded"),
+        }
+        let out = String::from_utf8(stdout).expect("stdout should be valid UTF-8");
+        assert!(
+            !out.contains("stage2_should_not_run"),
+            "pipeline should stop before executing stage2: {out}"
+        );
     }
 }
