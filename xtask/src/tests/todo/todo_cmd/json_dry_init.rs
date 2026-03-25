@@ -298,3 +298,43 @@ fn cmd_todo_add_invalid_repeat_until_returns_parameter_error() {
     assert_eq!(err.exit_code(), 2);
     assert!(err.to_string().contains("invalid repeat_until"));
 }
+
+/// TC-T1-3 / Story 1.1: invalid optional fields on `add` must not write or alter `.todo.json`.
+#[test]
+fn cmd_todo_add_invalid_optional_leaves_existing_file_unchanged() {
+    let _cwd_lock = cwd_test_lock();
+    let dir = std::env::temp_dir().join(format!("xtask_todo_no_dirty_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cwd = std::env::current_dir().unwrap();
+    let _restore = RestoreCwd::new(&dir, &cwd);
+    let _ = std::fs::remove_file(".todo.json");
+
+    cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
+        title: "seed".to_string(),
+        description: None,
+        due_date: None,
+        priority: None,
+        tags: None,
+        repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
+    })))
+    .unwrap();
+    let before = std::fs::read_to_string(".todo.json").unwrap();
+
+    let err = cmd_todo(todo_args(TodoSub::Add(TodoAddArgs {
+        title: "next".to_string(),
+        description: None,
+        due_date: Some("not-a-date".to_string()),
+        priority: None,
+        tags: None,
+        repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
+    })))
+    .unwrap_err();
+    assert_eq!(err.exit_code(), 2);
+    assert!(err.to_string().contains("invalid due_date"));
+    let after = std::fs::read_to_string(".todo.json").unwrap();
+    assert_eq!(after, before);
+}

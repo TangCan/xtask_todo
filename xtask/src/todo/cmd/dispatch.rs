@@ -89,14 +89,9 @@ fn handle_add(
         }
         return Ok(());
     }
-    let id = list.create(&a.title).map_err(|e| match e {
-        TodoError::InvalidInput => {
-            TodoCliError::Parameter("invalid input: title must be non-empty".into())
-        }
-        TodoError::NotFound(id) => TodoCliError::Data(format!("todo not found: {id}")),
-    })?;
-    if has_opts {
-        let patch = patch_from_add_args(
+    // Validate optional fields before `create` so invalid flags never allocate a new id (TC-T1-3 / FR1).
+    let patch_opt = if has_opts {
+        Some(patch_from_add_args(
             a.description.as_deref(),
             a.due_date.as_deref(),
             a.priority.as_deref(),
@@ -104,7 +99,17 @@ fn handle_add(
             a.repeat_rule.as_deref(),
             a.repeat_until.as_deref(),
             a.repeat_count.as_deref(),
-        )?;
+        )?)
+    } else {
+        None
+    };
+    let id = list.create(&a.title).map_err(|e| match e {
+        TodoError::InvalidInput => {
+            TodoCliError::Parameter("invalid input: title must be non-empty".into())
+        }
+        TodoError::NotFound(id) => TodoCliError::Data(format!("todo not found: {id}")),
+    })?;
+    if let Some(patch) = patch_opt {
         list.update(id, patch)
             .map_err(|e| TodoCliError::Data(e.to_string()))?;
     }
