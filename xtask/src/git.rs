@@ -55,7 +55,7 @@ pub struct GitPreCommitArgs {}
 
 #[derive(FromArgs, Clone)]
 #[argh(subcommand, name = "add")]
-/// Stage .github, .specstory, xtask, docs (equiv: git add .github .specstory xtask docs)
+/// Stage common project paths (docs, xtask, crates, hooks, and related metadata files)
 pub struct GitAddArgs {}
 
 #[derive(FromArgs, Clone)]

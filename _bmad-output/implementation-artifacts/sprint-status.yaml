@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-25T12:00:00Z"
-last_updated: "2026-03-27T04:30:00Z"
+last_updated: "2026-03-27T05:10:00Z"
 project: xtask_todo
 project_key: NOKEY
 tracking_system: file-system
@@ -55,7 +55,7 @@ development_status:
 
   epic-2: in-progress
   2-1-unified-xtask-dev-commands: done
-  2-2-git-assist: ready-for-dev
+  2-2-git-assist: review
   2-3-publish-assist: backlog
   2-4-one-click-acceptance: backlog
   2-5-pre-commit-ci-alignment: backlog

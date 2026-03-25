@@ -3,7 +3,9 @@
 use std::process::Stdio;
 
 use crate::git::{cmd_git, GitAddArgs, GitArgs, GitCommitArgs, GitSub};
-use crate::tests::{cwd_test_lock, dir_outside_cwd, git_available, sh_available, RestoreCwd};
+use crate::tests::{
+    cwd_test_lock, dir_outside_cwd, git_available, path_test_lock, sh_available, RestoreCwd,
+};
 use crate::{run_with, XtaskCmd, XtaskSub};
 
 /// Sets `GIT_DIR` and `GIT_WORK_TREE` so git uses only the given repo; restores both on drop.
@@ -203,4 +205,20 @@ fn cmd_git_commit_with_nothing_to_commit_returns_err() {
     };
     let result = cmd_git(&cmd);
     assert!(result.is_err());
+}
+
+#[test]
+fn cmd_git_add_when_git_missing_from_path_returns_err() {
+    let _path_lock = path_test_lock();
+    let old = std::env::var_os("PATH");
+    std::env::set_var("PATH", "");
+    let cmd = GitArgs {
+        sub: GitSub::Add(GitAddArgs {}),
+    };
+    let r = cmd_git(&cmd);
+    match old {
+        Some(v) => std::env::set_var("PATH", v),
+        None => std::env::remove_var("PATH"),
+    }
+    assert!(r.is_err(), "expected error when git is missing from PATH");
 }
