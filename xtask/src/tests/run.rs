@@ -140,7 +140,7 @@ fn run_subcommand_publish_returns_err_outside_workspace() {
     let cwd = std::env::current_dir().unwrap();
     let _restore = RestoreCwd::new(&dir, &cwd);
     let cmd = XtaskCmd {
-        sub: XtaskSub::Publish(PublishArgs {}),
+        sub: XtaskSub::Publish(PublishArgs { dry_run: false }),
     };
     let out = run_with(cmd);
     assert!(out.is_err());

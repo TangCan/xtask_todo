@@ -1,6 +1,6 @@
 # Story 2.2：Git 辅助
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -44,9 +44,16 @@ Status: review
 - [x] **测试（若缺）**：为 `cmd_git` 或关键分支补 **单元/集成** 测试（可 mock 或条件跳过），避免破坏无 git 的 CI 时标注 `#[ignore]` 或 feature gate。
 - [x] **验证命令**：`cargo test -p xtask`（git 子集）、`cargo clippy -p xtask --all-targets -- -D warnings`。
 
+### Review Findings
+
+- [x] [Review][Patch] `sprint-status.yaml` 文件头 `# last_updated`（`04:30`）与 `last_updated` 字段（`05:10`）不一致 — 已统一为 `2026-03-27T05:10:00Z`（BMad code review）。
+- [x] [Review][Patch] Dev Notes「前序故事」仍写 **2-1** 可能为 `review`，与 sprint（2-1 **`done`**）不符 — 已改写。
+
 ## Change Log
 
 - 2026-03-27：新增 `git` 不在 PATH 的错误分支测试；修正文案使 `git add --help` 与实际“多路径暂存”策略一致；故事状态更新为 review。
+- 2026-03-27：BMad code review — 同步 sprint 注释与 `last_updated`；更新「前序故事」表述。
+- 2026-03-27：审查通过，故事标 `done`；`sprint-status` 中 `2-2-git-assist` 同步为 `done`。
 
 ## Dev Notes
 
@@ -72,7 +79,7 @@ Status: review
 
 ### 前序故事
 
-- **2-1**（统一 xtask 开发者子命令）若仍为 **`review`**，可与本故事并行；注意 **`git`** 与 **`run`/`fmt`** 等文档交叉引用一致。
+- **2-1**（统一 xtask 开发者子命令）已 **`done`**；`docs/requirements.md` §4 与 **`cargo xtask --help`** 中的 **`git`** 子命令说明应与实现保持一致。
 
 ### 参考资料
 

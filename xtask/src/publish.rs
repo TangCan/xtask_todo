@@ -65,19 +65,64 @@ fn run(cmd: &mut Command, step: &str) -> Result<(), Box<dyn std::error::Error>> 
 /// Publish subcommand: bump version, publish to crates.io, tag, push to GitHub.
 #[derive(FromArgs, Clone)]
 #[argh(subcommand, name = "publish")]
-/// Bump patch version, publish xtask-todo-lib (lib + cargo-devshell bin) to crates.io, create tag, push.
-pub struct PublishArgs {}
+/// Publish helpers: default full release flow; use --dry-run for preflight check only.
+pub struct PublishArgs {
+    /// run `cargo publish -p xtask-todo-lib --dry-run --registry crates-io` only
+    #[argh(switch)]
+    pub dry_run: bool,
+}
+
+fn ensure_git_worktree_clean(workspace_root: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let output = Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(workspace_root)
+        .output()?;
+    if !output.status.success() {
+        let code = output.status.code().unwrap_or(1);
+        return Err(
+            std::io::Error::other(format!("git status failed with exit code {code}")).into(),
+        );
+    }
+    let dirty = !String::from_utf8_lossy(&output.stdout).trim().is_empty();
+    if dirty {
+        return Err(std::io::Error::other(
+            "working tree not clean; commit/stash changes before `cargo xtask publish`",
+        )
+        .into());
+    }
+    Ok(())
+}
 
 /// Run publish: bump version -> commit -> cargo publish -> tag -> push branch and tag.
 ///
 /// # Errors
 /// Fails if version bump, git, or cargo publish fails.
-pub fn cmd_publish(_args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>> {
+pub fn cmd_publish(args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>> {
     let workspace_root = std::env::current_dir().map_err(|e| format!("current_dir: {e}"))?;
     let cargo_path = workspace_root.join(CRATE_CARGO);
     if !cargo_path.exists() {
         return Err(format!("{CRATE_CARGO} not found (run from workspace root)").into());
     }
+
+    if args.dry_run {
+        run(
+            Command::new(std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into()))
+                .args([
+                    "publish",
+                    "-p",
+                    PACKAGE,
+                    "--dry-run",
+                    "--registry",
+                    "crates-io",
+                ])
+                .current_dir(&workspace_root),
+            "cargo publish --dry-run",
+        )?;
+        println!("Dry-run checks passed for {PACKAGE}.");
+        return Ok(());
+    }
+
+    ensure_git_worktree_clean(&workspace_root)?;
 
     let new_version = bump_version_in_cargo_toml(&workspace_root)?;
     let tag = format!("{PACKAGE}-v{new_version}");
@@ -222,7 +267,7 @@ edition = "2021"
         let _ = std::fs::create_dir_all(&dir);
         let cwd = std::env::current_dir().unwrap();
         std::env::set_current_dir(&dir).unwrap();
-        let result = cmd_publish(&PublishArgs {});
+        let result = cmd_publish(&PublishArgs { dry_run: false });
         std::env::set_current_dir(&cwd).unwrap();
         let _ = std::fs::remove_dir_all(dir);
         assert!(result.is_err());
@@ -269,7 +314,7 @@ edition = "2021"
         std::env::set_var("PATH", std::env::join_paths(path_vec).unwrap());
         std::env::set_var("CARGO", bin_abs.join("cargo"));
         std::env::set_current_dir(&dir).unwrap();
-        let result = cmd_publish(&PublishArgs {});
+        let result = cmd_publish(&PublishArgs { dry_run: false });
         std::env::set_current_dir(&cwd).unwrap();
         if let Some(p) = old_path {
             std::env::set_var("PATH", p);
@@ -286,5 +331,120 @@ edition = "2021"
             result.is_ok(),
             "cmd_publish with fake git/cargo: {result:?}"
         );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn cmd_publish_dry_run_checks_only() {
+        use std::io::Write;
+        use std::os::unix::fs::PermissionsExt;
+        let _path = path_test_lock();
+        let _cwd_lock = cwd_test_lock();
+        let dir = std::env::temp_dir().join(format!("xtask_publish_dry_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(dir.join("crates/todo"));
+        let _ = std::fs::create_dir_all(dir.join("bin"));
+        let bin = dir.join("bin");
+        let cargo_script = r#"#!/bin/sh
+if [ "$1" = "publish" ] && [ "$2" = "-p" ] && [ "$3" = "xtask-todo-lib" ] && [ "$4" = "--dry-run" ] && [ "$5" = "--registry" ] && [ "$6" = "crates-io" ]; then
+  exit 0
+fi
+exit 7
+"#;
+        let p = bin.join("cargo");
+        let mut f = std::fs::File::create(&p).unwrap();
+        f.write_all(cargo_script.as_bytes()).unwrap();
+        f.sync_all().unwrap();
+        drop(f);
+        let mut perms = std::fs::metadata(&p).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&p, perms).unwrap();
+
+        let cargo_toml = dir.join("crates/todo/Cargo.toml");
+        std::fs::write(
+            &cargo_toml,
+            "[package]\nname = \"todo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .unwrap();
+        let before = std::fs::read_to_string(&cargo_toml).unwrap();
+
+        let cwd = std::env::current_dir().unwrap();
+        let old_path = std::env::var_os("PATH");
+        let old_cargo = std::env::var_os("CARGO");
+        let bin_abs = std::fs::canonicalize(&bin).unwrap();
+        std::env::set_var("PATH", bin_abs.clone());
+        std::env::set_var("CARGO", bin_abs.join("cargo"));
+        std::env::set_current_dir(&dir).unwrap();
+        let result = cmd_publish(&PublishArgs { dry_run: true });
+        std::env::set_current_dir(&cwd).unwrap();
+        if let Some(p) = old_path {
+            std::env::set_var("PATH", p);
+        } else {
+            std::env::remove_var("PATH");
+        }
+        if let Some(c) = old_cargo {
+            std::env::set_var("CARGO", c);
+        } else {
+            std::env::remove_var("CARGO");
+        }
+        let after = std::fs::read_to_string(&cargo_toml).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
+        assert!(result.is_ok(), "dry-run should succeed: {result:?}");
+        assert_eq!(before, after, "dry-run must not modify Cargo.toml");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn cmd_publish_fails_when_worktree_dirty() {
+        use std::io::Write;
+        use std::os::unix::fs::PermissionsExt;
+        let _path = path_test_lock();
+        let _cwd_lock = cwd_test_lock();
+        let dir = std::env::temp_dir().join(format!("xtask_publish_dirty_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(dir.join("crates/todo"));
+        let _ = std::fs::create_dir_all(dir.join("bin"));
+        let bin = dir.join("bin");
+        for (name, script) in [
+            (
+                "git",
+                "#!/bin/sh\nif [ \"$1\" = \"status\" ]; then echo \" M crates/todo/Cargo.toml\"; fi\nexit 0\n",
+            ),
+            ("cargo", "#!/bin/sh\nexit 0\n"),
+        ] {
+            let p = bin.join(name);
+            let mut f = std::fs::File::create(&p).unwrap();
+            f.write_all(script.as_bytes()).unwrap();
+            f.sync_all().unwrap();
+            drop(f);
+            let mut perms = std::fs::metadata(&p).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&p, perms).unwrap();
+        }
+        std::fs::write(
+            dir.join("crates/todo/Cargo.toml"),
+            "[package]\nname = \"todo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .unwrap();
+        let cwd = std::env::current_dir().unwrap();
+        let old_path = std::env::var_os("PATH");
+        let old_cargo = std::env::var_os("CARGO");
+        let bin_abs = std::fs::canonicalize(&bin).unwrap();
+        std::env::set_var("PATH", bin_abs.clone());
+        std::env::set_var("CARGO", bin_abs.join("cargo"));
+        std::env::set_current_dir(&dir).unwrap();
+        let result = cmd_publish(&PublishArgs { dry_run: false });
+        std::env::set_current_dir(&cwd).unwrap();
+        if let Some(p) = old_path {
+            std::env::set_var("PATH", p);
+        } else {
+            std::env::remove_var("PATH");
+        }
+        if let Some(c) = old_cargo {
+            std::env::set_var("CARGO", c);
+        } else {
+            std::env::remove_var("CARGO");
+        }
+        let _ = std::fs::remove_dir_all(dir);
+        let err = result.expect_err("dirty worktree should fail");
+        assert!(err.to_string().contains("working tree not clean"));
     }
 }
