@@ -209,6 +209,9 @@ fn handle_update(
     let id =
         TodoId::from_raw(a.id).ok_or_else(|| TodoCliError::Parameter("invalid id 0".into()))?;
     if dry_run {
+        if list.get(id).is_none() {
+            return Err(TodoCliError::Data(format!("todo not found: {id}")));
+        }
         if json {
             print_json_success(&serde_json::json!({
                 "would_update": true,
