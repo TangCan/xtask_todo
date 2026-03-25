@@ -169,6 +169,30 @@ fn search_by_title_description_tags() {
 }
 
 #[test]
+fn search_is_case_insensitive() {
+    let created = std::time::SystemTime::now();
+    let todos = vec![Todo {
+        id: TodoId::from_raw(1).unwrap(),
+        title: "CamelCase Title".into(),
+        completed: false,
+        created_at: created,
+        completed_at: None,
+        description: Some("UPPER desc".into()),
+        due_date: None,
+        priority: None,
+        tags: vec!["MiXeD".into()],
+        repeat_rule: None,
+        repeat_until: None,
+        repeat_count: None,
+    }];
+    let store = InMemoryStore::from_todos(todos);
+    let list = TodoList::with_store(store);
+    assert_eq!(list.search("camelcase").len(), 1);
+    assert_eq!(list.search("upper").len(), 1);
+    assert_eq!(list.search("mixed").len(), 1);
+}
+
+#[test]
 fn stats_counts_total_incomplete_complete() {
     let mut list = TodoList::new();
     list.create("a").unwrap();

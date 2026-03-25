@@ -6,3 +6,5 @@ Cargo.lock
 /.cursor/skills/superpowers/
 /*.log
 /xtask/target
+/xtask_clippy_fail_*
+/xtask_git_commit_*

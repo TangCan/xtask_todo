@@ -1,6 +1,6 @@
 # Story 1.5：查看详情与更新可选字段
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -43,6 +43,7 @@ Status: review
 ## Change Log
 
 - 2026-03-26：`handle_update` 在 `--dry-run` 分支增加与 `complete` 一致的「id 不存在 → 退出码 3」检查；新增 `xtask/tests/show_update/mod.rs` 集成测试并 `mod show_update` 挂到 `integration` 测试入口。
+- 2026-03-26：BMad（BMM）code review 通过；故事标为 `done`。
 
 ## Dev Notes
 
