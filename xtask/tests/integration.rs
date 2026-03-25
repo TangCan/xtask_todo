@@ -35,6 +35,36 @@ fn xtask_run_exits_success() {
 }
 
 #[test]
+fn xtask_todo_list_empty_json_matches_empty_semantics() {
+    let dir = std::env::temp_dir().join(format!(
+        "xtask_integ_todo_list_empty_{}",
+        std::process::id()
+    ));
+    let _ = fs::create_dir_all(&dir);
+    let _ = fs::remove_file(dir.join(".todo.json"));
+
+    let list = xtask_bin()
+        .arg("todo")
+        .arg("--json")
+        .arg("list")
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(
+        list.status.success(),
+        "xtask todo --json list should succeed on empty store: {:?}",
+        list.stderr
+    );
+    let stdout = String::from_utf8_lossy(&list.stdout);
+    let line = stdout.trim();
+    let v: serde_json::Value = serde_json::from_str(line).expect("valid JSON line");
+    assert_eq!(v["status"], "success");
+    assert_eq!(v["data"]["empty"], true);
+    assert_eq!(v["data"]["message"], "No tasks.");
+    assert_eq!(v["data"]["items"], serde_json::json!([]));
+}
+
+#[test]
 fn xtask_todo_add_then_list_shows_task() {
     let dir = std::env::temp_dir().join("xtask_integ_todo");
     let _ = fs::create_dir_all(&dir);

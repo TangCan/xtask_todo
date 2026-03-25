@@ -40,9 +40,9 @@ Run via: `cargo xtask todo <subcommand> [options]`
 
 ## JSON output
 
-Append `--json` to any subcommand for machine-readable output:
+Use `todo --json <subcommand>` for machine-readable output:
 
-- Success: `{"status":"success","data":...}`
+- Success: `{"status":"success","data":...}` (for `list` / `search`, empty results include `"empty": true` and `"message": "No tasks."` alongside `"items": []`)
 - Error: `{"status":"error","error":{"code":1|2|3,"message":"..."}}`
 
 Exit codes: 0 success, 1 general, 2 parameter error, 3 data error (e.g. id not found).

@@ -10,7 +10,7 @@ use super::super::args::{
     TodoAddArgs, TodoArgs, TodoCompleteArgs, TodoDeleteArgs, TodoExportArgs, TodoImportArgs,
     TodoListArgs, TodoSearchArgs, TodoShowArgs, TodoSub, TodoUpdateArgs,
 };
-use super::super::error::{print_json_success, todo_to_json, TodoCliError};
+use super::super::error::{print_json_success, todo_list_json_payload, todo_to_json, TodoCliError};
 use super::super::format::{format_duration, format_time_ago, print_todo_list_items};
 use super::super::init_ai::run_init_ai;
 use super::super::io::{
@@ -137,8 +137,7 @@ fn handle_list(
     )?;
     let items = list.list_with_options(&options);
     if json {
-        let data: Vec<serde_json::Value> = items.iter().map(todo_to_json).collect();
-        print_json_success(&serde_json::json!({ "items": data }));
+        print_json_success(&todo_list_json_payload(&items));
     } else {
         let use_color = std::io::stdout().is_terminal();
         print_todo_list_items(&items, use_color);
@@ -318,8 +317,7 @@ fn handle_delete(
 fn handle_search(list: &TodoList<InMemoryStore>, a: &TodoSearchArgs, json: bool) {
     let items = list.search(&a.keyword);
     if json {
-        let data: Vec<serde_json::Value> = items.iter().map(todo_to_json).collect();
-        print_json_success(&serde_json::json!({ "items": data }));
+        print_json_success(&todo_list_json_payload(&items));
     } else {
         let use_color = std::io::stdout().is_terminal();
         print_todo_list_items(&items, use_color);

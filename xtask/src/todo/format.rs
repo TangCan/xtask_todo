@@ -6,6 +6,9 @@ use xtask_todo_lib::Todo;
 
 pub const AGE_THRESHOLD_DAYS: u64 = 7;
 
+/// Human-readable line for an empty list (matches `--json` `message` when `empty` is true).
+pub const EMPTY_LIST_MESSAGE: &str = "No tasks.";
+
 #[must_use]
 pub fn format_time_ago(when: SystemTime) -> String {
     let now = SystemTime::now();
@@ -52,7 +55,7 @@ pub fn is_old_open(t: &Todo, now: SystemTime) -> bool {
 pub fn print_todo_list_items(items: &[Todo], use_color: bool) {
     let now = SystemTime::now();
     if items.is_empty() {
-        println!("No tasks.");
+        println!("{EMPTY_LIST_MESSAGE}");
     } else {
         for t in items {
             let mark = if t.completed { "✓" } else { " " };
