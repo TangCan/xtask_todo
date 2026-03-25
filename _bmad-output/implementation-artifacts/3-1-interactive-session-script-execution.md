@@ -1,6 +1,6 @@
 # Story 3.1：交互式会话与脚本执行
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -39,10 +39,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **棕地核对**：阅读 **`crates/todo/src/devshell/mod.rs`**（**`run_main_from_args`**：REPL vs **`-f`** 分支）、**`repl.rs`**；对照 **`docs/requirements.md` §5.3–§5.5** 做检查表。
-- [ ] **测试**：沿用 **`crates/todo/src/devshell/tests/run_main.rs`**；为缺口（REPL  happy path mock、**`-e`**、错误用法）补测或记**手工步骤**。
-- [ ] **文档**：若 CLI 用法与 **`requirements`** 有出入，同步 **`crates/todo/README.md`** 或 **`requirements` §5.3**。
-- [ ] **验证**：`cargo test -p xtask-todo-lib devshell`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
+- [x] **棕地核对**：阅读 **`crates/todo/src/devshell/mod.rs`**（**`run_main_from_args`**：REPL vs **`-f`** 分支）、**`repl.rs`**；对照 **`docs/requirements.md` §5.3–§5.5** 做检查表。
+- [x] **测试**：沿用 **`crates/todo/src/devshell/tests/run_main.rs`**；为缺口（REPL  happy path mock、**`-e`**、错误用法）补测或记**手工步骤**。
+- [x] **文档**：若 CLI 用法与 **`requirements`** 有出入，同步 **`crates/todo/README.md`** 或 **`requirements` §5.3**。
+- [x] **验证**：`cargo test -p xtask-todo-lib devshell`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
 
 ## Dev Notes
 
@@ -74,15 +74,29 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask-todo-lib devshell::tests::run_main`
+- `cargo test -p xtask-todo-lib devshell`
+- `cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`
+- `cargo test -p xtask-todo-lib`
+
 ### Completion Notes List
+
+- 已核对 `run_main_from_args` 在无 `-f` 时进入 REPL 分支、在 `-f` 时进入脚本分支；实现与 `docs/requirements.md` §5.3–§5.5 一致。
+- 已核对并执行 `run_main` 相关测试覆盖：`-f` 缺参、`-f` 多余位置参数、脚本文件缺失诊断、无 `-f` 的 REPL happy path 执行。
+- 错误用法与脚本加载失败均写入 `stderr` 且返回 `Err`（非 0 退出路径），满足 NFR-I1 的可诊断性要求。
+- 已测矩阵：本地自动化覆盖 REPL/脚本入口、`-e` 行为、参数错误和脚本缺失；SKIP：TTY 下 `rustyline` 真实交互、Mode P/VM（`DEVSHELL_VM*`）端到端环境依赖验证，本次未在专用 VM 环境执行。
+- 文档核对结果：当前 CLI 启动说明与 `requirements` §5.3 未发现需修改项，故无文档变更。
 
 ### File List
 
+- `_bmad-output/implementation-artifacts/3-1-interactive-session-script-execution.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

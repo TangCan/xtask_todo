@@ -25,7 +25,7 @@ Status: ready-for-dev
    **When** 输出任意大（受宿主/终端其它限制除外）  
    **Then** **不**错误套用「段间 16 MiB」限制末段直连输出（行为与 **`dispatch/mod.rs` `execute_pipeline`** 注释一致）（**FR16**）。
 
-3. **Given** **`SimpleCommand`** 上附加 **`stdin`/`stdout`/`stderr` 重定向**（**`<`、`**`>`**、**`2>`**）  
+3. **Given** **`SimpleCommand`** 上附加 **`stdin`/`stdout`/`stderr` 重定向**（**`<`**、**`>`**、**`2>`**）  
    **When** 经 **`run_builtin_with_streams`** / **`run_builtin`** 执行  
    **Then** 重定向目标经 **`workspace_read_file` / `workspace_write_file`** 解析到 **VFS/工作区**，失败时错误可读（**FR16**）。
 

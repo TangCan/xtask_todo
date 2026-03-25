@@ -1,5 +1,5 @@
 # generated: 2026-03-25T12:00:00Z
-# last_updated: 2026-03-25T10:36:32Z
+# last_updated: 2026-03-25T10:43:23Z
 # project: xtask_todo
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-25T12:00:00Z"
-last_updated: "2026-03-25T10:38:00Z"
+last_updated: "2026-03-25T12:14:00Z"
 project: xtask_todo
 project_key: NOKEY
 tracking_system: file-system
@@ -53,19 +53,19 @@ development_status:
   1-8-recurring-tasks: done
   epic-1-retrospective: optional
 
-  epic-2: in-progress
+  epic-2: done
   2-1-unified-xtask-dev-commands: done
   2-2-git-assist: done
   2-3-publish-assist: done
   2-4-one-click-acceptance: done
-  2-5-pre-commit-ci-alignment: review
+  2-5-pre-commit-ci-alignment: done
   epic-2-retrospective: optional
 
   epic-3: in-progress
-  3-1-interactive-session-script-execution: ready-for-dev
+  3-1-interactive-session-script-execution: review
   3-2-builtin-file-directory-ops: ready-for-dev
   3-3-pipeline-redirect-buffer-limit: ready-for-dev
-  3-4-devshell-todo-subset: backlog
+  3-4-devshell-todo-subset: ready-for-dev
   3-5-help-tty-completion: backlog
   epic-3-retrospective: optional
 

@@ -1,6 +1,6 @@
 # Story 2.5：提交前检查对齐 CI
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -43,6 +43,16 @@ Status: review
 - [x] **差距处理**：对每个差异选择 **(a)** 改 **CI**、**(b)** 改 **pre-commit**、或 **(c)** 仅文档化；实施所选项并更新 **`requirements`** / **workflow 注释**。
 - [x] **验收引用**：若 **NF-6**（**`acceptance` 对 pre-commit 脚本**的静态检查）与脚本变更相关，同步 **`xtask/src/acceptance/checks.rs`** 中的关键字检测或说明。
 - [x] **验证**：本地试跑 **`cargo xtask git pre-commit`**（或 **`sh .githooks/pre-commit`**）；**`cargo test -p xtask`**、**clippy**。
+
+### Review Findings
+
+- [x] [Review][Patch] `sprint-status.yaml` 文件头 `# last_updated`（`10:36:32`）与 `last_updated` 字段（`10:38:00`）不一致 — 已统一为 `2026-03-25T10:38:00Z`（BMad code review）。
+
+## Change Log
+
+- 2026-03-25：CI **`doc`** 步骤增加 **`RUSTDOCFLAGS='-D warnings'`**；**`ci.yml`** 注释说明 MSVC 交叉检查仅本地 pre-commit/acceptance；故事 Completion Notes 附 pre-commit ↔ CI 对照矩阵。
+- 2026-03-25：BMad code review — 同步 sprint 注释与 `last_updated`。
+- 2026-03-25：审查通过，故事标 `done`；`sprint-status` 中 `2-5-pre-commit-ci-alignment` 与 **`epic-2`** 同步为 `done`。
 
 ## Dev Notes
 
