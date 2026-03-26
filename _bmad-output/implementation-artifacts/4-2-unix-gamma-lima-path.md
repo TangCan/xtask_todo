@@ -1,6 +1,6 @@
 # Story 4.2：Unix γ（Lima）路径
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -97,6 +97,22 @@ gpt-5.3-codex
 - `crates/todo/src/devshell/vm/mod.rs`
 - `_bmad-output/implementation-artifacts/4-2-unix-gamma-lima-path.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings（BMad 分层审查 · 2026-03-26）
+
+| 层 | 结论 |
+|----|------|
+| **Blind Hunter** | 在 `vm/mod.rs` 增加 **`#[cfg(unix)]`** 集成测：`try_session_rc` 在 **`DEVSHELL_VM_BACKEND=lima`** 且无 **`limactl`** 时返回 **`Err`**，stderr 含 **`limactl not found in PATH`**（与 **`session_gamma/helpers`** 及 **`try_session_rc` 的 `dev_shell: {e}`** 包装一致）；`try_session_rc_or_host` 验证降级 **`Host`** 且 stderr 含 **`VM unavailable`**，与 **`try_session_rc_or_host`** 实现一致。 |
+| **Edge Case Hunter** | 全局 **`vm_env_lock`** 串行化多测对 **`PATH` / VM 相关 env** 的修改；恢复在断言之前执行，断言失败时环境已还原。若在 **`try_session_*` 内部 panic**，仍存在与 4.1 相同的「理论泄漏」窗口（低概率，可接受）。 |
+| **Acceptance Auditor** | **AC3 / NFR-I1**：`lima` 缺失可诊断；**与 4.1 边界**：fallback 测覆盖 **`SessionHolder::Host`**。**AC4**：非 Unix 不编译 γ 测试模块。**AC1/2** 仍由棕地 **`session_gamma`** 与故事核对支撑（本 diff 以测+分派契约为准）。**AC6**：**`cargo test -p xtask-todo-lib`**、**`clippy -D warnings`** 已通过。 |
+
+**待办项**：无。
+
+**附加**：工作区中 **`sprint-status.yaml`** 曾出现 **`# last_updated` 与 YAML 字段不一致**，审查时已统一为 **`2026-03-26T01:45:00Z`**。
+
+## Change Log
+
+- **2026-03-26**：BMad 代码审查通过 — 故事与 sprint **4-2-unix-gamma-lima-path** 标为 **done**；同步 sprint 时间戳；复验 `cargo test -p xtask-todo-lib`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
 
 ## 完成状态
 

@@ -1,6 +1,6 @@
 # Story 4.3：Windows β 与侧车协议
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -40,10 +40,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **棕地核对**：通读 **`BetaSession::exchange`**、**`ensure_session_started`**、**`run_rust_tool`**；对照 **`docs/devshell-vm-windows.md`** 与 **`crates/devshell-vm`** 协议说明。
-- [ ] **成帧**：确认 **`read_one_json_line`** 与侧车 **`write`** 均为**一行一 JSON**；记录与 **exec** 子进程 **stdout** 混用风险及 **`docs/devshell-vm-windows.md`** 已述缓解措施。
-- [ ] **测试**：为 **handshake** / **错误帧** / **parse 失败** 补单元测试（可 mock **`IpcStream`**）。
-- [ ] **验证**：`cargo test -p xtask-todo-lib --features beta-vm`、`cargo clippy -p xtask-todo-lib --all-targets --features beta-vm -- -D warnings`。
+- [x] **棕地核对**：通读 **`BetaSession::exchange`**、**`ensure_session_started`**、**`run_rust_tool`**；对照 **`docs/devshell-vm-windows.md`** 与 **`crates/devshell-vm`** 协议说明。
+- [x] **成帧**：确认 **`read_one_json_line`** 与侧车 **`write`** 均为**一行一 JSON**；记录与 **exec** 子进程 **stdout** 混用风险及 **`docs/devshell-vm-windows.md`** 已述缓解措施。
+- [x] **测试**：为 **handshake** / **错误帧** / **parse 失败** 补单元测试（可 mock **`IpcStream`**）。
+- [x] **验证**：`cargo test -p xtask-todo-lib --features beta-vm`、`cargo clippy -p xtask-todo-lib --all-targets --features beta-vm -- -D warnings`。
 
 ## Dev Notes
 
@@ -75,15 +75,32 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask-todo-lib --features beta-vm ensure_ready_handshake_uses_single_json_line_and_accepts_handshake_ok`
+- `cargo test -p xtask-todo-lib --features beta-vm ensure_ready_maps_error_frame_to_vmerror_ipc`
+- `cargo test -p xtask-todo-lib --features beta-vm ensure_ready_reports_non_json_response_prefix`
+- `cargo test -p xtask-todo-lib --features beta-vm`
+- `cargo clippy -p xtask-todo-lib --all-targets --features beta-vm -- -D warnings`
+
 ### Completion Notes List
+
+- 已核对 `BetaSession::ensure_ready`/`exchange`/`run_rust_tool`：握手使用 `op=handshake, version=1`，Mode S 按 `push_incremental -> sync_request(push_to_guest) -> exec -> sync_request(pull_from_guest) -> pull_workspace_to_vfs` 路径执行，满足 FR22。
+- 已核对协议成帧：请求侧统一 `writeln!` 发送单行 JSON；响应侧通过 `read_one_json_line` / `StdioPipe::read_json_line` 读取单行并 `serde_json` 解析，非 JSON 会返回含 `first line prefix` 的诊断，满足 NFR-I2。
+- 新增单测 `ensure_ready_handshake_uses_single_json_line_and_accepts_handshake_ok`：用 TCP mock 侧车验证 handshake 请求是一行一 JSON（含换行）且 `handshake_ok` 可通过。
+- 新增单测 `ensure_ready_maps_error_frame_to_vmerror_ipc`：验证 `op:error` 帧被映射为 `VmError::Ipc(message)`，不会被当成功响应。
+- 新增单测 `ensure_ready_reports_non_json_response_prefix`：验证响应为非 JSON 时错误包含前缀提示，满足可诊断排错需求。
+- 文档核对：`docs/devshell-vm-windows.md` 已覆盖 exec 子进程 stdout 可能污染协议通道的风险与 stderr 转发缓解策略；本次实现与文档一致，无需改文档真源。
 
 ### File List
 
+- `crates/todo/src/devshell/vm/session_beta/mod.rs`
+- `_bmad-output/implementation-artifacts/4-3-windows-beta-sidecar-protocol.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录
