@@ -23,7 +23,7 @@
 
 侧车对 **`exec`**（如 **`cargo new`**）会在 **`session_start` 的 `staging_dir`**（方式 B 下即 **`/workspace`** 对应的宿主目录）上 **真实启动子进程**；镜像需在运行时包含 **`cargo`**（当前 **`Containerfile`** 通过 **`apt install cargo`** 安装）。更新本地镜像时请 **`podman build -f containers/devshell-vm/Containerfile`**，或拉取已发布的新版 GHCR 镜像。
 
-**一般无需设置环境变量。** 若 **`podman pull`** 失败（离线、镜像尚未发布、私有仓库），可任选：
+**一般无需设置环境变量。** 若默认镜像是 `ghcr.io/...`，当首次 `podman pull` 失败时，工具会自动将镜像域名改为 `ghcr.nju.edu.cn` 并重试一次；拉取成功后会 **`podman tag`** 回 `ghcr.io/...`，以便后续 **`podman run`** 仍使用规范引用。若仍失败（离线、镜像尚未发布、私有仓库等），可任选：
 
 - 临时 **`DEVSHELL_VM_BACKEND=host`** 使用宿主沙箱；或  
 - 从本仓库 **交叉编译** 出 ELF 后设置 **`DEVSHELL_VM_LINUX_BINARY`**；或  
@@ -92,6 +92,8 @@ Podman 在 Windows 上使用 **`%USERPROFILE%\.ssh\known_hosts`**。默认将 **
 - 被运行的程序若往 **stdout** 打印，实现上会经侧车 **stderr** 转发，**不**混入协议 **stdout**，宿主才能继续 **`read_json_line`**。
 
 若仍出现 **`beta sidecar response is not JSON`**（首行像普通文本），多为**旧侧车**把子进程 stdout 接到了协议流上；请 **重建/拉取** 含当前 **`crates/devshell-vm`** 与 **`Containerfile`** 的镜像或 ELF（见 **§1**、**[requirements.md](./requirements.md) §5.8**）。
+
+若日志里看到 **`podman pull ghcr.io/... failed; retrying once with mirror: ghcr.nju.edu.cn/...`**，表示已触发镜像站重试逻辑；若重试也失败，请按 **§1** 的替代方案（`DEVSHELL_VM_LINUX_BINARY` / `DEVSHELL_VM_CONTAINER_IMAGE` / `DEVSHELL_VM_BACKEND=host`）处理。
 
 **PowerShell / CMD** 下 **`podman`** 子进程的 stderr 是否与交互窗口一致，取决于 **Podman** 与终端；若看不到编译输出，可先 **`DEVSHELL_VM_STDIO_TRANSPORT=podman-run`** 单独试 **`podman run -i …`** 对比。
 

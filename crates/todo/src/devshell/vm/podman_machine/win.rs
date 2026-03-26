@@ -316,8 +316,46 @@ fn podman_pull(image: &str) -> Result<(), VmError> {
     if st.success() {
         return Ok(());
     }
+
+    if let Some(mirror_image) = image.strip_prefix("ghcr.io/").map(|rest| {
+        // Fallback for transient GHCR connectivity on some networks.
+        format!("ghcr.nju.edu.cn/{rest}")
+    }) {
+        eprintln!(
+            "dev_shell: podman pull {image} failed; retrying once with mirror: {mirror_image}"
+        );
+        let retry = podman_command()
+            .args(["pull", &mirror_image])
+            .status()
+            .map_err(|e| {
+                VmError::Ipc(format!(
+                    "podman pull {image} failed; retry via mirror {mirror_image} errored: {e}\n{MSG_PODMAN_INSTALL}"
+                ))
+            })?;
+        if retry.success() {
+            // `spawn_podman_run_stdio` still uses the canonical `ghcr.io/...` ref; tag the mirror
+            // pull so the local image name matches what `podman run` will request.
+            eprintln!("dev_shell: tagging mirror image as {image} for podman run");
+            let tag = podman_command()
+                .args(["tag", &mirror_image, image])
+                .status()
+                .map_err(|e| {
+                    VmError::Ipc(format!(
+                        "podman pull {mirror_image} succeeded but `podman tag {mirror_image} {image}` failed: {e}\n{MSG_PODMAN_INSTALL}"
+                    ))
+                })?;
+            if tag.success() {
+                return Ok(());
+            }
+            return Err(VmError::Ipc(format!(
+                "podman pull {mirror_image} succeeded but `podman tag {mirror_image} {image}` did not succeed.\n{MSG_PODMAN_INSTALL}"
+            )));
+        }
+    }
+
     Err(VmError::Ipc(format!(
-        "podman pull {image} failed (offline, auth, or image not published).\n\
+        "podman pull {image} failed (offline, timeout, auth, or image not published).\n\
+         Retry policy: if image starts with ghcr.io/, we retry once via ghcr.nju.edu.cn.\n\
          Options: set {} to a Linux devshell-vm ELF path, or {} to an image you can pull, or {}=machine-ssh with a built ELF.\n\
          GHCR tags vs crates.io version: see docs/devshell-vm-oci-release.md",
         ENV_DEVSHELL_VM_LINUX_BINARY,
