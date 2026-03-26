@@ -57,6 +57,11 @@ pub const ENV_DEVSHELL_VM_REPO_ROOT: &str = "DEVSHELL_VM_REPO_ROOT";
 /// Default: **`ghcr.io/tangcan/xtask_todo/devshell-vm:v{CARGO_PKG_VERSION}`** (published by CI on release).
 pub const ENV_DEVSHELL_VM_CONTAINER_IMAGE: &str = "DEVSHELL_VM_CONTAINER_IMAGE";
 
+/// **Windows β:** timeout (seconds) for each `podman pull` attempt in OCI fallback mode.
+/// When unset/invalid/0, default timeout is applied by implementation.
+#[allow(dead_code)] // Used by Windows-only podman_machine implementation.
+pub const ENV_DEVSHELL_VM_PULL_TIMEOUT_SECS: &str = "DEVSHELL_VM_PULL_TIMEOUT_SECS";
+
 /// **Windows β:** stdio transport for `DEVSHELL_VM_SOCKET=stdio`: **`auto`** (default), **`machine-ssh`**
 /// (host ELF + `podman machine ssh`), or **`podman-run`** (OCI image + `podman run -i`).
 pub const ENV_DEVSHELL_VM_STDIO_TRANSPORT: &str = "DEVSHELL_VM_STDIO_TRANSPORT";

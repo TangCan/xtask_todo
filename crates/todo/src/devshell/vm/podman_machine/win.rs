@@ -1,16 +1,22 @@
 //! Windows: Podman machine SSH / `podman run` stdio transport for β.
 
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{ExitStatus, Stdio};
+use std::time::{Duration, Instant};
 
 use super::super::config::{
     devshell_repo_root_from_path, devshell_repo_root_with_containerfile,
-    ENV_DEVSHELL_VM_CONTAINER_IMAGE, ENV_DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME,
-    ENV_DEVSHELL_VM_LINUX_BINARY, ENV_DEVSHELL_VM_REPO_ROOT, ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP,
-    ENV_DEVSHELL_VM_STDIO_TRANSPORT,
+    ENV_DEVSHELL_VM_CONTAINER_IMAGE, ENV_DEVSHELL_VM_LINUX_BINARY,
+    ENV_DEVSHELL_VM_PULL_TIMEOUT_SECS, ENV_DEVSHELL_VM_REPO_ROOT,
+    ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP, ENV_DEVSHELL_VM_STDIO_TRANSPORT,
 };
 use super::super::VmError;
 use super::WindowsStdioTransport;
+mod bootstrap;
+use bootstrap::{
+    podman_command, podman_not_available_error, podman_version_succeeds,
+    try_install_podman_via_winget, try_podman_engine_ready,
+};
 
 /// Shown when `podman` is missing or unusable after auto-install attempts.
 const MSG_PODMAN_INSTALL: &str = "\
@@ -22,137 +28,6 @@ Try in order:
   3) If needed:  podman machine start
   4) Docs:       https://podman.io/getting-started/installation
   5) Host-only:  set DEVSHELL_VM_BACKEND=host (no VM sidecar)";
-
-fn link_podman_machine_into_ssh_home(ssh_home: &Path) -> std::io::Result<()> {
-    let real_profile = match std::env::var("USERPROFILE") {
-        Ok(s) if !s.trim().is_empty() => PathBuf::from(s.trim()),
-        _ => return Ok(()),
-    };
-    let real_podman = real_profile
-        .join(".local")
-        .join("share")
-        .join("containers")
-        .join("podman");
-    if !real_podman.is_dir() {
-        return Ok(());
-    }
-    let link = ssh_home
-        .join(".local")
-        .join("share")
-        .join("containers")
-        .join("podman");
-    if link.exists() {
-        return Ok(());
-    }
-    if let Some(parent) = link.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::os::windows::fs::symlink_dir(&real_podman, &link)
-}
-
-fn ssh_home_for_podman() -> std::io::Result<PathBuf> {
-    let home = std::env::temp_dir().join("cargo-devshell-ssh-home");
-    let ssh = home.join(".ssh");
-    std::fs::create_dir_all(&ssh)?;
-    let kh = ssh.join("known_hosts");
-    if !kh.exists() {
-        std::fs::write(&kh, "")?;
-    }
-    link_podman_machine_into_ssh_home(&home).unwrap_or_else(|e| {
-        eprintln!(
-            "dev_shell: could not symlink %USERPROFILE%\\.local\\share\\containers\\podman into isolated profile (SSH workaround): {e}\n\
-             Or set {}=1 to use your real profile (and fix or unlock .ssh\\known_hosts).",
-            ENV_DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME
-        );
-    });
-    Ok(home)
-}
-
-fn apply_windows_podman_profile_env(cmd: &mut Command, home: &Path) {
-    cmd.env("USERPROFILE", home);
-    cmd.env("HOME", home);
-    if let Some(s) = home.to_str() {
-        let b = s.as_bytes();
-        if b.len() >= 2 && b[1] == b':' {
-            if let (Some(drive), Some(rest)) = (s.get(..2), s.get(2..)) {
-                cmd.env("HOMEDRIVE", drive);
-                cmd.env("HOMEPATH", rest);
-            }
-        }
-    }
-}
-
-fn apply_podman_ssh_home_env(cmd: &mut Command) {
-    if std::env::var(ENV_DEVSHELL_VM_DISABLE_PODMAN_SSH_HOME).is_ok() {
-        return;
-    }
-    match ssh_home_for_podman() {
-        Ok(home) => apply_windows_podman_profile_env(cmd, &home),
-        Err(e) => {
-            eprintln!("dev_shell: could not create temp HOME for podman (SSH known_hosts workaround): {e}");
-        }
-    }
-}
-
-fn podman_command() -> Command {
-    let mut c = Command::new("podman");
-    apply_podman_ssh_home_env(&mut c);
-    c
-}
-
-fn podman_version_succeeds() -> bool {
-    podman_command()
-        .args(["--version"])
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-}
-
-fn try_install_podman_via_winget() {
-    if !Command::new("winget")
-        .args(["--version"])
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-    {
-        eprintln!("dev_shell: winget not found — install Podman manually from https://podman.io/ or use Chocolatey/choco install podman.");
-        return;
-    }
-    eprintln!("dev_shell: Podman not on PATH; trying: winget install -e --id Podman.Podman");
-    let status = Command::new("winget")
-        .args([
-            "install",
-            "-e",
-            "--id",
-            "Podman.Podman",
-            "--accept-package-agreements",
-            "--accept-source-agreements",
-        ])
-        .status();
-    match status {
-        Ok(s) if s.success() => eprintln!(
-            "dev_shell: winget reported success. Open a NEW terminal, then run:  podman version"
-        ),
-        Ok(_) => eprintln!(
-            "dev_shell: winget install failed — try an elevated (Administrator) terminal, or install from https://podman.io/"
-        ),
-        Err(e) => eprintln!("dev_shell: could not run winget: {e}"),
-    }
-}
-
-fn try_podman_engine_ready() {
-    if podman_command()
-        .args(["info"])
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-    {
-        return;
-    }
-    eprintln!("dev_shell: podman info failed — trying: podman machine start");
-    let _ = podman_command().args(["machine", "start"]).status();
-    std::thread::sleep(std::time::Duration::from_secs(2));
-}
 
 /// Windows path `D:\a\b` → `/mnt/d/a/b` for paths inside Podman Machine (Fedora/WSL-like mount).
 pub(super) fn windows_host_path_to_vm_mnt(host: &Path) -> Option<String> {
@@ -309,11 +184,9 @@ pub(super) fn stdio_guest_mount(workspace_parent: &Path) -> String {
 }
 
 fn podman_pull(image: &str) -> Result<(), VmError> {
-    let st = podman_command()
-        .args(["pull", image])
-        .status()
-        .map_err(|e| VmError::Ipc(format!("podman pull {image}: {e}\n{MSG_PODMAN_INSTALL}")))?;
-    if st.success() {
+    let timeout_secs = podman_pull_timeout_secs();
+    let first = podman_pull_with_timeout(image, timeout_secs)?;
+    if matches!(first, PullResult::Success) {
         return Ok(());
     }
 
@@ -324,15 +197,8 @@ fn podman_pull(image: &str) -> Result<(), VmError> {
         eprintln!(
             "dev_shell: podman pull {image} failed; retrying once with mirror: {mirror_image}"
         );
-        let retry = podman_command()
-            .args(["pull", &mirror_image])
-            .status()
-            .map_err(|e| {
-                VmError::Ipc(format!(
-                    "podman pull {image} failed; retry via mirror {mirror_image} errored: {e}\n{MSG_PODMAN_INSTALL}"
-                ))
-            })?;
-        if retry.success() {
+        let retry = podman_pull_with_timeout(&mirror_image, timeout_secs)?;
+        if matches!(retry, PullResult::Success) {
             // `spawn_podman_run_stdio` still uses the canonical `ghcr.io/...` ref; tag the mirror
             // pull so the local image name matches what `podman run` will request.
             eprintln!("dev_shell: tagging mirror image as {image} for podman run");
@@ -356,12 +222,72 @@ fn podman_pull(image: &str) -> Result<(), VmError> {
     Err(VmError::Ipc(format!(
         "podman pull {image} failed (offline, timeout, auth, or image not published).\n\
          Retry policy: if image starts with ghcr.io/, we retry once via ghcr.nju.edu.cn.\n\
+         Pull timeout: {} seconds per attempt (override with {}).\n\
          Options: set {} to a Linux devshell-vm ELF path, or {} to an image you can pull, or {}=machine-ssh with a built ELF.\n\
          GHCR tags vs crates.io version: see docs/devshell-vm-oci-release.md",
+        timeout_secs,
+        ENV_DEVSHELL_VM_PULL_TIMEOUT_SECS,
         ENV_DEVSHELL_VM_LINUX_BINARY,
         ENV_DEVSHELL_VM_CONTAINER_IMAGE,
         ENV_DEVSHELL_VM_STDIO_TRANSPORT
     )))
+}
+
+const DEFAULT_PODMAN_PULL_TIMEOUT_SECS: u64 = 180;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PullResult {
+    Success,
+    FailedOrTimedOut,
+}
+
+fn podman_pull_timeout_secs() -> u64 {
+    std::env::var(ENV_DEVSHELL_VM_PULL_TIMEOUT_SECS)
+        .ok()
+        .and_then(|s| s.trim().parse::<u64>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(DEFAULT_PODMAN_PULL_TIMEOUT_SECS)
+}
+
+fn wait_child_with_timeout(
+    child: &mut std::process::Child,
+    timeout: Duration,
+    what: &str,
+) -> Result<Option<ExitStatus>, VmError> {
+    let start = Instant::now();
+    loop {
+        if let Some(st) = child
+            .try_wait()
+            .map_err(|e| VmError::Ipc(format!("{what}: try_wait failed: {e}")))?
+        {
+            return Ok(Some(st));
+        }
+        if start.elapsed() >= timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok(None);
+        }
+        std::thread::sleep(Duration::from_millis(200));
+    }
+}
+
+fn podman_pull_with_timeout(image: &str, timeout_secs: u64) -> Result<PullResult, VmError> {
+    let mut child = podman_command()
+        .args(["pull", image])
+        .spawn()
+        .map_err(|e| VmError::Ipc(format!("podman pull {image}: {e}\n{MSG_PODMAN_INSTALL}")))?;
+    let timeout = Duration::from_secs(timeout_secs);
+    let st = wait_child_with_timeout(&mut child, timeout, &format!("podman pull {image}"))?;
+    match st {
+        Some(status) if status.success() => Ok(PullResult::Success),
+        Some(_) => Ok(PullResult::FailedOrTimedOut),
+        None => {
+            eprintln!(
+                "dev_shell: podman pull {image} timed out after {timeout_secs}s; terminating and continuing fallback logic"
+            );
+            Ok(PullResult::FailedOrTimedOut)
+        }
+    }
 }
 
 fn spawn_machine_ssh_elf(host_bin: &Path) -> Result<std::process::Child, VmError> {
@@ -438,7 +364,7 @@ pub(super) fn ensure(workspace_parent: &Path) -> Result<(), VmError> {
         try_install_podman_via_winget();
     }
     if !podman_version_succeeds() {
-        return Err(VmError::Ipc(MSG_PODMAN_INSTALL.to_string()));
+        return Err(podman_not_available_error());
     }
 
     try_podman_engine_ready();

@@ -51,6 +51,7 @@ cargo build -p devshell-vm --release --target x86_64-unknown-linux-gnu
 | **`DEVSHELL_VM_LINUX_BINARY`** | 显式指定 Linux `devshell-vm` ELF 的 Windows 路径（强制走方式 A） |
 | **`DEVSHELL_VM_REPO_ROOT`** | 含 `containers/devshell-vm/Containerfile` 的仓库根，用于在磁盘上查找 `target/.../devshell-vm` |
 | **`DEVSHELL_VM_CONTAINER_IMAGE`** | 覆盖方式 B 的镜像（默认 `ghcr.io/tangcan/xtask_todo/devshell-vm:v{CARGO_PKG_VERSION}`） |
+| **`DEVSHELL_VM_PULL_TIMEOUT_SECS`** | Windows β 的 `podman pull` 单次超时（秒）。默认约 180 秒；超时会终止本次拉取并进入镜像重试逻辑。 |
 | **`DEVSHELL_VM_STDIO_TRANSPORT`** | **`auto`**（默认）、**`machine-ssh`**（仅方式 A，缺 ELF 则报错）、**`podman-run`**（仅方式 B） |
 | **`DEVSHELL_VM_BETA_SESSION_STAGING`** | 覆盖发给侧车的 `staging_dir`；未设置时由工具根据方式 A（`/mnt/…`）或 B（`/workspace`）填写 |
 | **`DEVSHELL_VM_EXEC_TIMEOUT_MS`** | 侧车 **`exec`** 默认超时（毫秒）；单次请求可在 JSON 里用 **`timeout_ms`** 覆盖（见侧车 **`server.rs`**） |
@@ -93,7 +94,7 @@ Podman 在 Windows 上使用 **`%USERPROFILE%\.ssh\known_hosts`**。默认将 **
 
 若仍出现 **`beta sidecar response is not JSON`**（首行像普通文本），多为**旧侧车**把子进程 stdout 接到了协议流上；请 **重建/拉取** 含当前 **`crates/devshell-vm`** 与 **`Containerfile`** 的镜像或 ELF（见 **§1**、**[requirements.md](./requirements.md) §5.8**）。
 
-若日志里看到 **`podman pull ghcr.io/... failed; retrying once with mirror: ghcr.nju.edu.cn/...`**，表示已触发镜像站重试逻辑；若重试也失败，请按 **§1** 的替代方案（`DEVSHELL_VM_LINUX_BINARY` / `DEVSHELL_VM_CONTAINER_IMAGE` / `DEVSHELL_VM_BACKEND=host`）处理。
+若日志里看到 **`podman pull ... timed out after ...s`**，表示已触发超时终止；随后会自动尝试镜像站重试（`ghcr.io/...` -> `ghcr.nju.edu.cn/...`）。若重试也失败，请按 **§1** 的替代方案（`DEVSHELL_VM_LINUX_BINARY` / `DEVSHELL_VM_CONTAINER_IMAGE` / `DEVSHELL_VM_BACKEND=host`）处理。
 
 **PowerShell / CMD** 下 **`podman`** 子进程的 stderr 是否与交互窗口一致，取决于 **Podman** 与终端；若看不到编译输出，可先 **`DEVSHELL_VM_STDIO_TRANSPORT=podman-run`** 单独试 **`podman run -i …`** 对比。
 
