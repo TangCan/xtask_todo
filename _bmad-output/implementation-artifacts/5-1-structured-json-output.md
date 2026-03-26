@@ -1,6 +1,6 @@
 # Story 5.1：结构化 JSON 输出
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -94,6 +94,21 @@ gpt-5.3-codex
 - `docs/requirements.md`
 - `_bmad-output/implementation-artifacts/5-1-structured-json-output.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings（BMad 分层审查 · 2026-03-26）
+
+| 层 | 结论 |
+|----|------|
+| **Blind Hunter** | **`docs/requirements.md` §3.2** 增补 **`--json`** 成功/失败载荷表，与 **`TodoJsonSuccess` / `TodoJsonError`**、**`EXIT_*`** 叙述一致；集成测直接钉 **`init-ai` → `data.generated`**、**`todo` 空 list**、**`show 0` → `status:error` + code 2**，覆盖 **FR26 / AC1–AC3** 的关键缺口。 |
+| **Edge Case Hunter** | **`lima_todo` smoke** 接入 **`cwd_test_lock()`**，减轻与并行集成测的 **`current_dir`** / **`cargo metadata`** 竞争；与故事 Completion Notes 一致。 |
+| **Acceptance Auditor** | **`todo_bin_json_show_invalid_id_outputs_error_contract`** 使用 **`TodoCliError::Parameter` → exit 2**，与 **`requirements`** 表中「**2 = 参数错误**」一致；**AC5**：**`cargo test -p xtask`**、**`clippy -p xtask -D warnings`** 已通过。 |
+
+**待办项**：无。请勿将 **`crates/todo/.dev_shell.bin`** 等功能无关二进制随本故事提交。
+
+## Change Log
+
+- **2026-03-26**：BMad 代码审查通过 — **5-1-structured-json-output** 与 sprint 同步为 **done**；**`last_updated`** **`2026-03-26T05:06:00Z`**；复验 **`cargo test -p xtask`**、**clippy**。
+
 ## 完成状态
 
 - [x] 所有 AC 已验证（自动化或记录手工步骤）

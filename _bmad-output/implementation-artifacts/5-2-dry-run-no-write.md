@@ -1,6 +1,6 @@
 # Story 5.2：Dry-run 无写盘
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -39,10 +39,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **矩阵**：**`add`/`update`/`complete`/`delete`/`import`** × **`--dry-run`** × **有/无 `--json`** — 确认**均无** **`save_todos`**（**`import`** 两处 **`if !dry_run`**）。
-- [ ] **export**：确认 **`handle_export`** 无 **`dry_run`**；文档或 **`--help`** 是否需要注明「导出始终写目标文件」（**最小**变更）。
-- [ ] **集成**：若缺少 **`replace` + `--dry-run`** 的磁盘不变性测试，按 **`import_export`** 模式补一条。
-- [ ] **验证**：**`cargo test -p xtask`**、**`cargo clippy -p xtask --all-targets -- -D warnings`**。
+- [x] **矩阵**：**`add`/`update`/`complete`/`delete`/`import`** × **`--dry-run`** × **有/无 `--json`** — 确认**均无** **`save_todos`**（**`import`** 两处 **`if !dry_run`**）。
+- [x] **export**：确认 **`handle_export`** 无 **`dry_run`**；文档或 **`--help`** 是否需要注明「导出始终写目标文件」（**最小**变更）。
+- [x] **集成**：若缺少 **`replace` + `--dry-run`** 的磁盘不变性测试，按 **`import_export`** 模式补一条。
+- [x] **验证**：**`cargo test -p xtask`**、**`cargo clippy -p xtask --all-targets -- -D warnings`**。
 
 ## Dev Notes
 
@@ -74,15 +74,27 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask xtask_todo_import_dry_run_replace_preserves_store`
+- `cargo test -p xtask && cargo clippy -p xtask --all-targets -- -D warnings`
+
 ### Completion Notes List
+
+- 已逐项核对 `dispatch.rs`：`add/update/complete/delete` 在 `dry_run` 分支均于 `save_todos` 前早退；`import` 在 `replace`/`merge` 两分支均仅在 `if !dry_run` 时落盘，满足 FR27。
+- 复核现有单测覆盖矩阵：`json_dry_init.rs` 覆盖 `dry_run add`；`list_options.rs` 覆盖 `dry_run update/complete/delete` 且含 `json` 与非 `json` 路径；`import_export.rs` 已覆盖 `dry_run merge`。
+- 新增集成测试 `xtask_todo_import_dry_run_replace_preserves_store`，验证 `--dry-run --replace` 仅返回预览 JSON，不改写 `.todo.json`，并确认后续 `list` 仍为原本数据。
+- 在 `docs/requirements.md` §3.2 追加一句说明：`export` 当前仍会写目标文件，不受 `--dry-run` 影响，避免“全局 dry-run 一律不写盘”的歧义。
 
 ### File List
 
+- `xtask/tests/todo_list/import_export.rs`
+- `docs/requirements.md`
+- `_bmad-output/implementation-artifacts/5-2-dry-run-no-write.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录
