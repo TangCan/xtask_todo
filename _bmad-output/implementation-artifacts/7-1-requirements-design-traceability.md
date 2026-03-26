@@ -1,6 +1,6 @@
 # Story 7.1：需求—设计—用例—验收追溯
 
-Status: ready-for-dev
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -38,11 +38,11 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **走查**：自 **`requirements §3`** 起，逐段在 **`test-cases.md`** / **`acceptance.md`** 打勾或记缺口。
-- [ ] **§0 索引**：若 **`test-cases.md` §0** 缺 **§6 AI** 以外的新增章节，补一行映射。
-- [ ] **FR 抽样**：从 **`epics.md`** 选 **5+** FR，填 **「FR → 文档锚点」** 小表（可放在本故事 **Dev Agent Record** 或 **`docs/`** 附录 — **最小**新增）。
-- [ ] **SKIP 规范**：统一「⏸」「SKIP」「手工」在 **`acceptance.md`** 与 **`test-cases.md`** 中的用语（若当前已一致则 **no-op**）。
-- [ ] **验证**：若改动了与自动化相关的 **`acceptance`** 描述，运行 **`cargo xtask acceptance`** 或按 **`docs/acceptance.md` §8** 核对。
+- [x] **走查**：自 **`requirements §3`** 起，逐段在 **`test-cases.md`** / **`acceptance.md`** 打勾或记缺口。
+- [x] **§0 索引**：若 **`test-cases.md` §0** 缺 **§6 AI** 以外的新增章节，补一行映射。
+- [x] **FR 抽样**：从 **`epics.md`** 选 **5+** FR，填 **「FR → 文档锚点」** 小表（可放在本故事 **Dev Agent Record** 或 **`docs/`** 附录 — **最小**新增）。
+- [x] **SKIP 规范**：统一「⏸」「SKIP」「手工」在 **`acceptance.md`** 与 **`test-cases.md`** 中的用语（若当前已一致则 **no-op**）。
+- [x] **验证**：若改动了与自动化相关的 **`acceptance`** 描述，运行 **`cargo xtask acceptance`** 或按 **`docs/acceptance.md` §8** 核对。
 
 ## Dev Notes
 
@@ -75,15 +75,46 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo xtask acceptance --stdout-only`
+
 ### Completion Notes List
+
+- 已完成文档链路走查：`requirements.md §3/§5/§6/§7/§9` → `test-cases.md §0/§1~§8` → `acceptance.md §1/§3/§4/§5/§8`，均可找到对应章节或“人工/环境”说明，未发现不可调和断链。
+- `test-cases.md §0` 索引已覆盖 `requirements` 主章节（含 §6 AI、§7 非功能、§1.2/§7.2 平台与 pre-commit），本故事对此项为 **no-op**，无需额外补行。
+- FR 抽样（跨 Epic，N=6）：
+  - `FR3` → `requirements.md §3.1/§3.2`；`test-cases.md TC-T9-*`；`acceptance.md §2.2 T2-2`
+  - `FR12` → `requirements.md §4`；`test-cases.md TC-X-ACC-1`；`acceptance.md §8`
+  - `FR22` → `requirements.md §5.8`；`test-cases.md TC-D-VM-1~4/6/7`；`acceptance.md §4 D9`
+  - `FR27` → `requirements.md §3.2/§6 US-A4`；`test-cases.md TC-A4-1`；`acceptance.md §3.2 A4`
+  - `FR31` → `requirements.md §2/§4/§7.1`；`docs/publishing.md §6`；`acceptance.md NF-3/NF-4（人工）`
+  - `FR34` → `requirements.md §2（当前不承诺）`；`test-cases.md §10`；`acceptance.md §5 NF-3/NF-4（评审）`
+- SKIP/手工用语核对：`acceptance.md` 已使用“⏸ 跳过（注明原因）”并在 §8 明确自动化不覆盖项；`test-cases.md` 中“手工/可选/待补充”语义与之可解释一致，本故事不做强制词形统一改写。
+- 自动化核对通过：`cargo xtask acceptance --stdout-only` 全绿，报告含 `NF-1/2/5/6` 与 `AC-*` 覆盖表，同时保留人工项清单，满足 AC6。
 
 ### File List
 
+- `_bmad-output/planning-artifacts/epics.md`（FR 抽样来源）
+- `docs/requirements.md`（走查 §3/§5/§6/§7/§9）
+- `docs/design.md`（与需求对照）
+- `docs/test-cases.md`（§0 索引与 TC 映射）
+- `docs/acceptance.md`（与用例、自动化对照）
+- `docs/publishing.md`（FR31 抽样引用）
+- `_bmad-output/implementation-artifacts/7-1-requirements-design-traceability.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings
+
+- [x] [Review][Patch] AC6「审阅路径」清单不完整 — `File List` 原先未列出 `docs/` 下走查文件；已补全上表路径（本轮审查）。
+
+## Change Log
+
+- **2026-03-26**：BMad 并行审查通过；补全 **File List** 以满足 AC6；**Status → done**。
+
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

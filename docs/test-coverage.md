@@ -9,6 +9,8 @@
 | **xtask-todo-lib** | **≥95%** | `cargo xtask coverage`（与 `xtask/src/coverage.rs` 中 `--exclude-files` 一致） |
 | **xtask** | **≥95%** | `cargo xtask coverage`（与 `xtask/src/coverage.rs` 中 xtask 的 `--exclude-files` 一致） |
 
+> 当前 `cargo xtask coverage` 会打印各 crate 覆盖率摘要，但不会在代码中硬性卡住 `95%` 并返回失败；`95%` 作为团队目标，由评审/CI 策略决定是否强制。
+
 **说明**
 
 - **xtask-todo-lib**：排除项用于聚焦可稳定测的库代码（`cargo-devshell` 入口、REPL、脚本、VM/Lima、宿主 sandbox、`host_text`、**`completion/*`**、**`workspace/*`**、**`command/dispatch/{builtin_impl,workspace}.rs`**、**`vfs/tree.rs`**、**`session_store.rs`** 等）；核心 todo/VFS/parser/sandbox 与 devshell 集成测试覆盖其余部分；精确列表见 **`xtask/src/coverage.rs`**。

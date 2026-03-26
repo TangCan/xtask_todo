@@ -1,6 +1,6 @@
 # Story 7.2：自动化测试与覆盖率工作流
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -38,10 +38,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **对照表**：从 **`coverage.rs`** 提取 **`xtask-todo-lib`** / **`xtask`** 两组 **`exclude-files`**，与 **`test-coverage.md`** 段落逐条核对。
-- [ ] **95%**：确认团队期望是「人工读摘要」还是「CI 失败」；若仅前者，在文档加**一句**「实现不强制阈值」。
-- [ ] **beta-vm / devshell-vm**：**`test-coverage.md`** 中 **`cargo test --features beta-vm`**、**`devshell-vm`** 段落与 **`test-cases.md`** 引用仍正确。
-- [ ] **验证**：**`cargo test -p xtask`**；有条件时 **`cargo xtask coverage`**。
+- [x] **对照表**：从 **`coverage.rs`** 提取 **`xtask-todo-lib`** / **`xtask`** 两组 **`exclude-files`**，与 **`test-coverage.md`** 段落逐条核对。
+- [x] **95%**：确认团队期望是「人工读摘要」还是「CI 失败」；若仅前者，在文档加**一句**「实现不强制阈值」。
+- [x] **beta-vm / devshell-vm**：**`test-coverage.md`** 中 **`cargo test --features beta-vm`**、**`devshell-vm`** 段落与 **`test-cases.md`** 引用仍正确。
+- [x] **验证**：**`cargo test -p xtask`**；有条件时 **`cargo xtask coverage`**。
 
 ## Dev Notes
 
@@ -73,15 +73,27 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask`
+- `cargo xtask coverage`
+- `cargo clippy -p xtask --all-targets -- -D warnings`
+
 ### Completion Notes List
+
+- 对照 `xtask/src/coverage.rs` 与 `docs/test-coverage.md`：文档继续采用“概括性说明 + 精确列表以 `coverage.rs` 为准”的单一事实来源策略，语义一致。
+- 在 `docs/test-coverage.md` 补充阈值说明：当前 `cargo xtask coverage` 仅输出各 crate 覆盖率摘要，不在实现中硬编码 `95%` 失败门禁；`95%` 维持为团队目标值。
+- 复核 `beta-vm/devshell-vm` 说明与 `docs/test-cases.md` 的 VM 用例引用（含 `TC-D-VM-4/7`）一致，且文档未将 tarpaulin 与 MSVC 交叉编译门禁混淆。
+- 执行回归命令通过，`cargo xtask coverage` 摘要输出：`xtask-todo-lib 95.26%`、`xtask 96.00%`。
 
 ### File List
 
+- `docs/test-coverage.md`
+- `_bmad-output/implementation-artifacts/7-2-test-coverage-workflow.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录
