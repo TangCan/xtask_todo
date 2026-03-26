@@ -1,6 +1,6 @@
 # Story 3.4：Devshell 内 Todo 子集
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -39,10 +39,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **棕地核对**：列出 **`todo_builtin`** 支持的子命令与 **`xtask/src/todo/`** 对应命令的差异表（**`--json`**、**`--dry-run`**、过滤/排序等**未**在 devshell 暴露时记入「刻意子集」）。
-- [ ] **路径与 Mode P**：阅读 **`todo_io`**、**`design.md`** 中与 **§11** / **guest-primary** 相关段落；核对 **`cwd`** 在 devshell/VM 下是否仍指向预期宿主目录。
-- [ ] **测试**：为 **`run_todo_cmd`** 关键路径或 **`todo_io`** 集成补 **单元/集成** 测试（可沿用 **`devshell/tests/`** 模式）。
-- [ ] **验证**：`cargo test -p xtask-todo-lib`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
+- [x] **棕地核对**：列出 **`todo_builtin`** 支持的子命令与 **`xtask/src/todo/`** 对应命令的差异表（**`--json`**、**`--dry-run`**、过滤/排序等**未**在 devshell 暴露时记入「刻意子集」）。
+- [x] **路径与 Mode P**：阅读 **`todo_io`**、**`design.md`** 中与 **§11** / **guest-primary** 相关段落；核对 **`cwd`** 在 devshell/VM 下是否仍指向预期宿主目录。
+- [x] **测试**：为 **`run_todo_cmd`** 关键路径或 **`todo_io`** 集成补 **单元/集成** 测试（可沿用 **`devshell/tests/`** 模式）。
+- [x] **验证**：`cargo test -p xtask-todo-lib`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
 
 ## Dev Notes
 
@@ -74,15 +74,32 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask-todo-lib devshell::tests::run_todo`
+- `cargo test -p xtask-todo-lib todo_file_points_to_current_dir_dot_todo_json`
+- `cargo test -p xtask-todo-lib`
+- `cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`
+
 ### Completion Notes List
+
+- 子命令差异核对：devshell `todo` 仅支持 `list/add/show/update/complete/delete/search/stats`；明确不支持 `export/import/init-ai`，与 `requirements` §5.4 的“刻意子集”一致。
+- 新增测试 `run_with_todo_subset_rejects_unsupported_subcommands`，覆盖 `todo export/import/init-ai` 的明确拒绝（未知子命令提示），防止误写盘。
+- 新增测试 `run_with_todo_add_persists_dot_todo_json_in_current_dir`，确认修改类命令会写入当前目录 `.todo.json`，与 `todo_io::todo_file()` 契约一致。
+- 新增测试 `todo_file_points_to_current_dir_dot_todo_json`，验证 `todo_io` 路径确实绑定宿主 `cwd`（与 Mode P 注释策略一致：不映射进 guest 工程树）。
+- 现有实现已在 `add/update/complete/delete` 成功后调用 `save_todos`，失败路径映射到 `BuiltinError::TodoSaveFailed`；本次未发现需改动的实现缺陷。
+- 文档核对：`requirements` 与实现一致，无需修改文档文件。
 
 ### File List
 
+- `crates/todo/src/devshell/tests/run_todo.rs`
+- `crates/todo/src/devshell/todo_io.rs`
+- `_bmad-output/implementation-artifacts/3-4-devshell-todo-subset.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

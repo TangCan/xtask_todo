@@ -134,6 +134,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn todo_file_points_to_current_dir_dot_todo_json() {
+        let _g = crate::test_support::cwd_mutex();
+        let dir = std::env::temp_dir().join(format!(
+            "todo_io_path_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).expect("create dir");
+        let cwd = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(&dir).expect("set cwd");
+        let file = todo_file().expect("todo_file");
+        std::env::set_current_dir(&cwd).expect("restore cwd");
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(file, dir.join(".todo.json"));
+    }
+
+    #[test]
     fn load_todos_when_file_missing_returns_empty() {
         let _g = crate::test_support::cwd_mutex();
         let dir = std::env::temp_dir().join(format!(

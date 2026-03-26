@@ -40,6 +40,24 @@ fn run_with_todo_unknown_subcommand() {
 }
 
 #[test]
+fn run_with_todo_subset_rejects_unsupported_subcommands() {
+    let input = "todo export\ntodo import\ntodo init-ai\nexit\n";
+    let mut stdin = Cursor::new(input);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    run_with(
+        &["dev_shell".to_string()],
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(err.contains("unknown subcommand"), "stderr: {err}");
+    assert!(err.contains("list, add, show, update, complete, delete, search, stats"));
+}
+
+#[test]
 fn run_with_todo_show_invalid_id_errors() {
     let _g = cwd_mutex();
     let dir = std::env::temp_dir().join(format!("devshell_show_err_{}", std::process::id()));
@@ -292,6 +310,34 @@ fn run_with_todo_list_when_no_todo_file() {
     r.unwrap();
     let out = String::from_utf8(stdout).unwrap();
     assert!(out.contains("total: 0") || out.contains(" $ ") || out.is_empty());
+}
+
+#[test]
+fn run_with_todo_add_persists_dot_todo_json_in_current_dir() {
+    let _g = cwd_mutex();
+    let dir = std::env::temp_dir().join(format!("devshell_todo_persist_{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let todo_path = dir.join(".todo.json");
+    let _ = std::fs::remove_file(&todo_path);
+    let cwd = std::env::current_dir().unwrap();
+    let _ = std::env::set_current_dir(&dir);
+    let input = "todo add persist_me\ntodo list --json\nexit\n";
+    let mut stdin = Cursor::new(input);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let r = run_with(
+        &["dev_shell".to_string()],
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    );
+    let _ = std::env::set_current_dir(&cwd);
+    r.unwrap();
+
+    let file = std::fs::read_to_string(&todo_path).expect("todo file should be created");
+    assert!(file.contains("persist_me"), ".todo.json: {file}");
+    let _ = std::fs::remove_file(&todo_path);
+    let _ = std::fs::remove_dir(&dir);
 }
 
 #[test]
