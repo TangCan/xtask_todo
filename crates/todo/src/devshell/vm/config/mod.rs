@@ -134,8 +134,7 @@ impl VmConfig {
 
     /// Config with VM mode off (for tests).
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)]
-    pub fn disabled() -> Self {
+    pub const fn disabled() -> Self {
         Self {
             enabled: false,
             backend: String::new(),

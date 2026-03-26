@@ -246,8 +246,7 @@ impl BetaSession {
 
     /// `true` when Mode S (host↔VFS sync around rust tools); `false` in guest-primary ([`WorkspaceMode::Guest`]).
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)]
-    pub fn syncs_vfs_with_host_workspace(&self) -> bool {
+    pub const fn syncs_vfs_with_host_workspace(&self) -> bool {
         self.sync_vfs_with_workspace
     }
 

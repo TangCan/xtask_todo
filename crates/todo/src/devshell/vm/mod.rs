@@ -192,8 +192,7 @@ impl SessionHolder {
 
     /// Host sandbox only (tests and callers that do not read `VmConfig`).
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)]
-    pub fn new_host() -> Self {
+    pub const fn new_host() -> Self {
         Self::Host(HostSandboxSession::new())
     }
 
@@ -244,7 +243,7 @@ impl SessionHolder {
     /// Returns `None` for host sandbox, β, or Mode S γ (push/pull sync).
     #[cfg(unix)]
     #[must_use]
-    pub fn guest_primary_gamma_mut(&mut self) -> Option<&mut GammaSession> {
+    pub const fn guest_primary_gamma_mut(&mut self) -> Option<&mut GammaSession> {
         match self {
             Self::Gamma(g) if !g.syncs_vfs_with_host_workspace() => Some(g),
             _ => None,
@@ -274,7 +273,7 @@ impl SessionHolder {
 
     /// `true` when **any** VM session runs in guest-primary mode (γ or β: no VFS↔host project-tree sync).
     #[must_use]
-    pub fn is_guest_primary(&self) -> bool {
+    pub const fn is_guest_primary(&self) -> bool {
         match self {
             #[cfg(unix)]
             Self::Gamma(g) if !g.syncs_vfs_with_host_workspace() => true,
@@ -286,7 +285,7 @@ impl SessionHolder {
 
     /// `true` when γ runs in guest-primary mode (no VFS↔host project-tree sync).
     #[must_use]
-    pub fn is_guest_primary_gamma(&self) -> bool {
+    pub const fn is_guest_primary_gamma(&self) -> bool {
         #[cfg(unix)]
         {
             matches!(
@@ -302,8 +301,7 @@ impl SessionHolder {
 
     /// `true` when using the host temp sandbox ([`HostSandboxSession`]) rather than γ/β.
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)]
-    pub fn is_host_only(&self) -> bool {
+    pub const fn is_host_only(&self) -> bool {
         matches!(self, Self::Host(_))
     }
 
