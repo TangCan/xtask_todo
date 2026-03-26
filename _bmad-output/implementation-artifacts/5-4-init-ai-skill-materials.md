@@ -1,6 +1,6 @@
 # Story 5.4：init-ai 技能材料
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -97,6 +97,21 @@ gpt-5.3-codex
 - `docs/requirements.md`
 - `_bmad-output/implementation-artifacts/5-4-init-ai-skill-materials.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings（BMad 分层审查 · 2026-03-26）
+
+| 层 | 结论 |
+|----|------|
+| **Blind Hunter** | **`init_ai.rs`** 模板增加 **Notes**：**`--for-tool` 预留**；**`requirements.md`** 同步默认路径与预留语义；**`todo_bin_init_ai_with_output_and_for_tool_generates_todo_md`** 验证 **`todo.md`** 生成及文案含 **`currently reserved`**，覆盖 **AC1/AC4**。 |
+| **Edge Case Hunter** | 子命令清单与 **5.1/5.3** 叙述一致（**JSON / dry-run / 退出码**）；**AC3** 仍由 **`json_dry_init`** 覆盖 **`--json` 成功体**（Completion Notes 已核对）。 |
+| **Acceptance Auditor** | **AC6**：**`cargo test -p xtask`**、**`clippy -p xtask -D warnings`** 已通过。 |
+
+**待办项**：无。勿提交 **`crates/todo/.dev_shell.bin`** 等非本故事产物。
+
+## Change Log
+
+- **2026-03-26**：BMad 代码审查通过 — **5-4-init-ai-skill-materials** 与 **Epic 5** 标为 **done**；sprint **`last_updated`** 与 **`# last_updated`** 为 **`2026-03-26T06:05:00Z`**（以仓库为准）；复验 **`cargo test -p xtask`**、**clippy**。
+
 ## 完成状态
 
 - [x] 所有 AC 已验证（自动化或记录手工步骤）

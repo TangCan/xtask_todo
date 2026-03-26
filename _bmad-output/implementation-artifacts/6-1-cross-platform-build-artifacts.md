@@ -1,6 +1,6 @@
 # Story 6.1：跨平台可编译交付物
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -39,10 +39,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **矩阵**：**`xtask-todo-lib`** 特性（**`default` / `beta-vm`** 等）× **宿主 triple** × **`x86_64-pc-windows-msvc`** — 明确 **`cargo check`** 命令列表（**最小**）。
-- [ ] **xtask 包**：若产品要求 **Windows 上编译 `xtask` 二进制**，在 AC 中单独列出 **`cargo check -p xtask --target …`**（否则在文档中说明「发布主库为 `xtask-todo-lib`」）。
-- [ ] **文档**：**`README`** / **`design.md`** 与 **pre-commit** 三步是否一致；**`acceptance-report`** 是否反映 **NF-5**。
-- [ ] **验证**：上述 **`cargo check`** + **`cargo test -p xtask-todo-lib`**（及全工作区策略）。
+- [x] **矩阵**：**`xtask-todo-lib`** 特性（**`default` / `beta-vm`** 等）× **宿主 triple** × **`x86_64-pc-windows-msvc`** — 明确 **`cargo check`** 命令列表（**最小**）。
+- [x] **xtask 包**：若产品要求 **Windows 上编译 `xtask` 二进制**，在 AC 中单独列出 **`cargo check -p xtask --target …`**（否则在文档中说明「发布主库为 `xtask-todo-lib`」）。
+- [x] **文档**：**`README`** / **`design.md`** 与 **pre-commit** 三步是否一致；**`acceptance-report`** 是否反映 **NF-5**。
+- [x] **验证**：上述 **`cargo check`** + **`cargo test -p xtask-todo-lib`**（及全工作区策略）。
 
 ## Dev Notes
 
@@ -74,15 +74,30 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`
+- `cargo check -p xtask-todo-lib --no-default-features --target x86_64-pc-windows-msvc`
+- `cargo check -p xtask-todo-lib --features beta-vm --target x86_64-pc-windows-msvc`
+- `cargo test -p xtask-todo-lib -- --test-threads=1`
+- `cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`
+- `cargo test -p xtask && cargo clippy -p xtask --all-targets -- -D warnings`
+
 ### Completion Notes List
+
+- 已完成 MSVC 交叉检查矩阵：`xtask-todo-lib` 在 `x86_64-pc-windows-msvc` 目标下分别通过 `default`、`--no-default-features` 与 `--features beta-vm` 三组 `cargo check`，覆盖本故事最小特性组合。
+- 已核对 `.githooks/pre-commit`、`docs/acceptance.md`、`docs/test-cases.md`：均明确 `NF-5/D8` 的 MSVC 检查对象为 `xtask-todo-lib`，与当前门禁一致。
+- 针对“xtask 包是否纳入 Windows 目标门禁”补充文档说明：`requirements §7.2` 现明确跨平台强制门禁聚焦发布交付物 `xtask-todo-lib`，`xtask`/`todo` 维持本地与集成测试覆盖，不单列 MSVC gate。
+- 首次并行 `cargo test -p xtask-todo-lib` 出现两条既有非确定性测试失败（PATH/导出目录相关）；按 pre-commit 一致策略改用 `--test-threads=1` 重跑后全绿，未改动业务实现。
 
 ### File List
 
+- `docs/requirements.md`
+- `_bmad-output/implementation-artifacts/6-1-cross-platform-build-artifacts.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

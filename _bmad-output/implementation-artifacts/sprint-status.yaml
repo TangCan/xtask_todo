@@ -1,5 +1,5 @@
 # generated: 2026-03-25T12:00:00Z
-# last_updated: 2026-03-26T05:45:00Z
+# last_updated: 2026-03-26T06:05:00Z
 # project: xtask_todo
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-25T12:00:00Z"
-last_updated: "2026-03-26T05:58:00Z"
+last_updated: "2026-03-26T06:18:00Z"
 project: xtask_todo
 project_key: NOKEY
 tracking_system: file-system
@@ -77,20 +77,20 @@ development_status:
   4-5-mode-p-session-metadata: done
   epic-4-retrospective: optional
 
-  epic-5: in-progress
+  epic-5: done
   5-1-structured-json-output: done
   5-2-dry-run-no-write: done
   5-3-exit-code-conventions: done
-  5-4-init-ai-skill-materials: review
+  5-4-init-ai-skill-materials: done
   epic-5-retrospective: optional
 
   epic-6: in-progress
-  6-1-cross-platform-build-artifacts: ready-for-dev
+  6-1-cross-platform-build-artifacts: review
   6-2-crates-io-cargo-devshell: ready-for-dev
   epic-6-retrospective: optional
 
   epic-7: in-progress
   7-1-requirements-design-traceability: ready-for-dev
   7-2-test-coverage-workflow: ready-for-dev
-  7-3-product-boundary-no-implicit-promise: backlog
+  7-3-product-boundary-no-implicit-promise: ready-for-dev
   epic-7-retrospective: optional

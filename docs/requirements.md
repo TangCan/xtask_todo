@@ -223,6 +223,7 @@
 
 - **`cargo xtask git pre-commit`** 与启用 **`git config core.hooksPath .githooks`** 后的 **`git commit`** 前钩子，均运行同一 **`pre-commit`** 脚本（见 **§4** 表）。
 - 若本地未安装 **`x86_64-pc-windows-msvc`** 标准库，**`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`** 会失败；请先执行 **`rustup target add x86_64-pc-windows-msvc`**。
+- 当前跨平台强制门禁聚焦发布交付物 **`xtask-todo-lib`**；`xtask`/`todo` 二进制以本地开发与集成测试覆盖为主，不单列 MSVC 目标门禁命令。
 
 ---
 
