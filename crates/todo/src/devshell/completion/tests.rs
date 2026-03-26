@@ -27,6 +27,34 @@ fn complete_commands_prefix() {
 }
 
 #[test]
+fn complete_commands_contains_builtin_and_aliases() {
+    let c = complete_commands("");
+    for cmd in [
+        "pwd",
+        "cd",
+        "ls",
+        "mkdir",
+        "cat",
+        "touch",
+        "echo",
+        "save",
+        "export-readonly",
+        "export_readonly",
+        "todo",
+        "rustup",
+        "cargo",
+        "exit",
+        "quit",
+        "help",
+    ] {
+        assert!(
+            c.iter().any(|s| s == cmd),
+            "completion list should include {cmd}: {c:?}"
+        );
+    }
+}
+
+#[test]
 fn complete_path_empty_prefix() {
     let names = vec!["a".into(), "b".into()];
     assert_eq!(complete_path("", &names), vec!["a", "b"]);

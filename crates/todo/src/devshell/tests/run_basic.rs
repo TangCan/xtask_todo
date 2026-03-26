@@ -77,6 +77,41 @@ fn run_with_help() {
 }
 
 #[test]
+fn run_with_help_lists_builtin_command_set() {
+    let input = "help\nexit\n";
+    let mut stdin = Cursor::new(input);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    run_with(
+        &["dev_shell".to_string()],
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+    let out = String::from_utf8(stdout).unwrap();
+    for cmd in [
+        "pwd",
+        "cd",
+        "ls",
+        "mkdir",
+        "cat",
+        "touch",
+        "echo",
+        "save",
+        "export-readonly",
+        "export_readonly",
+        "todo",
+        "rustup",
+        "cargo",
+        "exit, quit",
+        "help",
+    ] {
+        assert!(out.contains(cmd), "help should mention {cmd}: {out}");
+    }
+}
+
+#[test]
 fn run_with_save() {
     let input = "mkdir x\nsave /tmp/devshell_save_test.bin\nexit\n";
     let mut stdin = Cursor::new(input);

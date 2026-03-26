@@ -1,6 +1,6 @@
 # Story 3.5：帮助与 TTY 补全
 
-Status: ready-for-dev
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -42,10 +42,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **棕地核对**：**`help`** 输出 vs **`builtin_impl`** 分派表 vs **`completion/candidates`** 命令名列表 — 三处一致。
-- [ ] **TTY**：在 **`repl.rs`** 确认 **`CompletionType::List`**；阅读 **`completion/helper.rs`** 与 **`DevShellHelper::update`** 路径逻辑。
-- [ ] **文档**：若修文案，同步 **`docs/requirements.md` §5.6**（若需）、**`crates/todo/README.md`**。
-- [ ] **验证**：`cargo test -p xtask-todo-lib completion`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
+- [x] **棕地核对**：**`help`** 输出 vs **`builtin_impl`** 分派表 vs **`completion/candidates`** 命令名列表 — 三处一致。
+- [x] **TTY**：在 **`repl.rs`** 确认 **`CompletionType::List`**；阅读 **`completion/helper.rs`** 与 **`DevShellHelper::update`** 路径逻辑。
+- [x] **文档**：若修文案，同步 **`docs/requirements.md` §5.6**（若需）、**`crates/todo/README.md`**。
+- [x] **验证**：`cargo test -p xtask-todo-lib completion`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
 
 ## Dev Notes
 
@@ -77,15 +77,46 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask-todo-lib completion`
+- `cargo test -p xtask-todo-lib run_with_help_lists_builtin_command_set`
+- `cargo test -p xtask-todo-lib devshell`
+- `cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`
+
 ### Completion Notes List
+
+- 已核对并统一 `help`/分派/补全命令集合：`builtin_impl::run_builtin_help`、`run_builtin_core`、`completion::BUILTIN_COMMANDS` 三处命令集一致；`export_readonly` 作为 `export-readonly` 别名已在 help 文案中显式体现。
+- 新增测试 `run_with_help_lists_builtin_command_set`，校验 help 输出包含当前实现内置命令集合（含 `export_readonly` 别名、`exit, quit`）。
+- 新增测试 `complete_commands_contains_builtin_and_aliases`，校验补全命令清单覆盖内置命令与别名。
+- TTY/非 TTY 行为核对：`repl.rs` 的 TTY 分支使用 `Editor` + `set_completion_type(CompletionType::List)` + `DevShellHelper`；非 TTY 走 `read_line` 分支，不依赖 Tab 补全，符合 AC2/AC3。
+- 文档核对：`requirements` §5.6 与当前实现一致；本次仅修正 help 文案与别名一致性，不需要额外文档文件改动。
 
 ### File List
 
+- `crates/todo/src/devshell/command/dispatch/builtin_impl.rs`
+- `crates/todo/src/devshell/tests/run_basic.rs`
+- `crates/todo/src/devshell/completion/tests.rs`
+- `_bmad-output/implementation-artifacts/3-5-help-tty-completion.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings（BMad 分层审查 · 2026-03-26）
+
+| 层 | 结论 |
+|----|------|
+| **Blind Hunter** | diff 聚焦 help 文案别名、`help` 与补全列表回归测；与「内置命令 discoverability」目标一致，无多余行为变更。 |
+| **Edge Case Hunter** | `run_with_help_lists_builtin_command_set` 对 **`exit, quit`** 使用整串子串匹配，与当前 `run_builtin_help` 输出一致；若将来调整措辞顺序需同步测试。`complete_commands_contains_builtin_and_aliases` 覆盖别名与核心内置名，不断言「仅含」列表（与 AC 范围一致）。 |
+| **Acceptance Auditor** | AC1：`export-readonly|export_readonly` 与分派、`BUILTIN_COMMANDS` 一致；新增测覆盖 help 与补全。AC2/3：本次未改 `repl.rs`，故事内棕地核对可接受。AC4：无 README 矛盾改动。AC6：`cargo test -p xtask-todo-lib`、`clippy -D warnings` 已通过。 |
+
+**待办项**：无（0 decision-needed、0 patch、0 defer）。
+
+## Change Log
+
+- **2026-03-26**：BMad 代码审查通过 — 本故事与 sprint **3-5-help-tty-completion** 标为 **done**；复验 `cargo test -p xtask-todo-lib`（267 passed）、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
+
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

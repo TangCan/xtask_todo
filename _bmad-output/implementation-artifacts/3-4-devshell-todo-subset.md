@@ -1,6 +1,6 @@
 # Story 3.4：Devshell 内 Todo 子集
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -98,6 +98,21 @@ gpt-5.3-codex
 - `crates/todo/src/devshell/todo_io.rs`
 - `_bmad-output/implementation-artifacts/3-4-devshell-todo-subset.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings（BMad 分层审查 · 2026-03-25）
+
+| 层 | 结论 |
+|----|------|
+| **Blind Hunter** | 用户路径清晰：devshell 内 `todo add` → 当前目录 `.todo.json`；`export`/`import`/`init-ai` 被拒且 stderr 含「未知子命令」与允许列表，符合 FR17 子集与 §5.4。 |
+| **Edge Case Hunter** | `run_with_todo_add_persists_*` 在 `cwd_mutex` 下 chdir，失败时依赖测试框架/进程退出清理临时目录；与现有 devshell 测试风格一致。未知子命令测试对三条命令共用同一 stderr 断言，若将来单条消息格式分叉需拆分断言。 |
+| **Acceptance Auditor** | AC1：`todo_file` + `add` 持久化测到；AC2：三条禁子命令测到；AC3：`todo_file_points_to_current_dir_dot_todo_json` 与 Mode P 注释一致；AC4：`save_todos`/`TodoSaveFailed` 棕地已存在，本故事以补测为主；AC5/6：clippy 与本包测试通过（见下方变更记录）。 |
+
+**状态**：PO 已确认 **done**（**2026-03-25**）；**Epic 3** 仍为 **in-progress**（**3-5** 未完结）。
+
+## Change Log
+
+- **2026-03-25**：PO 签收 — 故事与 sprint 中 **3-4-devshell-todo-subset** 标为 **done**；**epic-3** 保持 **in-progress**。
+- **2026-03-25**：代码审查 — 对齐 `sprint-status.yaml` 顶部 `# last_updated` 与 `last_updated` 字段；验证 `cargo test -p xtask-todo-lib` 过滤运行 `subset_rejects_unsupported` / `persists_dot_todo_json` / `todo_file_points` 及 `cargo clippy -p xtask-todo-lib --all-targets -- -D warnings` 通过。
 
 ## 完成状态
 

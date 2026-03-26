@@ -35,7 +35,7 @@ pub(super) fn run_builtin_help(stdout: &mut dyn Write) -> Result<(), BuiltinErro
         .map_err(|_| BuiltinError::RedirectWrite)?;
     writeln!(
         stdout,
-        "  export-readonly [path]  Mode S: copy VFS subtree to host temp dir; Mode P: mirror guest tree under a logical path in VFS"
+        "  export-readonly|export_readonly [path]  Mode S: copy VFS subtree to host temp dir; Mode P: mirror guest tree under a logical path in VFS"
     )
     .map_err(|_| BuiltinError::RedirectWrite)?;
     writeln!(stdout, "  todo [list|add|show|update|complete|delete|search|stats] ...  todo list (shares .todo.json with cargo xtask todo)")
