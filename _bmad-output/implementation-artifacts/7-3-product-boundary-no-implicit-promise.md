@@ -1,6 +1,6 @@
 # Story 7.3：产品能力边界（不默认承诺）
 
-Status: ready-for-dev
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -38,10 +38,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **清单**：从 **FR34** + **§2** 抽出「禁止默认承诺」关键词表，用于 README/文档检索。
-- [ ] **README 双文件**：根 **`README.md`** + **`crates/todo/README.md`** 各通读一节「边界」是否足够（不足则加**短**段落或链接 **§2**）。
-- [ ] **PRD 对齐**：确认 **`prd.md` FR34** 与 **`requirements §2`** 无漂移。
-- [ ] **记录**：在故事 **Completion Notes** 或 **`requirements §8`** 维护说明中记一次审计日期（**可选**）。
+- [x] **清单**：从 **FR34** + **§2** 抽出「禁止默认承诺」关键词表，用于 README/文档检索。
+- [x] **README 双文件**：根 **`README.md`** + **`crates/todo/README.md`** 各通读一节「边界」是否足够（不足则加**短**段落或链接 **§2**）。
+- [x] **PRD 对齐**：确认 **`prd.md` FR34** 与 **`requirements §2`** 无漂移。
+- [x] **记录**：在故事 **Completion Notes** 或 **`requirements §8`** 维护说明中记一次审计日期（**可选**）。
 
 ## Dev Notes
 
@@ -72,15 +72,46 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `rg "FR34|当前不承诺|HTTP API|多用户权限|自动迁移" docs/requirements.md`
+- `rg "FR34|HTTP API|多用户权限|自动迁移|不默认承诺" _bmad-output/planning-artifacts/prd.md`
+- `rg "HTTP API|自动迁移|migration|tcp|serve|server" _bmad-output/planning-artifacts/architecture.md`
+- `rg "API|server|REST|multi-tenant|sync service|migrate|migration" README.md`
+- `rg "API|server|REST|multi-tenant|sync service|migrate|migration" crates/todo/README.md`
+- `rg "serve-tcp|listen\\(|TcpListener|hyper|axum|warp|actix_web" .`
+
 ### Completion Notes List
+
+- 审计关键词清单：`HTTP API`、`multi-tenant`、`server/REST`、`sync service`、`migrate/migration`、`.todo.json 自动迁移`。用于对外文档与代码抽查，避免默认承诺未立项能力。
+- 核对 `docs/requirements.md §2` 与 `prd.md FR34`：语义一致，均明确“不默认承诺 HTTP API、多用户权限、`.todo.json` 自动迁移流水线”。
+- 审阅 `architecture.md`（边界/迁移/协议章节）与 `docs/design.md` 相关段落：均保持 CLI/库优先与“可选侧车协议”定位，不与 FR34 冲突。
+- 在 `README.md` 与 `crates/todo/README.md` 新增简短 “Product boundary (FR34)” 段落并链接 `requirements §2`，避免被解读为安装即得托管服务或自动迁移。
+- 代码面抽查显示网络端点仅出现在显式可选路径（如 `devshell-vm --serve-tcp` 测试/实现），不存在默认产品核心的 HTTP/TCP 服务承诺。
+- 审计日期：2026-03-26。
 
 ### File List
 
+- `docs/requirements.md`（§2「当前不承诺」）
+- `_bmad-output/planning-artifacts/prd.md`（FR34）
+- `_bmad-output/planning-artifacts/architecture.md`（边界/迁移）
+- `docs/design.md`（与 §2 一致性核对）
+- `README.md`
+- `crates/todo/README.md`
+- `_bmad-output/implementation-artifacts/7-3-product-boundary-no-implicit-promise.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings
+
+- [x] [Review][Patch] 审阅路径清单不完整 — `File List` 原先未列出 **`requirements` / `prd` / `architecture` / `design`** 等 Completion Notes 已审计文件；已补全上表路径（本轮审查）。
+
+## Change Log
+
+- **2026-03-26**：BMad 并行审查通过；补全 **File List**；**Status → done**；**Epic 7** 全部故事完成。
+
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

@@ -4,6 +4,10 @@
 
 A Rust workspace with a todo list library and an xtask-based CLI. Tasks are stored in `.todo.json` in the current directory. The library is published as **[xtask-todo-lib](https://crates.io/crates/xtask-todo-lib)** on [crates.io](https://crates.io/crates/xtask-todo-lib).
 
+## Product boundary (FR34)
+
+By default this project provides a local CLI/library workflow. It does **not** promise a hosted HTTP API, multi-tenant auth/permissions, or automatic `.todo.json` migration pipelines. GitHub/crates.io/`gh`/Podman integration remains optional tooling. See [docs/requirements.md §2](docs/requirements.md).
+
 ## Usage
 
 ### Todo (data in `.todo.json`)

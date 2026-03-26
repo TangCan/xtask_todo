@@ -2,6 +2,10 @@
 
 Todo list library: create, list, complete, and delete items with in-memory or pluggable storage.
 
+## Product boundary (FR34)
+
+This crate focuses on local library/CLI capabilities. It does **not** imply a hosted HTTP API, multi-tenant service model, or automatic `.todo.json` migration pipeline by default. For the authoritative product boundary, see [../../docs/requirements.md §2](../../docs/requirements.md).
+
 ## Usage
 
 Add to `Cargo.toml`:

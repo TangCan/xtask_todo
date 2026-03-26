@@ -1,6 +1,6 @@
 # Story 7.2：自动化测试与覆盖率工作流
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -90,9 +90,20 @@ gpt-5.3-codex
 
 ### File List
 
+- `xtask/src/coverage.rs`（`exclude-files` / `cmd_coverage` 单一事实来源）
 - `docs/test-coverage.md`
+- `docs/test-cases.md`（VM 用例引用核对）
 - `_bmad-output/implementation-artifacts/7-2-test-coverage-workflow.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings
+
+- [x] [Review][Patch] 审阅路径清单不完整 — `File List` 未列出 **`coverage.rs`**（AC2 对照核心）及 **`test-cases.md`**（Completion Notes 中 VM 引用核对）；已补全上表路径（本轮审查）。
+
+## Change Log
+
+- **2026-03-26**：BMad 并行审查通过；补全 **File List**；**Status → done**。
+
 ## 完成状态
 
 - [x] 所有 AC 已验证（自动化或记录手工步骤）
