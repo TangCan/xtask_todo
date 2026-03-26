@@ -1,5 +1,5 @@
 # generated: 2026-03-25T12:00:00Z
-# last_updated: 2026-03-26T06:21:00Z
+# last_updated: 2026-03-26T06:36:00Z
 # project: xtask_todo
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-25T12:00:00Z"
-last_updated: "2026-03-26T06:34:00Z"
+last_updated: "2026-03-26T06:36:00Z"
 project: xtask_todo
 project_key: NOKEY
 tracking_system: file-system
@@ -84,9 +84,9 @@ development_status:
   5-4-init-ai-skill-materials: done
   epic-5-retrospective: optional
 
-  epic-6: in-progress
+  epic-6: done
   6-1-cross-platform-build-artifacts: done
-  6-2-crates-io-cargo-devshell: review
+  6-2-crates-io-cargo-devshell: done
   epic-6-retrospective: optional
 
   epic-7: in-progress

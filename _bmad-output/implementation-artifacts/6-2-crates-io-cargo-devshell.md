@@ -1,6 +1,6 @@
 # Story 6.2：crates.io 与 cargo devshell
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -100,6 +100,32 @@ gpt-5.3-codex
 - `docs/publishing.md`
 - `_bmad-output/implementation-artifacts/6-2-crates-io-cargo-devshell.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings
+
+**Blind Hunter（盲区）**
+
+- 未发现与 **`default = ["beta-vm"]`** 或 **`cargo install`** 说明相矛盾的残留表述；**`docs/publishing.md` §6.3** 与 **`crates/todo/Cargo.toml`** 已对齐。
+- **`cargo publish --dry-run`** 出现 **`already exists on crates.io index`** 属预期（当前版本已发布）；不影响 AC 中「预检通过」的结论，但新维护者首次 bump 版本时应再跑 dry-run 以确认无新警告。
+
+**Edge Case Hunter（边界）**
+
+- **`--no-default-features`** 路径已在 Completion Notes 中覆盖；若用户从 crates.io 安装且需关闭 **`beta-vm`**，文档已指向 **`default-features = false`**，与 AC3 一致。
+- **NFR-R2**：已明确 **GitHub Release** 为单一事实来源；若日后引入根目录 **`CHANGELOG.md`**，需在 **`publishing.md`** 更新「唯一来源」规则以免双轨冲突（当前无问题）。
+
+**Acceptance Auditor（验收）**
+
+- AC1/6：**`cargo publish -p xtask-todo-lib --dry-run --registry crates-io`** 与 **`cargo test -p xtask-todo-lib -- --test-threads=1`** 在本轮复核中通过（与 Dev Agent Record 一致）。
+- AC2–5：文档与 **`Cargo.toml`** / **`README`** 一致；棕地 **`cargo xtask publish`** 未与本故事范围冲突。
+
+**分诊**
+
+- **无阻塞**：无必须修复项；**建议（低）**：下次语义化版本 bump 后保留 dry-run 日志片段便于审计。
+
+## Change Log
+
+- **2026-03-26**：并行审查（Blind / Edge / Acceptance）通过；**Status → done**；**Epic 6** 在 sprint 中标记为 **done**（6.1、6.2 均完成）。
+
 ## 完成状态
 
 - [x] 所有 AC 已验证（自动化或记录手工步骤）
