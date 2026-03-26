@@ -2,6 +2,7 @@
 
 mod common;
 mod complete_delete;
+mod ghcr_cli;
 mod show_update;
 mod todo_list;
 mod xtask_help;
