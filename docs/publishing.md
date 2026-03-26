@@ -75,6 +75,7 @@ cargo publish -p xtask-todo-lib --registry crates-io
 
 - 页面：`https://crates.io/crates/xtask-todo-lib`。
 - 其他项目可通过在 `Cargo.toml` 中写 `xtask-todo-lib = "0.1"` 依赖，代码中 `use xtask_todo_lib::{TodoList, TodoId, ...};` 使用。
+- 版本变更追溯（NFR-R2）以 **GitHub Release 说明** 为单一事实来源；若后续引入 `CHANGELOG.md`，需在此处显式切换并保持两者一致。
 
 ### 2.4 一键发布（推荐）
 
@@ -174,19 +175,27 @@ cargo devshell [path]
 
 ### 6.3 可选 feature：`beta-vm`（β IPC 后端）
 
-默认发布的 **`cargo devshell` / 库** 不包含 **`DEVSHELL_VM_BACKEND=beta`** 相关代码路径；需显式打开 Cargo feature **`beta-vm`**（见 `crates/todo/Cargo.toml`）。
+当前 **`xtask-todo-lib`** 默认特性已包含 **`beta-vm`**（见 `crates/todo/Cargo.toml` 的 `default = ["beta-vm"]`）。如需关闭该能力，可在安装或依赖时使用 `--no-default-features` / `default-features = false`。
 
-**安装带 β 后端的 `cargo devshell`：**
+**安装（默认含 β 后端）`cargo devshell`：**
 
 ```bash
-cargo install xtask-todo-lib --features beta-vm
+cargo install xtask-todo-lib
 ```
 
-**其他 crate 依赖本库并启用 β：**
+**安装不含 β 后端（显式关闭默认特性）：**
+
+```bash
+cargo install xtask-todo-lib --no-default-features
+```
+
+**其他 crate 依赖本库（默认含 β，可按需显式配置）：**
 
 ```toml
 [dependencies]
-xtask-todo-lib = { version = "x.y", features = ["beta-vm"] }
+xtask-todo-lib = "x.y"
+# 或关闭默认特性：
+# xtask-todo-lib = { version = "x.y", default-features = false }
 ```
 
 启用后：**Unix** 可设置 **`DEVSHELL_VM_BACKEND=beta`** 与 **`DEVSHELL_VM_SOCKET`**（Unix 域路径或 **`tcp:`**）；**Windows** 默认 **`beta`**，通常 **`DEVSHELL_VM_SOCKET=stdio`**，由 **`podman`** 运行 OCI 侧车或宿主编译的 Linux ELF（**`DEVSHELL_VM`** 开启 VM 时一般无需再设 `on`）。侧车 **`devshell-vm`** 为 workspace 内 crate（**`publish = false`**），不随 `cargo install` 安装；可从**本仓库**构建，或使用 **GHCR** 镜像（见 **`docs/devshell-vm-windows.md`**），例如：

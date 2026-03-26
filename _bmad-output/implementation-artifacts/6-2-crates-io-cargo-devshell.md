@@ -1,6 +1,6 @@
 # Story 6.2：crates.io 与 cargo devshell
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -40,11 +40,11 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **预检**：**`cargo publish -p xtask-todo-lib --dry-run`**，记录警告/排除文件列表。
-- [ ] **安装演练**：干净环境 **`cargo install xtask-todo-lib --version <workspace>`**（或 **`--path crates/todo`**）验证 **`cargo devshell --help`**。
-- [ ] **文档**：**`crates/todo/README.md`** 与 **`docs/publishing.md`** 中 **crate 名 / 二进制名 / `cargo install` 段落** 一致。
-- [ ] **CHANGELOG / Release**：按 **NFR-R2** 选定单一事实来源并补链接。
-- [ ] **验证**：**`cargo publish --dry-run`**、**`cargo test -p xtask-todo-lib`**。
+- [x] **预检**：**`cargo publish -p xtask-todo-lib --dry-run`**，记录警告/排除文件列表。
+- [x] **安装演练**：干净环境 **`cargo install xtask-todo-lib --version <workspace>`**（或 **`--path crates/todo`**）验证 **`cargo devshell --help`**。
+- [x] **文档**：**`crates/todo/README.md`** 与 **`docs/publishing.md`** 中 **crate 名 / 二进制名 / `cargo install` 段落** 一致。
+- [x] **CHANGELOG / Release**：按 **NFR-R2** 选定单一事实来源并补链接。
+- [x] **验证**：**`cargo publish --dry-run`**、**`cargo test -p xtask-todo-lib`**。
 
 ## Dev Notes
 
@@ -75,15 +75,32 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo publish -p xtask-todo-lib --dry-run --registry crates-io`
+- `cargo install --path crates/todo --root /tmp/xtask_todo_install_default --force`
+- `printf 'exit\n' | PATH="/tmp/xtask_todo_install_default/bin:$PATH" cargo devshell`
+- `cargo install --path crates/todo --root /tmp/xtask_todo_install_nodefault --no-default-features --force`
+- `printf 'exit\n' | PATH="/tmp/xtask_todo_install_nodefault/bin:$PATH" cargo devshell`
+- `cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`
+- `cargo test -p xtask-todo-lib -- --test-threads=1`
+
 ### Completion Notes List
+
+- `cargo publish -p xtask-todo-lib --dry-run --registry crates-io` 预检通过；打包 `99 files`，并给出预期提示 `xtask-todo-lib@0.1.29 already exists`（版本已存在）与 dry-run 中止上传，符合 AC1/AC6（未执行真实发布）。
+- 安装演练完成：分别在隔离 root（`/tmp/xtask_todo_install_default` 与 `/tmp/xtask_todo_install_nodefault`）执行 `cargo install --path crates/todo`（默认特性）与 `--no-default-features`；均成功安装 `cargo-devshell`，并通过 `printf 'exit\n' | cargo devshell` 验证 `cargo devshell` 入口可调用。
+- 文档一致性对齐：保留 `crates/todo/README.md` 既有说明，并修正 `docs/publishing.md` 6.3 中与实现不一致的旧描述（此前误写“默认不含 beta-vm”）；现已明确默认包含 `beta-vm`，以及如何 `--no-default-features` 关闭。
+- NFR-R2 追溯源已选定并写入：在 `docs/publishing.md` 增加“GitHub Release 说明为单一事实来源”（若未来引入 `CHANGELOG.md` 再切换规则），满足“可追溯至少一种”要求。
+- 回归验证通过：`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc` 与 `cargo test -p xtask-todo-lib -- --test-threads=1` 全绿；与 6.1 的跨平台门禁保持一致。
 
 ### File List
 
+- `docs/publishing.md`
+- `_bmad-output/implementation-artifacts/6-2-crates-io-cargo-devshell.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

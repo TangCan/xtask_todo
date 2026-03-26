@@ -1,6 +1,6 @@
 # Story 6.1：跨平台可编译交付物
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -97,6 +97,21 @@ gpt-5.3-codex
 - `docs/requirements.md`
 - `_bmad-output/implementation-artifacts/6-1-cross-platform-build-artifacts.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings（BMad 分层审查 · 2026-03-26）
+
+| 层 | 结论 |
+|----|------|
+| **Blind Hunter** | **`requirements §7.2`** 增补一句：跨平台 **MSVC `cargo check`** 门禁聚焦 **`xtask-todo-lib`**；**`xtask`/`todo`** 以本地与集成测为主，避免读者误以为须对 **`xtask` 包**做同目标矩阵，与 **AC2** 产品边界一致。 |
+| **Edge Case Hunter** | 完成记录写明并行 **`cargo test -p xtask-todo-lib`** 曾触发既有非确定性用例，**`--test-threads=1`** 与 pre-commit 策略一致；**不**在本次引入业务代码变更，属可接受文档/验证说明。 |
+| **Acceptance Auditor** | **AC1/AC6**：本机复跑 **`cargo check -p xtask-todo-lib`**（**default / `--no-default-features` / `--features beta-vm`**）× **`x86_64-pc-windows-msvc`** 均 **exit 0**；**`cargo test -p xtask-todo-lib -- --test-threads=1`** → **276 passed**，**`clippy -p xtask-todo-lib -D warnings`**、**`cargo test -p xtask`**、**`clippy -p xtask -D warnings`** 通过。 |
+
+**待办项**：无。勿提交 **`crates/todo/.dev_shell.bin`** 等非本故事产物。
+
+## Change Log
+
+- **2026-03-26**：BMad 代码审查通过 — **6-1-cross-platform-build-artifacts** 与 sprint 同步为 **done**；统一 **`last_updated`** / **`# last_updated`** 为 **`2026-03-26T06:21:00Z`**；复验 MSVC **`cargo check`** 矩阵与 **`cargo test`/`clippy`**。
+
 ## 完成状态
 
 - [x] 所有 AC 已验证（自动化或记录手工步骤）
