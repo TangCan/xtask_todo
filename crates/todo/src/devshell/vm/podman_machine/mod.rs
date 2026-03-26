@@ -32,15 +32,14 @@ pub enum WindowsStdioTransport {
 #[cfg(not(windows))]
 #[must_use]
 #[allow(dead_code)]
-#[allow(clippy::missing_const_for_fn)]
-pub fn windows_host_path_to_vm_mnt(_host: &Path) -> Option<String> {
+pub const fn windows_host_path_to_vm_mnt(_host: &Path) -> Option<String> {
     None
 }
 
 #[cfg(not(windows))]
 #[allow(dead_code)]
-#[allow(clippy::unnecessary_wraps, clippy::missing_const_for_fn)]
-pub fn ensure(_workspace_parent: &Path) -> Result<(), VmError> {
+#[allow(clippy::unnecessary_wraps)]
+pub const fn ensure(_workspace_parent: &Path) -> Result<(), VmError> {
     Ok(())
 }
 

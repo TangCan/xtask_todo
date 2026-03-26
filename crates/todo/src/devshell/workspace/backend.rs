@@ -160,8 +160,7 @@ pub struct MemoryVfsBackend {
 
 impl MemoryVfsBackend {
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)]
-    pub fn new(vfs: Rc<RefCell<Vfs>>) -> Self {
+    pub const fn new(vfs: Rc<RefCell<Vfs>>) -> Self {
         Self { vfs }
     }
 }
