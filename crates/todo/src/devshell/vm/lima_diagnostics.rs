@@ -2,8 +2,6 @@
 //!
 //! See `docs/devshell-vm-gamma.md`.
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 
@@ -11,17 +9,14 @@ use std::process::{Command, ExitStatus, Stdio};
 pub const ENV_DEVSHELL_VM_LIMA_HINTS: &str = "DEVSHELL_VM_LIMA_HINTS";
 
 fn hints_enabled() -> bool {
-    match std::env::var(ENV_DEVSHELL_VM_LIMA_HINTS) {
-        Err(_) => true,
-        Ok(s) => {
-            let s = s.trim();
-            !(s.is_empty()
-                || s == "0"
-                || s.eq_ignore_ascii_case("false")
-                || s.eq_ignore_ascii_case("no")
-                || s.eq_ignore_ascii_case("off"))
-        }
-    }
+    std::env::var(ENV_DEVSHELL_VM_LIMA_HINTS).map_or(true, |s| {
+        let s = s.trim();
+        !(s.is_empty()
+            || s == "0"
+            || s.eq_ignore_ascii_case("false")
+            || s.eq_ignore_ascii_case("no")
+            || s.eq_ignore_ascii_case("off"))
+    })
 }
 
 fn lima_home() -> PathBuf {
@@ -185,8 +180,7 @@ pub fn emit_start_failure_hints(instance: &str) {
         }
     }
     eprintln!(
-        "dev_shell: lima: - see `~/.lima/{instance}/ha.stderr.log` and run `limactl list`; disable hints: {ENV_DEVSHELL_VM_LIMA_HINTS}=0.",
-        instance = instance
+        "dev_shell: lima: - see `~/.lima/{instance}/ha.stderr.log` and run `limactl list`; disable hints: {ENV_DEVSHELL_VM_LIMA_HINTS}=0."
     );
 }
 
@@ -267,7 +261,7 @@ pub fn emit_tool_failure_hints(
     guest_mount: &str,
     guest_project_dir: &str,
     program: &str,
-    status: &ExitStatus,
+    status: ExitStatus,
 ) {
     if !hints_enabled() {
         return;
@@ -277,10 +271,7 @@ pub fn emit_tool_failure_hints(
     }
 
     let code = status.code();
-    eprintln!(
-        "dev_shell: lima: `{program}` exited with {:?} — diagnostic hints:",
-        code
-    );
+    eprintln!("dev_shell: lima: `{program}` exited with {code:?} — diagnostic hints:");
 
     if let Some(msg) = tail_ha_stderr_kvm_hint(instance) {
         eprintln!("dev_shell: lima: - {msg}");
@@ -337,8 +328,7 @@ pub fn emit_tool_failure_hints(
     }
 
     eprintln!(
-        "dev_shell: lima: - full guide: docs/devshell-vm-gamma.md (disable hints: {}=0).",
-        ENV_DEVSHELL_VM_LIMA_HINTS
+        "dev_shell: lima: - full guide: docs/devshell-vm-gamma.md (disable hints: {ENV_DEVSHELL_VM_LIMA_HINTS}=0)."
     );
 }
 

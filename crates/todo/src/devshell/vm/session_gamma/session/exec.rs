@@ -16,6 +16,16 @@ use super::super::helpers::{
 use super::GammaSession;
 
 impl GammaSession {
+    const INSTALL_SH: &str = r"set -e
+export DEBIAN_FRONTEND=noninteractive
+if ! sudo -n true 2>/dev/null; then
+  echo 'dev_shell: guest: sudo needs a password; run in the VM: sudo apt update && sudo apt install -y build-essential' >&2
+  exit 1
+fi
+sudo apt-get update -qq
+sudo apt-get install -y -qq build-essential
+";
+
     /// If guest has no `gcc`, try Debian/Ubuntu `apt-get install -y build-essential` (non-interactive sudo).
     fn maybe_ensure_guest_build_essential(&mut self) -> Result<(), VmError> {
         if self.guest_build_essential_done {
@@ -45,18 +55,7 @@ impl GammaSession {
             return Ok(());
         }
 
-        // `sudo -n` fails if a password is required (no TTY here).
-        const INSTALL_SH: &str = r"set -e
-export DEBIAN_FRONTEND=noninteractive
-if ! sudo -n true 2>/dev/null; then
-  echo 'dev_shell: guest: sudo needs a password; run in the VM: sudo apt update && sudo apt install -y build-essential' >&2
-  exit 1
-fi
-sudo apt-get update -qq
-sudo apt-get install -y -qq build-essential
-";
-
-        let out = self.limactl_shell_script_sh("/", INSTALL_SH)?;
+        let out = self.limactl_shell_script_sh("/", Self::INSTALL_SH)?;
         if out.status.success() {
             eprintln!(
                 "dev_shell: guest: build-essential installed (gcc available for cargo link)."
@@ -96,13 +95,15 @@ sudo apt-get install -y -qq build-essential
             std::env::current_dir().map_err(|e| VmError::Lima(format!("current_dir: {e}")))?;
 
         let grel = guest_todo_release_dir_for_cwd(&self.workspace_parent, &self.guest_mount, &cwd);
-        let script = match &grel {
-            Some(gr) => format!(
-                "command -v todo >/dev/null 2>&1 || test -x {}",
-                shell_single_quote_sh(&format!("{gr}/todo"))
-            ),
-            None => "command -v todo >/dev/null 2>&1".to_string(),
-        };
+        let script = grel.as_ref().map_or_else(
+            || "command -v todo >/dev/null 2>&1".to_string(),
+            |gr| {
+                format!(
+                    "command -v todo >/dev/null 2>&1 || test -x {}",
+                    shell_single_quote_sh(&format!("{gr}/todo"))
+                )
+            },
+        );
 
         let probe = self.limactl_shell_script_sh("/", &script)?;
         if probe.status.success() {
@@ -117,8 +118,7 @@ sudo apt-get install -y -qq build-essential
         let meta = cargo_metadata_workspace_and_target(&cwd);
         let host_has_todo = meta
             .as_ref()
-            .map(|(_, td)| td.join("release").join("todo").is_file())
-            .unwrap_or(false);
+            .is_ok_and(|(_, td)| td.join("release").join("todo").is_file());
 
         if meta.is_err() {
             eprintln!("dev_shell: hint: from a repo checkout, run: cargo build -p xtask --release --bin todo");
@@ -222,7 +222,7 @@ impl VmExecutionSession for GammaSession {
                 &self.guest_mount,
                 &guest_dir,
                 program,
-                &status,
+                status,
             );
         }
 

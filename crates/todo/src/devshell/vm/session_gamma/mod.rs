@@ -4,8 +4,6 @@
 //! [`GammaSession::guest_mount`] (default `/workspace`). By default [`helpers::workspace_parent_for_instance`]
 //! follows the **Cargo workspace root** from `cargo metadata` (unless overridden); see `docs/devshell-vm-gamma.md`.
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 mod env;
 mod helpers;
 mod session;

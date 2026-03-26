@@ -57,8 +57,7 @@ fn guest_dir_for_host_path_under_workspace_maps_relative() {
         std::process::id(),
         std::time::SystemTime::UNIX_EPOCH
             .elapsed()
-            .map(|d| d.as_nanos())
-            .unwrap_or(0)
+            .map_or(0, |d| d.as_nanos())
     ));
     let _ = std::fs::remove_dir_all(&tmp);
     std::fs::create_dir_all(tmp.join("proj")).unwrap();
@@ -85,8 +84,8 @@ fn gamma_session_sync_flag_follows_workspace_mode() {
         return;
     }
 
-    let old_wm = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_MODE).ok();
-    let old_vm = std::env::var(ENV_DEVSHELL_VM).ok();
+    let old_workspace_mode = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_MODE).ok();
+    let old_vm_enabled = std::env::var(ENV_DEVSHELL_VM).ok();
     let old_b = std::env::var(ENV_DEVSHELL_VM_BACKEND).ok();
 
     std::env::set_var(ENV_DEVSHELL_VM, "1");
@@ -104,11 +103,11 @@ fn gamma_session_sync_flag_follows_workspace_mode() {
     let g2 = GammaSession::new(&c2).expect("gamma");
     assert!(g2.syncs_vfs_with_host_workspace());
 
-    match old_wm {
+    match old_workspace_mode {
         Some(ref v) => std::env::set_var(ENV_DEVSHELL_VM_WORKSPACE_MODE, v),
         None => std::env::remove_var(ENV_DEVSHELL_VM_WORKSPACE_MODE),
     }
-    match old_vm {
+    match old_vm_enabled {
         Some(ref v) => std::env::set_var(ENV_DEVSHELL_VM, v),
         None => std::env::remove_var(ENV_DEVSHELL_VM),
     }

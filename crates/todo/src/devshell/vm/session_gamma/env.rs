@@ -1,4 +1,5 @@
 //! Environment variable names for γ (Lima) session.
+#![allow(clippy::too_long_first_doc_paragraph)]
 
 /// Override path to `limactl` (default: `PATH`).
 pub const ENV_DEVSHELL_VM_LIMACTL: &str = "DEVSHELL_VM_LIMACTL";

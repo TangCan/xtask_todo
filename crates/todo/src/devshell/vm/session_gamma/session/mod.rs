@@ -2,6 +2,7 @@
 
 mod exec;
 
+use std::fmt::Write as _;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
@@ -17,6 +18,7 @@ use super::helpers::{
 
 /// Lima-backed session: sync VFS ↔ host workspace, run tools inside the VM.
 #[derive(Debug)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct GammaSession {
     lima_instance: String,
     /// Same layout as temp export: subtree leaves under this dir (see `sandbox::host_export_root`).
@@ -67,6 +69,7 @@ impl GammaSession {
 
     /// Whether this session push/pulls the in-memory VFS around rust tools (Mode S). `false` = guest-primary ([`WorkspaceMode::Guest`]).
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn syncs_vfs_with_host_workspace(&self) -> bool {
         self.sync_vfs_with_workspace
     }
@@ -294,13 +297,14 @@ Then limactl stop/start the instance. See docs/devshell-vm-gamma.md.",
                 std::io::stderr(),
                 "dev_shell: prepending guest PATH with {p} (host todo under Lima workspace mount)"
             );
-            inner.push_str(&format!("export PATH={}:$PATH; ", bash_single_quoted(&p)));
+            let _ = write!(inner, "export PATH={}:$PATH; ", bash_single_quoted(&p));
         }
 
         if let Some(ref gp) = guest_proj {
             match guest_host_dir_link_name() {
                 Some(hd) => {
-                    inner.push_str(&format!(
+                    let _ = write!(
+                        inner,
                         "export GUEST_PROJ={}; export HD={}; \
 if [ -d \"$GUEST_PROJ\" ]; then cd \"$GUEST_PROJ\" || true; \
   ln -sfn \"$GUEST_PROJ\" \"$HOME/$HD\" 2>/dev/null || true; \
@@ -308,14 +312,15 @@ if [ -d \"$GUEST_PROJ\" ]; then cd \"$GUEST_PROJ\" || true; \
 fi; ",
                         bash_single_quoted(gp),
                         bash_single_quoted(&hd)
-                    ));
+                    );
                 }
                 None => {
-                    inner.push_str(&format!(
+                    let _ = write!(
+                        inner,
                         "export GUEST_PROJ={}; \
 if [ -d \"$GUEST_PROJ\" ]; then cd \"$GUEST_PROJ\" || true; fi; ",
                         bash_single_quoted(gp)
-                    ));
+                    );
                 }
             }
         }

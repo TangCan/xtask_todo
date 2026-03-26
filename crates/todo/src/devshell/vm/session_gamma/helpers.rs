@@ -14,12 +14,10 @@ use super::env::{
 };
 
 pub(super) fn truthy_env(key: &str) -> bool {
-    std::env::var(key)
-        .map(|s| {
-            let s = s.trim();
-            s == "1" || s.eq_ignore_ascii_case("true") || s.eq_ignore_ascii_case("yes")
-        })
-        .unwrap_or(false)
+    std::env::var(key).is_ok_and(|s| {
+        let s = s.trim();
+        s == "1" || s.eq_ignore_ascii_case("true") || s.eq_ignore_ascii_case("yes")
+    })
 }
 
 /// Default `true` when unset; `0`/`false`/`no`/`off` disables auto `build-essential` install in guest.
@@ -155,9 +153,9 @@ pub(super) fn guest_dir_for_host_path_under_workspace(
 
 /// Symlink name under guest `$HOME` for the host project (`host_dir` by default); `None` = disable symlinks.
 pub(super) fn guest_host_dir_link_name() -> Option<String> {
-    match std::env::var(ENV_DEVSHELL_VM_GUEST_HOST_DIR) {
-        Err(_) => Some("host_dir".to_string()),
-        Ok(s) => {
+    std::env::var(ENV_DEVSHELL_VM_GUEST_HOST_DIR).map_or_else(
+        |_| Some("host_dir".to_string()),
+        |s| {
             let s = s.trim();
             if s.is_empty()
                 || s == "0"
@@ -174,8 +172,8 @@ pub(super) fn guest_host_dir_link_name() -> Option<String> {
             } else {
                 None
             }
-        }
-    }
+        },
+    )
 }
 
 /// If `cargo metadata` workspace root lies under `workspace_parent`, return guest path to that workspace (for `cd` + `cargo build`).
