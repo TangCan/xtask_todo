@@ -38,3 +38,4 @@ cargo xtask acceptance
 
 - **临时目录**：仓库根下若存在 `xtask_*_fail_*` 等目录，多为测试/失败产物，**不宜**当作正式源码树依赖。  
 - **Lint**：根 `Cargo.toml` 说明虚拟 workspace 不在根设 `[lints]`；各 crate 自行定义 clippy 策略。
+- **Devshell TTY 历史**：交互式 `cargo devshell` 支持用 **↑/↓** 浏览当前会话历史命令；脚本/非 TTY 模式不依赖此能力。

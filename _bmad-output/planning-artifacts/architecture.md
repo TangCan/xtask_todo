@@ -56,11 +56,11 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 
 **Functional Requirements:**
 
-PRD 将能力分为 **34 条 FR（FR1–FR34）**，从架构视角可映射为以下边界：
+PRD 将能力分为 **35 条 FR（FR1–FR35）**，从架构视角可映射为以下边界：
 
 - **Todo 领域（FR1–FR8）**：持久化、列表/过滤/排序、完成/删除、搜索与统计、导入导出、重复任务 —— 需要稳定的**领域模型**与**单一数据源**（`.todo.json` 约定），库侧以 `TodoList<S: Store>` 等抽象表达。
 - **Xtask 与仓库工具（FR9–FR13）**：统一编排入口、Git/发布/acceptance/pre-commit —— **编排层**与**领域库**分离；宿主集成（`git`/`gh`）留在 xtask，不侵入可发布库的核心语义。
-- **Devshell（FR14–FR19）**：交互/脚本、内置白名单、管道与重定向、todo 子集、帮助与补全 —— 需要 **Session**、**命令分派** 与 **VFS/IO** 的清晰分层。
+- **Devshell（FR14–FR19、FR35）**：交互/脚本、内置白名单、管道与重定向、todo 子集、帮助与补全、TTY 历史命令回放（↑/↓）—— 需要 **Session**、**命令分派**、**行编辑器状态** 与 **VFS/IO** 的清晰分层。
 - **Rust 工具链与可选 VM（FR20–FR25）**：宿主沙箱 vs γ（Unix）vs β（Windows 侧车）、Mode S / Mode P、会话元数据 —— 架构上必须 **可降级**、**IPC/stdio 协议隔离**、**工作区模式显式化**。
 - **可编程与 AI（FR26–FR29）**：`--json`、`--dry-run`、退出码、`init-ai` —— **对外契约**（序列化错误体、稳定码）需跨 CLI/devshell 一致。
 - **跨平台与发布（FR30–FR31）**：Linux/macOS/Windows MSVC、crates.io —— **条件编译**与 **MSVC 作为一等目标** 影响 crate 布局与 CI。
@@ -203,7 +203,7 @@ cargo xtask acceptance   # 或按 docs/acceptance.md 的环境说明处理 SKIP
 
 | 决策 | 内容 |
 |------|------|
-| **范围** | **不适用** 浏览器 SPA/SSR 主产品；**CLI `--help`**、**终端补全**、**TTY/非 TTY** 行为以 `requirements` / `design` 为准（PRD 跳过应用商店/视觉稿类要求）。 |
+| **范围** | **不适用** 浏览器 SPA/SSR 主产品；**CLI `--help`**、**终端补全**、**TTY/非 TTY** 行为以 `requirements` / `design` 为准（PRD 跳过应用商店/视觉稿类要求）。交互式 TTY 下命令历史（↑/↓）由本地行编辑组件维护，会话结束后可按产品约定决定是否持久化。 |
 
 ### Infrastructure & Deployment
 
@@ -221,7 +221,7 @@ cargo xtask acceptance   # 或按 docs/acceptance.md 的环境说明处理 SKIP
 
 1. 变更 **Todo 领域** → 同步 **`xtask-todo-lib`** 测试与 **`.todo.json`** 契约说明。  
 2. 变更 **CLI 行为** → 同步 **`requirements §6`**、**`--json` 示例**、**xtask 集成测试**。  
-3. 变更 **devshell 命令/todo 子集** → 同步 **`todo_io`** 与 **VFS/会话** 行为。  
+3. 变更 **devshell 命令/todo 子集/TTY 交互能力**（含 FR35 历史回放）→ 同步 **`todo_io`**、**行编辑器状态** 与 **VFS/会话** 行为。  
 4. 变更 **β/IPC** → 同步 **`devshell-vm`**、**宿主 `session_beta`**、**`test-cases.md` TC-D-VM-\***。  
 5. **发布/镜像** → **`publishing.md`**、**`devshell-vm-oci-release.md`**、**CHANGELOG**。
 
@@ -407,7 +407,7 @@ xtask_todo/
 |----------------|----------|
 | **Todo FR1–FR8** | `crates/todo/src/{model,store,list,…}`；CLI 编排 **`xtask/src/todo/`** |
 | **Xtask/仓库 FR9–FR13** | **`xtask/src/`**（`git.rs`、`publish.rs`、`acceptance/` 等） |
-| **Devshell FR14–FR19** | **`crates/todo/src/devshell/`**（`command/`、`parser`、`vfs`、`repl`…） |
+| **Devshell FR14–FR19、FR35** | **`crates/todo/src/devshell/`**（`command/`、`parser`、`vfs`、`repl`、`completion`…） |
 | **VM / rustup FR20–FR25** | **`crates/todo/src/devshell/vm/`**（γ/β/SessionHolder/sandbox）；**`crates/devshell-vm/`** |
 | **JSON/dry-run/init-ai FR26–FR29** | **`xtask/src/todo/`** + 文档 **`requirements`/`design`** |
 | **跨平台/发布 FR30–FR31** | 各 crate **`Cargo.toml`**、**`docs/publishing.md`**、**`containers/devshell-vm/`** |

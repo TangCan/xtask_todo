@@ -202,6 +202,11 @@ fn save_on_exit<W2: Write>(
     }
 }
 
+fn should_add_history_entry(line: &str, last_history_line: Option<&str>) -> bool {
+    let trimmed = line.trim();
+    !trimmed.is_empty() && last_history_line != Some(line)
+}
+
 /// TTY branch: rustyline Editor with `DevShellHelper` (path completion via vfs).
 fn run_tty<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
@@ -217,6 +222,7 @@ where
     W2: Write,
 {
     let mut editor = Editor::new().map_err(|_| ())?;
+    let mut last_history_line: Option<String> = None;
     // Bash/readline-style: extend to longest common prefix; second Tab lists options.
     // Default rustyline `Circular` cycles candidates and then restores the pre-Tab line,
     // so e.g. `cat s` → Tab → `cat src` → Tab → `cat s` again (surprising vs shells).
@@ -237,6 +243,10 @@ where
                 continue;
             }
         };
+        if should_add_history_entry(&line, last_history_line.as_deref()) {
+            let _ = editor.add_history_entry(line.as_str());
+            last_history_line = Some(line.clone());
+        }
         if process_line(vfs, vm_session, &line, stdin, stdout, stderr) == StepResult::Exit {
             break;
         }

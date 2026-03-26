@@ -10,7 +10,7 @@ use super::super::vm::{
     SessionHolder, VmConfig, ENV_DEVSHELL_VM, ENV_DEVSHELL_VM_BACKEND, ENV_DEVSHELL_VM_SOCKET,
     ENV_DEVSHELL_VM_WORKSPACE_MODE,
 };
-use super::{process_line, run, StepResult};
+use super::{process_line, run, should_add_history_entry, StepResult};
 
 fn vm_test() -> Rc<RefCell<SessionHolder>> {
     Rc::new(RefCell::new(SessionHolder::new_host()))
@@ -133,6 +133,15 @@ fn process_line_dot_path_runs_script() {
     assert!(out.contains("dot_ok"), "stdout: {out}");
     let _ = std::fs::remove_file(&script_path);
     let _ = std::fs::remove_dir(&dir);
+}
+
+#[test]
+fn should_add_history_entry_skips_empty_and_duplicate() {
+    assert!(!should_add_history_entry("", None));
+    assert!(!should_add_history_entry("   ", None));
+    assert!(should_add_history_entry("pwd", None));
+    assert!(!should_add_history_entry("pwd", Some("pwd")));
+    assert!(should_add_history_entry("ls", Some("pwd")));
 }
 
 fn tmp_dir(name: &str) -> PathBuf {

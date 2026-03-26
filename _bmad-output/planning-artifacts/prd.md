@@ -86,7 +86,7 @@ projectDocsCount: 27
 
 - **Todo / CLI**：开发者能用 **`cargo xtask todo`** 完成 CRUD、列表过滤、导入导出、重复任务等 **`requirements §3`** 行为；**`--json`** 输出可被脚本解析；**退出码**符合 **`requirements §6`**（0/1/2/3）。
 - **可编程/AI**：**`init-ai`** 能生成可用技能/命令入口；**`--dry-run`** 对数据零写入。
-- **Devshell**：在 **无 VM** 时仍可用 **sandbox** 跑 **`rustup`/`cargo`**；在 **可选 VM** 下，Unix **γ** / Windows **β** 路径与 **`requirements §5`、`design §1.4`** 一致；**Mode P** 下工程树与 guest 视图一致（以 **`test-cases.md`** 与手工项为准）。
+- **Devshell**：在 **无 VM** 时仍可用 **sandbox** 跑 **`rustup`/`cargo`**；在 **可选 VM** 下，Unix **γ** / Windows **β** 路径与 **`requirements §5`、`design §1.4`** 一致；**Mode P** 下工程树与 guest 视图一致（以 **`test-cases.md`** 与手工项为准）；TTY 交互下支持通过 **↑/↓** 快速回放历史命令。
 - **「值得用」的瞬间**：一键 **`cargo xtask acceptance`** 绿、或 **`todo`/`devshell`** 在典型工作流中无需查源码即可完成任务。
 
 ### Business Success
@@ -148,7 +148,7 @@ projectDocsCount: 27
 
 **开场**：在 Windows 上 **`cargo install xtask-todo-lib`**，希望 **`cargo devshell`** 里跑 **`cargo new`/`run`**。**发展**：按 **`devshell-vm-windows.md`** 处理 **stdio**、镜像拉取或 **ELF** 路径；若出现 **「sidecar response is not JSON」**，按 **requirements §5.8** 与日志排查旧侧车/stdout 污染。**高潮**：在挂载工作区上看到真实工程树。**结局**：Unix γ 文档不必强行套在 Windows 上；**降级 host** 仍可用。
 
-**揭示的能力需求**：**β**、**OCI 版本对齐**、**exec 超时**、**stdio 与协议隔离**、文档化 **SKIP/手工** 项。
+**揭示的能力需求**：**β**、**OCI 版本对齐**、**exec 超时**、**stdio 与协议隔离**、TTY 历史命令回放（↑/↓）、文档化 **SKIP/手工** 项。
 
 ### 旅程 5：AI/集成方 —— 可机读与技能生成
 
@@ -163,7 +163,7 @@ projectDocsCount: 27
 | 1 | Todo 领域 API、xtask todo、持久化约定 |
 | 2 | 错误模型、退出码、dry-run、JSON 错误 |
 | 3 | acceptance、git/pre-commit、发布与元数据 |
-| 4 | devshell VM、β、Windows 路径、降级 |
+| 4 | devshell VM、β、Windows 路径、降级、TTY 历史命令回放 |
 | 5 | JSON CLI、init-ai、AI 可消费契约 |
 
 ## Domain-Specific Requirements
@@ -331,6 +331,7 @@ projectDocsCount: 27
 - **FR17**：用户可以在 devshell 内使用待办能力的**受支持子集**，并与工作区约定数据文件一致。
 - **FR18**：用户可以获得与内置命令一致的帮助信息。
 - **FR19**：用户在 TTY 环境下可以获得命令与路径补全（以产品约定行为为准）。
+- **FR35**：用户在 TTY 交互会话中可以通过 **↑/↓** 浏览并复用当前会话已执行的命令历史；执行复用命令时应保持与手动输入一致的解析与执行语义。
 
 ### Rust 工具链执行与环境（含可选 VM）
 
