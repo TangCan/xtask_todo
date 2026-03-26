@@ -1,6 +1,6 @@
 # Story 4.2：Unix γ（Lima）路径
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -39,10 +39,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **棕地核对**：阅读 **`session_gamma/session/exec.rs`** 中 **`VmExecutionSession::run_rust_tool`** 全路径；对照 **`docs/devshell-vm-gamma.md`** 心智模型（§简单心智模型、§前置条件）。
-- [ ] **环境矩阵**：在具备/不具备 Lima 的环境下列出 **SKIP** 与 **显式失败** 预期；若缺测试，添加 **`#[cfg(unix)]`** 测试或 **`#[ignore]`** 说明。
-- [ ] **与 4.1 边界**：确认 **`Self::Host`** vs **`Self::Gamma`** 在 **`VmConfig`** 下的选择条件（**`vm/mod.rs`**、**`try_session_rc_or_host`**）。
-- [ ] **验证**：`cargo test -p xtask-todo-lib`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
+- [x] **棕地核对**：阅读 **`session_gamma/session/exec.rs`** 中 **`VmExecutionSession::run_rust_tool`** 全路径；对照 **`docs/devshell-vm-gamma.md`** 心智模型（§简单心智模型、§前置条件）。
+- [x] **环境矩阵**：在具备/不具备 Lima 的环境下列出 **SKIP** 与 **显式失败** 预期；若缺测试，添加 **`#[cfg(unix)]`** 测试或 **`#[ignore]`** 说明。
+- [x] **与 4.1 边界**：确认 **`Self::Host`** vs **`Self::Gamma`** 在 **`VmConfig`** 下的选择条件（**`vm/mod.rs`**、**`try_session_rc_or_host`**）。
+- [x] **验证**：`cargo test -p xtask-todo-lib`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
 
 ## Dev Notes
 
@@ -74,15 +74,31 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask-todo-lib try_session_rc_reports_lima_missing_when_backend_lima`
+- `cargo test -p xtask-todo-lib try_session_rc_or_host_falls_back_to_host_when_lima_unavailable`
+- `cargo test -p xtask-todo-lib`
+- `cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`
+
 ### Completion Notes List
+
+- 已核对 γ 执行主路径：`GammaSession::run_rust_tool` 依次执行 `limactl_ensure_running`、(Mode S) `push_incremental`、`limactl_shell`、(Mode S) `pull_workspace_to_vfs`（失败转 warning），与 `docs/devshell-vm-gamma.md` 描述一致。
+- 已核对 `ensure_ready` 路径：首次会话包含 `limactl_ensure_running`、`maybe_ensure_guest_build_essential`、`maybe_guest_todo_probe_hint_and_install`，失败向 `VmError::Lima` 传播。
+- 新增 Unix 测试 `try_session_rc_reports_lima_missing_when_backend_lima`：在无 `limactl` PATH 条件下断言 `try_session_rc` 返回 `Err` 且 stderr 含 `limactl not found in PATH`，覆盖可诊断失败路径（NFR-I1）。
+- 新增 Unix 测试 `try_session_rc_or_host_falls_back_to_host_when_lima_unavailable`：断言 `try_session_rc_or_host` 会降级到 `Self::Host` 并输出 `VM unavailable`，确认与 4.1 的边界分派契约。
+- 环境矩阵结论：Lima 可用时走 γ 路径；Lima 不可用时为显式失败或可诊断降级；`sandbox` 中 Linux mount namespace 相关测试保持 `#[ignore]`（需专用权限环境），与文档说明一致。
+- 文档核对结果：`docs/devshell-vm-gamma.md`、`docs/requirements.md` 与当前实现一致，无需修改文档真源。
 
 ### File List
 
+- `crates/todo/src/devshell/vm/mod.rs`
+- `_bmad-output/implementation-artifacts/4-2-unix-gamma-lima-path.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

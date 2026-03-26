@@ -401,3 +401,83 @@ pub fn should_delegate_lima_shell(
     }
     matches!(*vm_session.borrow(), SessionHolder::Gamma(_))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Mutex, OnceLock, PoisonError};
+
+    fn vm_env_lock() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+
+    fn restore_var(key: &str, val: Option<std::ffi::OsString>) {
+        match val {
+            Some(v) => std::env::set_var(key, v),
+            None => std::env::remove_var(key),
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn try_session_rc_reports_lima_missing_when_backend_lima() {
+        let _g = vm_env_lock();
+        let old_vm = std::env::var_os(ENV_DEVSHELL_VM);
+        let old_backend = std::env::var_os(ENV_DEVSHELL_VM_BACKEND);
+        let old_limactl = std::env::var_os(ENV_DEVSHELL_VM_LIMACTL);
+        let old_path = std::env::var_os("PATH");
+
+        std::env::set_var(ENV_DEVSHELL_VM, "1");
+        std::env::set_var(ENV_DEVSHELL_VM_BACKEND, "lima");
+        std::env::remove_var(ENV_DEVSHELL_VM_LIMACTL);
+        std::env::set_var("PATH", "/nonexistent_devshell_path_404");
+
+        let mut stderr = Vec::new();
+        let result = try_session_rc(&mut stderr);
+
+        restore_var(ENV_DEVSHELL_VM, old_vm);
+        restore_var(ENV_DEVSHELL_VM_BACKEND, old_backend);
+        restore_var(ENV_DEVSHELL_VM_LIMACTL, old_limactl);
+        restore_var("PATH", old_path);
+
+        assert!(result.is_err(), "lima backend should fail without limactl");
+        let err = String::from_utf8(stderr).expect("stderr UTF-8");
+        assert!(
+            err.contains("limactl not found in PATH"),
+            "expected limactl diagnostic, got: {err}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn try_session_rc_or_host_falls_back_to_host_when_lima_unavailable() {
+        let _g = vm_env_lock();
+        let old_vm = std::env::var_os(ENV_DEVSHELL_VM);
+        let old_backend = std::env::var_os(ENV_DEVSHELL_VM_BACKEND);
+        let old_limactl = std::env::var_os(ENV_DEVSHELL_VM_LIMACTL);
+        let old_path = std::env::var_os("PATH");
+
+        std::env::set_var(ENV_DEVSHELL_VM, "1");
+        std::env::set_var(ENV_DEVSHELL_VM_BACKEND, "lima");
+        std::env::remove_var(ENV_DEVSHELL_VM_LIMACTL);
+        std::env::set_var("PATH", "/nonexistent_devshell_path_404");
+
+        let mut stderr = Vec::new();
+        let session = try_session_rc_or_host(&mut stderr);
+
+        restore_var(ENV_DEVSHELL_VM, old_vm);
+        restore_var(ENV_DEVSHELL_VM_BACKEND, old_backend);
+        restore_var(ENV_DEVSHELL_VM_LIMACTL, old_limactl);
+        restore_var("PATH", old_path);
+
+        assert!(session.borrow().is_host_only(), "should degrade to host");
+        let err = String::from_utf8(stderr).expect("stderr UTF-8");
+        assert!(
+            err.contains("VM unavailable"),
+            "expected host fallback message, got: {err}"
+        );
+    }
+}

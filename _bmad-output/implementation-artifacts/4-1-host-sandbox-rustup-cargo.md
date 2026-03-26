@@ -1,6 +1,6 @@
 # Story 4.1：宿主沙箱执行 rustup/cargo
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -97,6 +97,22 @@ gpt-5.3-codex
 - `crates/todo/src/devshell/tests/run_basic.rs`
 - `_bmad-output/implementation-artifacts/4-1-host-sandbox-rustup-cargo.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings（BMad 分层审查 · 2026-03-26）
+
+| 层 | 结论 |
+|----|------|
+| **Blind Hunter** | 新增测试在全局 `PATH` 上加互斥锁并设无效路径，触发 `cargo`/`rustup` 失败路径；断言 stderr 含 `cargo not found in PATH` / `rustup not found in PATH`，与 **`BuiltinError` Display**（`types.rs`）一致，贴合 **AC3**。 |
+| **Edge Case Hunter** | 测试在 `run_with` 成功返回后恢复 `PATH`；若在 `set_var` 与恢复之间 **panic**，环境可能残留 — 可用 `Drop` 守卫收紧（非本故事阻塞）。`path_env_lock` 与 poison 恢复与仓库其他全局 env 测风格一致。 |
+| **Acceptance Auditor** | **AC3** 由新集成测覆盖；**AC1/2/4/5** 由既有 `sandbox`/`vm` 路径与故事棕地核对支撑（diff 未改沙箱实现）。**AC6**：`cargo test -p xtask-todo-lib`（268 passed）、`clippy -D warnings` 已通过。 |
+
+**已处理（审查当日）**
+
+- [x] [Review][Patch] **`crates/todo/.dev_shell.bin`** — 与 4.1 无关的本地二进制漂移已 **`git restore`**，避免与功能变更一并提交（与同仓库 1-7 / 1-4 审查先例一致）。
+
+## Change Log
+
+- **2026-03-26**：BMad 代码审查通过 — 故事与 sprint **4-1-host-sandbox-rustup-cargo** 标为 **done**；同步 sprint `last_updated`；复验 `cargo test -p xtask-todo-lib`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`；清理误改的 **`.dev_shell.bin`**。
 
 ## 完成状态
 
