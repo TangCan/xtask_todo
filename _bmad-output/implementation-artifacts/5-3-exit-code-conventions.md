@@ -1,6 +1,6 @@
 # Story 5.3：退出码约定
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -98,6 +98,21 @@ gpt-5.3-codex
 - `docs/requirements.md`
 - `_bmad-output/implementation-artifacts/5-3-exit-code-conventions.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings（BMad 分层审查 · 2026-03-26）
+
+| 层 | 结论 |
+|----|------|
+| **Blind Hunter** | 新测 **`todo_bin_exit_code_mapping_uses_general_parameter_data_contract`** 在独立 **`todo`** 下串联 **空标题 → 2**、**不存在 id → 3**、**缺失导入文件 → 1**，且断言 **`stdout` JSON `error.code`** 与 **`status.code()`** 一致，覆盖 **AC1/AC2** 与 **FR28**。 |
+| **Edge Case Hunter** | **`requirements.md` §3.2** 脚注指向 **`TodoCliError` / `EXIT_*`**（**`error.rs`**），降低文档与实现漂移风险（**AC4**）。 |
+| **Acceptance Auditor** | **`dispatch.rs`** 中 **`list.create`** 空标题 → **`Parameter`**、**`todo not found`** → **`Data`**，与测试期望一致；**AC5** 复验 **`cargo test -p xtask`**、**`clippy`** 通过。 |
+
+**待办项**：无。勿将 **`crates/todo/.dev_shell.bin`** 等非本故事变更一并提交。
+
+## Change Log
+
+- **2026-03-26**：BMad 代码审查通过 — **5-3-exit-code-conventions** 与 sprint 同步为 **done**；**`last_updated`** **`2026-03-26T05:42:00Z`**；复验 **`cargo test -p xtask`**、**clippy**。
+
 ## 完成状态
 
 - [x] 所有 AC 已验证（自动化或记录手工步骤）

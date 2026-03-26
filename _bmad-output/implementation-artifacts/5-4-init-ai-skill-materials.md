@@ -1,6 +1,6 @@
 # Story 5.4：init-ai 技能材料
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -39,11 +39,11 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **路径**：验证默认 **`cwd/.cursor/commands/todo.md`** 与 **`--output`** 覆盖；**Windows** 路径分隔与权限（**最小**手工或已有 CI）。
-- [ ] **内容审计**：将 **`init_ai.rs`** 模板与 **`args.rs`** 子命令逐行对照；更新模板或 **`requirements §3.2`** 脚注。
-- [ ] **`--json`**：若缺 **`init-ai` + `--json`** 单元测试，按 **`dispatch`** 行为补测。
-- [ ] **`for_tool`**：决定实现占位或帮助文案，避免用户以为会生成多工具不同文件。
-- [ ] **验证**：**`cargo test -p xtask`**、**`cargo clippy -p xtask --all-targets -- -D warnings`**。
+- [x] **路径**：验证默认 **`cwd/.cursor/commands/todo.md`** 与 **`--output`** 覆盖；**Windows** 路径分隔与权限（**最小**手工或已有 CI）。
+- [x] **内容审计**：将 **`init_ai.rs`** 模板与 **`args.rs`** 子命令逐行对照；更新模板或 **`requirements §3.2`** 脚注。
+- [x] **`--json`**：若缺 **`init-ai` + `--json`** 单元测试，按 **`dispatch`** 行为补测。
+- [x] **`for_tool`**：决定实现占位或帮助文案，避免用户以为会生成多工具不同文件。
+- [x] **验证**：**`cargo test -p xtask`**、**`cargo clippy -p xtask --all-targets -- -D warnings`**。
 
 ## Dev Notes
 
@@ -75,15 +75,29 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask todo_bin_init_ai_with_output_and_for_tool_generates_todo_md`
+- `cargo test -p xtask && cargo clippy -p xtask --all-targets -- -D warnings`
+
 ### Completion Notes List
+
+- 已核对 `init-ai` 路径行为：默认输出 `cwd/.cursor/commands/todo.md`，`--output` 可覆盖；`dispatch.rs` 中 `InitAi` 分支先于 `load_todos` 执行，符合 AC1。
+- 已完成模板审计：`init_ai.rs` 子命令清单与 `args.rs::TodoSub` 对齐（含 `init-ai`、`--json`、`--dry-run`、退出码摘要）；并在模板新增 Notes 段，明确 `--for-tool` 当前为预留参数。
+- 已补独立二进制端到端测试 `todo_bin_init_ai_with_output_and_for_tool_generates_todo_md`，验证 `todo init-ai --for-tool other --output <dir>` 可生成 `todo.md`，并包含保留参数提示，覆盖 AC1/AC4。
+- 现有 `json_dry_init` 测试已覆盖 `init-ai + --json` 成功路径（`{"status":"success","data":{"generated":true}}`），与 AC3 一致。
+- `requirements.md §3.2` 已补一句：`init-ai` 默认路径与 `--for-tool` 预留语义，避免多工具分支误解。
 
 ### File List
 
+- `xtask/src/todo/init_ai.rs`
+- `xtask/tests/todo_list/basic.rs`
+- `docs/requirements.md`
+- `_bmad-output/implementation-artifacts/5-4-init-ai-skill-materials.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

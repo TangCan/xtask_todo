@@ -50,6 +50,10 @@ Exit codes: 0 success, 1 general, 2 parameter error, 3 data error (e.g. id not f
 ## Dry run
 
 Use `--dry-run` with add/update/complete/delete to print the intended operation without writing `.todo.json`.
+
+## Notes
+
+`--for-tool` is currently reserved for future tool-specific variants; all values generate the same `todo.md` content.
 "#;
     std::fs::write(&path, content).map_err(|e| TodoCliError::General(Box::new(e)))?;
     Ok(())

@@ -84,6 +84,8 @@
 | `export` / `import` | JSON/CSV；`import` 可选 `--replace`。 |
 | `init-ai` | `--for-tool`、`--output`。 |
 
+说明：`init-ai` 默认生成 `cwd/.cursor/commands/todo.md`；`--for-tool` 目前为预留参数，不改变生成文件结构。
+
 **`--json` 成功载荷（`status: "success"`）**
 
 | 子命令 | `data` 关键字段 |

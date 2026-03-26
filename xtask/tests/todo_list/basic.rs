@@ -226,3 +226,26 @@ fn todo_bin_exit_code_mapping_uses_general_parameter_data_contract() {
     assert_eq!(gv["status"], "error");
     assert_eq!(gv["error"]["code"], 1);
 }
+
+#[test]
+fn todo_bin_init_ai_with_output_and_for_tool_generates_todo_md() {
+    let dir = std::env::temp_dir().join(format!("todo_bin_init_ai_{}", std::process::id()));
+    let _ = fs::create_dir_all(&dir);
+    let out_dir = dir.join("skills");
+
+    let out = todo_bin()
+        .arg("init-ai")
+        .arg("--for-tool")
+        .arg("other")
+        .arg("--output")
+        .arg(&out_dir)
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{:?}", out.stderr);
+    let generated = out_dir.join("todo.md");
+    assert!(generated.exists(), "todo.md should be generated");
+    let content = fs::read_to_string(generated).expect("generated content");
+    assert!(content.contains("Todo list commands"));
+    assert!(content.contains("for-tool") && content.contains("currently reserved"));
+}
