@@ -1,5 +1,5 @@
 # generated: 2026-03-25T12:00:00Z
-# last_updated: 2026-03-26T08:05:00Z
+# last_updated: 2026-03-27T14:00:00Z
 # project: xtask_todo
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-25T12:00:00Z"
-last_updated: "2026-03-26T08:05:00Z"
+last_updated: "2026-03-27T14:00:00Z"
 project: xtask_todo
 project_key: NOKEY
 tracking_system: file-system
@@ -51,7 +51,7 @@ development_status:
   1-6-search-stats-summary: done
   1-7-import-export: done
   1-8-recurring-tasks: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   epic-2: done
   2-1-unified-xtask-dev-commands: done
@@ -59,7 +59,7 @@ development_status:
   2-3-publish-assist: done
   2-4-one-click-acceptance: done
   2-5-pre-commit-ci-alignment: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   epic-3: done
   3-1-interactive-session-script-execution: done
@@ -67,7 +67,7 @@ development_status:
   3-3-pipeline-redirect-buffer-limit: done
   3-4-devshell-todo-subset: done
   3-5-help-tty-completion: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
   epic-4: done
   4-1-host-sandbox-rustup-cargo: done
@@ -75,22 +75,22 @@ development_status:
   4-3-windows-beta-sidecar-protocol: done
   4-4-vm-off-host-degradation: done
   4-5-mode-p-session-metadata: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
 
   epic-5: done
   5-1-structured-json-output: done
   5-2-dry-run-no-write: done
   5-3-exit-code-conventions: done
   5-4-init-ai-skill-materials: done
-  epic-5-retrospective: optional
+  epic-5-retrospective: done
 
   epic-6: done
   6-1-cross-platform-build-artifacts: done
   6-2-crates-io-cargo-devshell: done
-  epic-6-retrospective: optional
+  epic-6-retrospective: done
 
   epic-7: done
   7-1-requirements-design-traceability: done
   7-2-test-coverage-workflow: done
   7-3-product-boundary-no-implicit-promise: done
-  epic-7-retrospective: optional
+  epic-7-retrospective: done
