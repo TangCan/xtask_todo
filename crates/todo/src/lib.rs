@@ -43,4 +43,12 @@ pub(crate) mod test_support {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
     }
+
+    /// Serialize VM-related environment mutation in tests (`DEVSHELL_VM*`, `PATH`, etc.).
+    pub fn vm_env_mutex() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
 }

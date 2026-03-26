@@ -1,6 +1,6 @@
 # Story 4.3：Windows β 与侧车协议
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -97,8 +97,24 @@ gpt-5.3-codex
 ### File List
 
 - `crates/todo/src/devshell/vm/session_beta/mod.rs`
+- `crates/todo/src/devshell/vm/session_beta/session.rs`
+- `crates/todo/src/devshell/vm/session_beta/tests.rs`
 - `_bmad-output/implementation-artifacts/4-3-windows-beta-sidecar-protocol.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings（BMad 分层审查 · 2026-03-26）
+
+| 层 | 结论 |
+|----|------|
+| **Blind Hunter** | **`BetaSession`** 迁入 **`session.rs`**，`mod.rs` 仅 **`ipc` + re-export**，结构更清晰；**`exchange`** 仍为单行 **`writeln!` + `read_one_json_line`/`read_json_line`**，**`op:error`** 映射 **`VmError::Ipc`**，与 AC2/4 一致。 |
+| **Edge Case Hunter** | **`tests.rs`** 以 **TCP mock** 侧车串行 **`vm_env_lock`**，握手测要求请求行以换行结尾；若 **`ensure_ready`** 在 **`restore_var` 前 panic**，**`DEVSHELL_VM_SOCKET`** 可能残留（与其它 env 测相同量级）。 |
+| **Acceptance Auditor** | AC1：握手 **`version:1`/`handshake_ok`** 由集成测覆盖；AC2：成帧与非 JSON **`first line prefix`** 由测覆盖；AC4：**`op:error`** 测覆盖；AC3/run_rust_tool 链为棕地搬迁无行为 diff；AC6：**`cargo test -p xtask-todo-lib --features beta-vm`**（273 passed）、**`clippy --features beta-vm -D warnings`** 已通过。 |
+
+**待办项**：无。审查中若工作区出现 **`crates/todo/.dev_shell.bin`** 漂移，应按仓库先例 **`git restore`**，勿与故事一并提交。
+
+## Change Log
+
+- **2026-03-26**：BMad 代码审查通过 — 故事与 sprint **4-3-windows-beta-sidecar-protocol** 标为 **done**；**`last_updated`** 更新为 **`2026-03-26T03:26:00Z`**；复验带 **`beta-vm`** 的 **`cargo test` / `clippy`**。
 
 ## 完成状态
 

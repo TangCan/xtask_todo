@@ -1,5 +1,5 @@
 # generated: 2026-03-25T12:00:00Z
-# last_updated: 2026-03-26T03:21:00Z
+# last_updated: 2026-03-26T03:28:00Z
 # project: xtask_todo
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-25T12:00:00Z"
-last_updated: "2026-03-26T03:21:00Z"
+last_updated: "2026-03-26T03:44:00Z"
 project: xtask_todo
 project_key: NOKEY
 tracking_system: file-system
@@ -72,14 +72,14 @@ development_status:
   epic-4: in-progress
   4-1-host-sandbox-rustup-cargo: done
   4-2-unix-gamma-lima-path: done
-  4-3-windows-beta-sidecar-protocol: review
-  4-4-vm-off-host-degradation: ready-for-dev
+  4-3-windows-beta-sidecar-protocol: done
+  4-4-vm-off-host-degradation: review
   4-5-mode-p-session-metadata: ready-for-dev
   epic-4-retrospective: optional
 
   epic-5: in-progress
   5-1-structured-json-output: ready-for-dev
-  5-2-dry-run-no-write: backlog
+  5-2-dry-run-no-write: ready-for-dev
   5-3-exit-code-conventions: backlog
   5-4-init-ai-skill-materials: backlog
   epic-5-retrospective: optional

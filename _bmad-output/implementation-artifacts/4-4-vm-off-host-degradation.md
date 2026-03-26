@@ -1,6 +1,6 @@
 # Story 4.4：关闭 VM 与宿主降级
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -39,10 +39,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **棕地核对**：画 **环境变量 → `VmConfig` → `SessionHolder` 变体** 真值表（含 **`DEVSHELL_VM` 未设置** 时默认 **enabled=true** 的行为）。
-- [ ] **入口**：确认 **`run_main_from_args`** / **`run_with`** 在 Windows 与 Unix 上对 **`try_session_rc`** 失败的处理是否一致；必要时统一为 **`try_session_rc_or_host`** 或文档说明差异。
-- [ ] **文档**：若 **`auto`** 与 README 描述不一致，同步 **`docs/devshell-vm-gamma.md`** 或 **`crates/todo/README.md`**。
-- [ ] **验证**：`cargo test -p xtask-todo-lib vm`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
+- [x] **棕地核对**：画 **环境变量 → `VmConfig` → `SessionHolder` 变体** 真值表（含 **`DEVSHELL_VM` 未设置** 时默认 **enabled=true** 的行为）。
+- [x] **入口**：确认 **`run_main_from_args`** / **`run_with`** 在 Windows 与 Unix 上对 **`try_session_rc`** 失败的处理是否一致；必要时统一为 **`try_session_rc_or_host`** 或文档说明差异。
+- [x] **文档**：若 **`auto`** 与 README 描述不一致，同步 **`docs/devshell-vm-gamma.md`** 或 **`crates/todo/README.md`**。
+- [x] **验证**：`cargo test -p xtask-todo-lib vm`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
 
 ## Dev Notes
 
@@ -74,15 +74,33 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask-todo-lib vm::tests::try_from_config_vm_off_returns_host_session`
+- `cargo test -p xtask-todo-lib vm::tests::try_from_config_host_like_backends_return_host_session`
+- `cargo test -p xtask-todo-lib vm`
+- `cargo test -p xtask-todo-lib`
+- `cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`
+
 ### Completion Notes List
+
+- 已补充并验证降级核心测试：`try_from_config_vm_off_returns_host_session`（`enabled=false` 必回 `Host`）与 `try_from_config_host_like_backends_return_host_session`（`backend=host/auto/空` 且 `enabled=true` 仍回 `Host`），覆盖 AC1/AC2。
+- 已核对入口差异：Unix `run_main_from_args`/`run_with` 使用 `try_session_rc_or_host`（失败自动降级继续）；非 Unix 仍使用 `try_session_rc`（失败返回错误）。该差异与当前平台策略一致，未在本故事中改行为，仅在完成记录中明确。
+- 修复了 `vm` 测试中的环境变量并发干扰：新增 `test_support::vm_env_mutex()`，并用于 `vm/mod.rs` 与 `session_gamma/tests.rs`，避免 `DEVSHELL_VM*`/`PATH` 并行修改导致的非确定性失败。
+- 已对照 `VmConfig::from_env`、`use_host_sandbox` 与 `SessionHolder::try_from_config`：`DEVSHELL_VM` 关闭直接 `Host`；`host/auto/空` 后端均走 `Host`；`lima/beta` 走对应后端或可诊断失败，满足 FR23/NFR-R1。
+- 文档核对结果：`docs/devshell-vm-gamma.md` 与现实现（含 `auto`/`host` 语义及降级提示）一致，无需改文档。
 
 ### File List
 
+- `crates/todo/src/lib.rs`
+- `crates/todo/src/devshell/vm/mod.rs`
+- `crates/todo/src/devshell/vm/session_gamma/tests.rs`
+- `_bmad-output/implementation-artifacts/4-4-vm-off-host-degradation.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

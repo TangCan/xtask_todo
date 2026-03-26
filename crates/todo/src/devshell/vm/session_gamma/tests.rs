@@ -21,15 +21,12 @@ fn sanitize_instance_replaces_dots() {
 
 #[test]
 fn workspace_parent_legacy_cache_when_cargo_disabled() {
-    use std::sync::{Mutex, OnceLock};
-
     use super::workspace_parent_for_instance;
     use crate::devshell::vm::session_gamma::env::{
         ENV_DEVSHELL_VM_WORKSPACE_PARENT, ENV_DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT,
     };
 
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    let _g = LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let _g = crate::test_support::vm_env_mutex();
 
     let old_p = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_PARENT).ok();
     let old_u = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT).ok();
@@ -76,16 +73,13 @@ fn guest_dir_for_host_path_under_workspace_maps_relative() {
 #[cfg(unix)]
 #[test]
 fn gamma_session_sync_flag_follows_workspace_mode() {
-    use std::sync::{Mutex, OnceLock};
-
     use crate::devshell::sandbox;
     use crate::devshell::vm::{
         GammaSession, VmConfig, ENV_DEVSHELL_VM, ENV_DEVSHELL_VM_BACKEND,
         ENV_DEVSHELL_VM_WORKSPACE_MODE,
     };
 
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    let _g = LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let _g = crate::test_support::vm_env_mutex();
 
     if sandbox::find_in_path("limactl").is_none() {
         return;
