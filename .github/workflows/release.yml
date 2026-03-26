@@ -101,12 +101,33 @@ jobs:
           set -euo pipefail
           OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
           PKG_NAME='xtask_todo%2Fdevshell-vm'
+
+          # PATCH may 404 if the package record is not yet visible to this token, path differs, or
+          # visibility was already set in the UI — anonymous pull can still work; do not fail the job.
+          patch_pkg_public() {
+            local url=$1
+            local label=$2
+            echo "PATCH ${label} -> visibility=public"
+            local out ec
+            set +e
+            out=$(gh api --method PATCH "$url" -f visibility=public 2>&1)
+            ec=$?
+            set -e
+            if [ "$ec" -eq 0 ]; then
+              return 0
+            fi
+            if echo "$out" | grep -qE 'HTTP 404|"status": "404"|Not Found'; then
+              echo "::warning::PATCH returned 404 for ${label}; skipping (package may already be public, or set visibility in GitHub Packages UI). Job continues."
+              return 0
+            fi
+            echo "$out" >&2
+            return "$ec"
+          }
+
           if gh api "orgs/${OWNER}" >/dev/null 2>&1; then
-            echo "PATCH orgs/${OWNER}/packages/container/${PKG_NAME} -> visibility=public"
-            gh api --method PATCH "orgs/${OWNER}/packages/container/${PKG_NAME}" -f visibility=public
+            patch_pkg_public "orgs/${OWNER}/packages/container/${PKG_NAME}" "orgs/${OWNER}/packages/container/${PKG_NAME}"
           else
             # /user/packages/... targets the token's API user (not the repo owner), so it 404s for
             # user-owned packages published under ${{ github.repository_owner }}. Patch the owner's package.
-            echo "PATCH users/${OWNER}/packages/container/${PKG_NAME} -> visibility=public"
-            gh api --method PATCH "users/${OWNER}/packages/container/${PKG_NAME}" -f visibility=public
+            patch_pkg_public "users/${OWNER}/packages/container/${PKG_NAME}" "users/${OWNER}/packages/container/${PKG_NAME}"
           fi
