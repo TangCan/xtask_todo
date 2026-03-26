@@ -46,8 +46,14 @@ fn ensure_ready_handshake_uses_single_json_line_and_accepts_handshake_ok() {
             "request must be newline-delimited JSON line: {line:?}"
         );
         let req: serde_json::Value = serde_json::from_str(line.trim()).expect("valid json");
-        assert_eq!(req.get("op").and_then(|x| x.as_str()), Some("handshake"));
-        assert_eq!(req.get("version").and_then(|x| x.as_u64()), Some(1));
+        assert_eq!(
+            req.get("op").and_then(serde_json::Value::as_str),
+            Some("handshake")
+        );
+        assert_eq!(
+            req.get("version").and_then(serde_json::Value::as_u64),
+            Some(1)
+        );
         writeln!(stream, "{{\"op\":\"handshake_ok\"}}").expect("write response");
         stream.flush().expect("flush");
     });

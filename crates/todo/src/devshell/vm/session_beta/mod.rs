@@ -5,8 +5,6 @@
 //! - **Unix:** path to socket, or `tcp:127.0.0.1:9847` / `tcp://127.0.0.1:9847`
 //! - **Windows:** `stdio` (default) or `tcp:HOST:PORT`
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 mod ipc;
 mod session;
 #[cfg(test)]

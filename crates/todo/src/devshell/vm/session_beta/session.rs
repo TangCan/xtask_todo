@@ -246,6 +246,7 @@ impl BetaSession {
 
     /// `true` when Mode S (host↔VFS sync around rust tools); `false` in guest-primary ([`WorkspaceMode::Guest`]).
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn syncs_vfs_with_host_workspace(&self) -> bool {
         self.sync_vfs_with_workspace
     }
@@ -342,21 +343,25 @@ impl VmExecutionSession for BetaSession {
             self.exchange(&push)?;
         }
 
-        let mut argv = vec![program.to_string()];
-        argv.extend_from_slice(args);
+        let mut command_argv = vec![program.to_string()];
+        command_argv.extend_from_slice(args);
         let guest_cwd = guest_dir_for_vfs_cwd(&self.guest_mount, vfs_cwd);
         let mut exec = serde_json::json!({
             "op": "exec",
             "session_id": &self.session_id,
             "guest_cwd": guest_cwd,
-            "argv": argv,
+            "argv": command_argv,
             "env": serde_json::json!({}),
         });
         if let Some(ms) = exec_timeout_ms_from_env() {
             exec["timeout_ms"] = ms.into();
         }
         let res = self.exchange(&exec)?;
-        let code = res.get("exit_code").and_then(|x| x.as_i64()).unwrap_or(1) as i32;
+        let raw_code = res
+            .get("exit_code")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(1);
+        let code = i32::try_from(raw_code).unwrap_or(1);
 
         if self.sync_vfs_with_workspace {
             let pull_req = serde_json::json!({
