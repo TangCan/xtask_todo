@@ -1,7 +1,5 @@
 //! Host-only [`super::VmExecutionSession`]: same behavior as historical `sandbox::run_rust_tool` (temp export per command).
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 use std::process::ExitStatus;
 
 use super::super::sandbox;
@@ -20,6 +18,7 @@ impl HostSandboxSession {
 }
 
 impl VmExecutionSession for HostSandboxSession {
+    #[allow(clippy::unnecessary_wraps)]
     fn ensure_ready(&mut self, _vfs: &Vfs, _vfs_cwd: &str) -> Result<(), VmError> {
         Ok(())
     }
@@ -34,6 +33,7 @@ impl VmExecutionSession for HostSandboxSession {
         sandbox::run_rust_tool(vfs, vfs_cwd, program, args).map_err(VmError::Sandbox)
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn shutdown(&mut self, _vfs: &mut Vfs, _vfs_cwd: &str) -> Result<(), VmError> {
         Ok(())
     }

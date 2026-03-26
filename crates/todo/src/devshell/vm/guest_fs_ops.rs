@@ -2,8 +2,6 @@
 //!
 //! See `docs/superpowers/specs/2026-03-20-devshell-guest-primary-design.md` §4.
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
@@ -68,18 +66,33 @@ impl From<VmError> for GuestFsError {
 /// Operations on the **guest** filesystem (Mode P). Paths are **guest** absolute paths (e.g. `/workspace/foo`).
 pub trait GuestFsOps {
     /// List **non-hidden** names in `guest_path` (like `ls -1A`).
+    ///
+    /// # Errors
+    /// Returns [`GuestFsError`] when `guest_path` is invalid or guest listing fails.
     fn list_dir(&mut self, guest_path: &str) -> Result<Vec<String>, GuestFsError>;
 
     /// Read a file by guest path.
+    ///
+    /// # Errors
+    /// Returns [`GuestFsError`] when `guest_path` is invalid or reading fails.
     fn read_file(&mut self, guest_path: &str) -> Result<Vec<u8>, GuestFsError>;
 
     /// Write or replace a file.
+    ///
+    /// # Errors
+    /// Returns [`GuestFsError`] when path validation or write fails.
     fn write_file(&mut self, guest_path: &str, data: &[u8]) -> Result<(), GuestFsError>;
 
     /// Create a directory (and parents), like `mkdir -p`.
+    ///
+    /// # Errors
+    /// Returns [`GuestFsError`] when path validation or directory creation fails.
     fn mkdir(&mut self, guest_path: &str) -> Result<(), GuestFsError>;
 
     /// Remove a file or directory tree (`rm -rf` semantics on Lima; mock removes subtree).
+    ///
+    /// # Errors
+    /// Returns [`GuestFsError`] when path validation or removal fails.
     fn remove(&mut self, guest_path: &str) -> Result<(), GuestFsError>;
 }
 
@@ -276,6 +289,7 @@ impl GuestFsOps for MockGuestFsOps {
 // --- Lima (Unix): γ [`GammaSession`] + `limactl shell` -----------------------
 
 /// Validate `guest_path` is absolute and under `mount` (γ/β shared).
+#[allow(clippy::redundant_pub_crate)]
 pub(crate) fn validate_guest_path_under_mount(
     mount: &str,
     guest_path: &str,

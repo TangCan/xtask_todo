@@ -1,7 +1,5 @@
 //! Environment-driven configuration for optional devshell VM execution (`DEVSHELL_VM`, backend, Lima name).
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 mod constants;
 mod repo;
 #[cfg(test)]
@@ -85,9 +83,7 @@ fn default_backend_for_release() -> String {
 
 fn vm_enabled_from_env() -> bool {
     if cfg!(test) {
-        return std::env::var(ENV_DEVSHELL_VM)
-            .map(|s| truthy(&s))
-            .unwrap_or(false);
+        return std::env::var(ENV_DEVSHELL_VM).is_ok_and(|s| truthy(&s));
     }
     match std::env::var(ENV_DEVSHELL_VM) {
         Err(_) => true,
@@ -120,9 +116,7 @@ impl VmConfig {
 
         let backend = backend_from_env();
 
-        let eager_start = std::env::var(ENV_DEVSHELL_VM_EAGER)
-            .map(|s| truthy(&s))
-            .unwrap_or(false);
+        let eager_start = std::env::var(ENV_DEVSHELL_VM_EAGER).is_ok_and(|s| truthy(&s));
 
         let lima_instance = std::env::var(ENV_DEVSHELL_VM_LIMA_INSTANCE)
             .ok()
@@ -140,6 +134,7 @@ impl VmConfig {
 
     /// Config with VM mode off (for tests).
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn disabled() -> Self {
         Self {
             enabled: false,

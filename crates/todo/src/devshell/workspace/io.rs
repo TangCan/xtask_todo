@@ -2,8 +2,6 @@
 //!
 //! Used by [`crate::devshell::command::dispatch`] and script / REPL `source` loading (design §9).
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -51,6 +49,9 @@ impl std::error::Error for WorkspaceReadError {
 
 /// Map a logical path to a guest absolute path (γ guest-primary).
 #[cfg(unix)]
+///
+/// # Errors
+/// Returns [`WorkspaceBackendError`] when logical path mapping fails.
 pub fn logical_to_guest_abs(
     vfs: &Vfs,
     g: &GammaSession,
@@ -60,6 +61,9 @@ pub fn logical_to_guest_abs(
 }
 
 /// Read file bytes for a logical path: guest-primary (γ or β) first, else in-memory [`Vfs`].
+///
+/// # Errors
+/// Returns [`WorkspaceReadError`] when guest/VFS reads fail or the path is outside workspace.
 pub fn read_logical_file_bytes(
     vfs: &mut Vfs,
     vm_session: &mut SessionHolder,
@@ -84,6 +88,9 @@ pub fn read_logical_file_bytes(
 }
 
 /// Same as [`read_logical_file_bytes`] with shared [`Rc`] handles (script / REPL).
+///
+/// # Errors
+/// Returns [`WorkspaceReadError`] propagated from [`read_logical_file_bytes`].
 pub fn read_logical_file_bytes_rc(
     vfs: &Rc<RefCell<Vfs>>,
     vm_session: &Rc<RefCell<SessionHolder>>,

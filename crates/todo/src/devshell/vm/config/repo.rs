@@ -1,4 +1,5 @@
-//! Discover xtask_todo repo root via `containers/devshell-vm/Containerfile` (Windows β).
+//! Discover `xtask_todo` repo root via `containers/devshell-vm/Containerfile` (Windows β).
+#![allow(clippy::redundant_pub_crate)]
 
 #[cfg(feature = "beta-vm")]
 fn devshell_repo_root_walk(mut dir: std::path::PathBuf) -> Option<std::path::PathBuf> {
@@ -14,7 +15,7 @@ fn devshell_repo_root_walk(mut dir: std::path::PathBuf) -> Option<std::path::Pat
     None
 }
 
-/// Walk parents from [`std::env::current_dir`] looking for `containers/devshell-vm/Containerfile` (xtask_todo repo).
+/// Walk parents from [`std::env::current_dir`] looking for `containers/devshell-vm/Containerfile` (`xtask_todo` repo).
 #[cfg_attr(not(windows), allow(dead_code))]
 #[cfg(feature = "beta-vm")]
 pub(crate) fn devshell_repo_root_with_containerfile() -> Option<std::path::PathBuf> {

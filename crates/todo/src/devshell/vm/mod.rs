@@ -1,7 +1,5 @@
 //! Optional session-scoped VM execution (γ CLI / β sidecar): host [`SessionHolder::Host`], Unix γ [`SessionHolder::Gamma`].
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 use std::cell::RefCell;
 use std::io::Write;
 use std::rc::Rc;
@@ -72,8 +70,7 @@ impl std::fmt::Display for VmError {
             Self::Sandbox(e) => write!(f, "{e}"),
             Self::Sync(e) => write!(f, "{e}"),
             Self::BackendNotImplemented(s) => write!(f, "vm backend not implemented: {s}"),
-            Self::Lima(s) => f.write_str(s),
-            Self::Ipc(s) => f.write_str(s),
+            Self::Lima(s) | Self::Ipc(s) => f.write_str(s),
         }
     }
 }
@@ -91,9 +88,15 @@ impl std::error::Error for VmError {
 /// Abstraction for a devshell execution session (host temp dir, γ VM, or β sidecar).
 pub trait VmExecutionSession {
     /// Prepare the session (e.g. start VM, initial push). No-op for host temp export.
+    ///
+    /// # Errors
+    /// Returns backend-specific failures while preparing VM/sandbox state.
     fn ensure_ready(&mut self, vfs: &Vfs, vfs_cwd: &str) -> Result<(), VmError>;
 
     /// Run `rustup` or `cargo` with cwd matching `vfs_cwd`; update `vfs` as defined by the backend.
+    ///
+    /// # Errors
+    /// Returns backend execution or sync failures from the selected session implementation.
     fn run_rust_tool(
         &mut self,
         vfs: &mut Vfs,
@@ -103,6 +106,9 @@ pub trait VmExecutionSession {
     ) -> Result<ExitStatus, VmError>;
 
     /// Tear down (e.g. final pull, stop VM).
+    ///
+    /// # Errors
+    /// Returns backend-specific failures during shutdown/sync.
     fn shutdown(&mut self, vfs: &mut Vfs, vfs_cwd: &str) -> Result<(), VmError>;
 }
 
@@ -186,10 +192,13 @@ impl SessionHolder {
 
     /// Host sandbox only (tests and callers that do not read `VmConfig`).
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn new_host() -> Self {
         Self::Host(HostSandboxSession::new())
     }
 
+    /// # Errors
+    /// Returns backend-specific failures while preparing VM/sandbox state.
     pub fn ensure_ready(&mut self, vfs: &Vfs, vfs_cwd: &str) -> Result<(), VmError> {
         match self {
             Self::Host(s) => VmExecutionSession::ensure_ready(s, vfs, vfs_cwd),
@@ -200,6 +209,8 @@ impl SessionHolder {
         }
     }
 
+    /// # Errors
+    /// Returns backend execution or sync failures from the selected session implementation.
     pub fn run_rust_tool(
         &mut self,
         vfs: &mut Vfs,
@@ -216,6 +227,8 @@ impl SessionHolder {
         }
     }
 
+    /// # Errors
+    /// Returns backend-specific failures during shutdown/sync.
     pub fn shutdown(&mut self, vfs: &mut Vfs, vfs_cwd: &str) -> Result<(), VmError> {
         match self {
             Self::Host(s) => VmExecutionSession::shutdown(s, vfs, vfs_cwd),
@@ -289,6 +302,7 @@ impl SessionHolder {
 
     /// `true` when using the host temp sandbox ([`HostSandboxSession`]) rather than γ/β.
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn is_host_only(&self) -> bool {
         matches!(self, Self::Host(_))
     }
@@ -297,6 +311,7 @@ impl SessionHolder {
     ///
     /// On success, does not return. On failure, returns the [`std::io::Error`] from [`std::os::unix::process::CommandExt::exec`].
     #[cfg(unix)]
+    #[must_use]
     pub fn exec_lima_interactive_shell(&self) -> std::io::Error {
         use std::os::unix::process::CommandExt;
         use std::process::Command;
@@ -320,9 +335,13 @@ impl SessionHolder {
     }
 }
 
-/// Build [`SessionHolder`] from the environment. On failure (e.g. default γ Lima but `limactl` missing), writes to `stderr` and returns `Err(())`.
+/// Build [`SessionHolder`] from the environment.
+///
+/// On failure (e.g. default γ Lima but `limactl` missing), writes to `stderr` and returns `Err(())`.
 /// Use **`DEVSHELL_VM=off`** or **`DEVSHELL_VM_BACKEND=host`** to force the host temp sandbox.
 #[allow(clippy::result_unit_err)] // binary entry uses `()`; message already on stderr
+/// # Errors
+/// Returns `Err(())` when backend session construction fails.
 pub fn try_session_rc(stderr: &mut dyn Write) -> Result<Rc<RefCell<SessionHolder>>, ()> {
     let config = VmConfig::from_env();
     match SessionHolder::try_from_config(&config) {
@@ -337,16 +356,13 @@ pub fn try_session_rc(stderr: &mut dyn Write) -> Result<Rc<RefCell<SessionHolder
 /// Like [`try_session_rc`], but on failure uses [`SessionHolder::Host`] so the REPL can run against
 /// [`workspace_parent_for_instance`] (same tree as the Lima mount).
 pub fn try_session_rc_or_host(stderr: &mut dyn Write) -> Rc<RefCell<SessionHolder>> {
-    match try_session_rc(stderr) {
-        Ok(s) => s,
-        Err(()) => {
+    try_session_rc(stderr).unwrap_or_else(|()| {
             let _ = writeln!(
                 stderr,
                 "dev_shell: VM unavailable — in-process REPL uses the same host directory as the Lima workspace (DEVSHELL_WORKSPACE_ROOT)."
             );
             Rc::new(RefCell::new(SessionHolder::Host(HostSandboxSession::new())))
-        }
-    }
+        })
 }
 
 #[cfg(unix)]
@@ -390,13 +406,10 @@ pub fn should_delegate_lima_shell(
     if run_script || !is_tty {
         return false;
     }
-    if std::env::var("DEVSHELL_VM_INTERNAL_REPL")
-        .map(|s| {
-            let s = s.trim();
-            s == "1" || s.eq_ignore_ascii_case("true") || s.eq_ignore_ascii_case("yes")
-        })
-        .unwrap_or(false)
-    {
+    if std::env::var("DEVSHELL_VM_INTERNAL_REPL").is_ok_and(|s| {
+        let s = s.trim();
+        s == "1" || s.eq_ignore_ascii_case("true") || s.eq_ignore_ascii_case("yes")
+    }) {
         return false;
     }
     matches!(*vm_session.borrow(), SessionHolder::Gamma(_))

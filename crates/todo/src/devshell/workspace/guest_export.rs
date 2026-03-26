@@ -3,8 +3,6 @@
 //! Does **not** export to a host temp directory; produces a read-only **mirror** under a dedicated
 //! logical path in the process VFS so the user can `ls` / `cat` without leaving the virtual workspace.
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::devshell::vfs::{Vfs, VfsError};
@@ -115,8 +113,7 @@ pub fn guest_export_readonly_to_vfs(
     })?;
     let ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis())
-        .unwrap_or(0);
+        .map_or(0, |d| d.as_millis());
     let leaf = gp
         .trim_end_matches('/')
         .rsplit('/')

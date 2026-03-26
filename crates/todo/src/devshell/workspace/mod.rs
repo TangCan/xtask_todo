@@ -2,8 +2,6 @@
 //!
 //! See `docs/superpowers/specs/2026-03-20-devshell-guest-primary-design.md` §4.
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 mod backend;
 #[cfg(any(unix, feature = "beta-vm"))]
 mod guest_export;

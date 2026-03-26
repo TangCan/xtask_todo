@@ -3,8 +3,6 @@
 //! Layout matches [`super::super::sandbox::export_vfs_to_temp_dir`]: `workspace_parent` holds the
 //! leaf directory named after the last segment of `vfs_path` (same leaf naming as the sandbox export helpers).
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 use std::path::{Path, PathBuf};
 
 use super::super::sandbox;
@@ -50,7 +48,7 @@ fn vfs_child_vfs_path(parent: &str, name: &str) -> String {
 fn walk_vfs_files_recurse(
     vfs: &Vfs,
     dir_vfs: &str,
-    rel: PathBuf,
+    rel: &Path,
     out: &mut Vec<(PathBuf, Vec<u8>)>,
 ) -> Result<(), VfsError> {
     for name in vfs.list_dir(dir_vfs)? {
@@ -61,7 +59,8 @@ fn walk_vfs_files_recurse(
                 out.push((rel.join(&name), content));
             }
             Node::Dir { .. } => {
-                walk_vfs_files_recurse(vfs, &child, rel.join(&name), out)?;
+                let next_rel = rel.join(&name);
+                walk_vfs_files_recurse(vfs, &child, &next_rel, out)?;
             }
         }
     }
@@ -100,7 +99,8 @@ pub fn push_incremental(
     std::fs::create_dir_all(&host_root).map_err(VmSyncError::Io)?;
 
     let mut files: Vec<(PathBuf, Vec<u8>)> = Vec::new();
-    walk_vfs_files_recurse(vfs, &abs, PathBuf::new(), &mut files).map_err(VmSyncError::Vfs)?;
+    let root_rel = PathBuf::new();
+    walk_vfs_files_recurse(vfs, &abs, &root_rel, &mut files).map_err(VmSyncError::Vfs)?;
 
     for (rel, content) in files {
         let host_file = host_root.join(&rel);
@@ -124,6 +124,9 @@ pub fn push_incremental(
 /// Merge host workspace tree into the VFS at `vfs_path` (add/update only; same semantics as [`sandbox::sync_host_dir_to_vfs`]).
 ///
 /// Used for both “full” and “incremental” pull until delete-on-host is specified.
+///
+/// # Errors
+/// Returns [`sandbox::SandboxError`] when host reads or VFS writes fail.
 pub fn pull_workspace_to_vfs(
     workspace_parent: &Path,
     vfs_path: &str,

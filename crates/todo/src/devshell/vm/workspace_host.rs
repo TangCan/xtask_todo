@@ -59,20 +59,17 @@ pub fn workspace_parent_for_instance(instance: &str) -> PathBuf {
             return PathBuf::from(p);
         }
     }
-    let use_cargo = match std::env::var(ENV_DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT) {
-        Err(_) => true,
-        Ok(s) => {
-            let s = s.trim();
-            if s.is_empty() {
-                true
-            } else {
-                !(s == "0"
-                    || s.eq_ignore_ascii_case("false")
-                    || s.eq_ignore_ascii_case("no")
-                    || s.eq_ignore_ascii_case("off"))
-            }
+    let use_cargo = std::env::var(ENV_DEVSHELL_VM_WORKSPACE_USE_CARGO_ROOT).map_or(true, |s| {
+        let s = s.trim();
+        if s.is_empty() {
+            true
+        } else {
+            !(s == "0"
+                || s.eq_ignore_ascii_case("false")
+                || s.eq_ignore_ascii_case("no")
+                || s.eq_ignore_ascii_case("off"))
         }
-    };
+    });
     if use_cargo {
         if let Ok(cwd) = std::env::current_dir() {
             if let Ok((wr, _)) = cargo_metadata_workspace_and_target(&cwd) {

@@ -3,8 +3,6 @@
 //! - **Automatic fallback** (e.g. `cargo install` with no checkout): **`podman run -i`** with a published OCI image
 //!   and the workspace mounted at **`/workspace`** (see `docs/devshell-vm-windows.md`).
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 use std::path::Path;
 
 use super::VmError;
@@ -34,21 +32,21 @@ pub enum WindowsStdioTransport {
 #[cfg(not(windows))]
 #[must_use]
 #[allow(dead_code)]
+#[allow(clippy::missing_const_for_fn)]
 pub fn windows_host_path_to_vm_mnt(_host: &Path) -> Option<String> {
     None
 }
 
 #[cfg(not(windows))]
 #[allow(dead_code)]
+#[allow(clippy::unnecessary_wraps, clippy::missing_const_for_fn)]
 pub fn ensure(_workspace_parent: &Path) -> Result<(), VmError> {
-    let _ = _workspace_parent;
     Ok(())
 }
 
 #[cfg(not(windows))]
 #[allow(dead_code)]
 pub fn spawn_devshell_vm_stdio(_workspace_root: &Path) -> Result<std::process::Child, VmError> {
-    let _ = _workspace_root;
     Err(VmError::Ipc(
         "DEVSHELL_VM_SOCKET=stdio is only supported on Windows".into(),
     ))

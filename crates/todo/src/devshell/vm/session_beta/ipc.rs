@@ -1,16 +1,20 @@
 //! Unix socket / TCP / **Windows stdio via `podman machine ssh`** and `DEVSHELL_VM_SOCKET` parsing for β.
-#![allow(dead_code)]
 
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
-use std::process::{Child, ChildStdin, ChildStdout, ExitStatus};
-use std::sync::{Arc, Mutex};
+use std::process::ExitStatus;
 
+#[cfg(windows)]
+use std::io::{BufRead, BufReader};
 #[cfg(unix)]
 use std::os::unix::net::UnixStream;
 #[cfg(unix)]
 use std::path::PathBuf;
+#[cfg(windows)]
+use std::process::{Child, ChildStdin, ChildStdout};
+#[cfg(windows)]
+use std::sync::{Arc, Mutex};
 
 use super::super::config::ENV_DEVSHELL_VM_SOCKET;
 #[cfg(windows)]
@@ -38,16 +42,19 @@ pub(super) enum IpcStream {
 }
 
 /// JSON line protocol over **`podman machine ssh`** pipes (single mutex for stdin + stdout reader).
+#[cfg(windows)]
 pub(super) struct StdioPipe {
     inner: Arc<Mutex<StdioPipeInner>>,
 }
 
+#[cfg(windows)]
 struct StdioPipeInner {
     _child: Child,
     stdin: ChildStdin,
     reader: BufReader<ChildStdout>,
 }
 
+#[cfg(windows)]
 impl StdioPipe {
     pub(super) fn new(child: Child, stdin: ChildStdin, stdout: ChildStdout) -> Self {
         let reader = BufReader::new(stdout);
@@ -84,6 +91,7 @@ impl StdioPipe {
     }
 }
 
+#[cfg(windows)]
 impl Write for StdioPipe {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let mut g = self
@@ -99,20 +107,6 @@ impl Write for StdioPipe {
             .lock()
             .map_err(|e| std::io::Error::other(e.to_string()))?;
         g.stdin.flush()
-    }
-}
-
-impl IpcStream {
-    pub(super) fn try_clone(&self) -> std::io::Result<IpcStream> {
-        match self {
-            #[cfg(unix)]
-            Self::Unix(u) => Ok(Self::Unix(u.try_clone()?)),
-            Self::Tcp(t) => Ok(Self::Tcp(t.try_clone()?)),
-            #[cfg(windows)]
-            Self::StdioPipe(s) => Ok(Self::StdioPipe(StdioPipe {
-                inner: Arc::clone(&s.inner),
-            })),
-        }
     }
 }
 

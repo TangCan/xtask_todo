@@ -2,8 +2,6 @@
 //!
 //! See `docs/superpowers/specs/2026-03-20-devshell-guest-primary-design.md` §4.
 
-#![allow(clippy::pedantic, clippy::nursery)]
-
 use std::cell::RefCell;
 use std::process::ExitStatus;
 use std::rc::Rc;
@@ -115,18 +113,38 @@ pub fn logical_path_to_guest(
 /// Virtual workspace for devshell: Mode S (memory) or Mode P (guest-primary).
 pub trait WorkspaceBackend {
     fn logical_cwd(&self) -> String;
+    /// # Errors
+    /// Returns [`WorkspaceBackendError`] when path normalization or backend cwd updates fail.
     fn set_logical_cwd(&mut self, path: &str) -> Result<(), WorkspaceBackendError>;
+    /// # Errors
+    /// Returns [`WorkspaceBackendError`] when the backend cannot read `path`.
     fn read_file(&mut self, path: &str) -> Result<Vec<u8>, WorkspaceBackendError>;
+    /// # Errors
+    /// Returns [`WorkspaceBackendError`] when the backend cannot write `path`.
     fn write_file(&mut self, path: &str, data: &[u8]) -> Result<(), WorkspaceBackendError>;
+    /// # Errors
+    /// Returns [`WorkspaceBackendError`] when directory listing fails.
     fn list_dir(&mut self, path: &str) -> Result<Vec<String>, WorkspaceBackendError>;
+    /// # Errors
+    /// Returns [`WorkspaceBackendError`] when directory creation fails.
     fn mkdir(&mut self, path: &str) -> Result<(), WorkspaceBackendError>;
+    /// # Errors
+    /// Returns [`WorkspaceBackendError`] when remove is unsupported or fails.
     fn remove(&mut self, path: &str) -> Result<(), WorkspaceBackendError>;
+    /// # Errors
+    /// Returns [`WorkspaceBackendError`] when existence checks fail unexpectedly.
     fn exists(&mut self, path: &str) -> Result<bool, WorkspaceBackendError>;
 
     /// Mode P: logical path → guest absolute path. Mode S: [`WorkspaceBackendError::ModeSOnly`].
+    ///
+    /// # Errors
+    /// Returns [`WorkspaceBackendError::ModeSOnly`] in Mode S or mapping failures in Mode P.
     fn try_resolve_guest_path(&self, logical_path: &str) -> Result<String, WorkspaceBackendError>;
 
     /// Run `rustup` / `cargo` (Mode S: sync VFS↔host/VM). Mode P skeleton: [`WorkspaceBackendError::Unsupported`].
+    ///
+    /// # Errors
+    /// Returns [`WorkspaceBackendError`] when tool execution/sync is unsupported or fails.
     fn run_rust_tool(
         &mut self,
         vm_session: &mut SessionHolder,
@@ -142,6 +160,7 @@ pub struct MemoryVfsBackend {
 
 impl MemoryVfsBackend {
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn new(vfs: Rc<RefCell<Vfs>>) -> Self {
         Self { vfs }
     }
@@ -264,8 +283,7 @@ impl WorkspaceBackend for GuestPrimaryBackend {
     fn exists(&mut self, path: &str) -> Result<bool, WorkspaceBackendError> {
         let g = logical_path_to_guest(&self.guest_mount, &self.logical_cwd, path)?;
         match self.ops.read_file(&g) {
-            Ok(_) => Ok(true),
-            Err(GuestFsError::IsADirectory(_)) => Ok(true),
+            Ok(_) | Err(GuestFsError::IsADirectory(_)) => Ok(true),
             Err(GuestFsError::NotFound(_)) => match self.ops.list_dir(&g) {
                 Ok(_) => Ok(true),
                 Err(GuestFsError::NotFound(_) | GuestFsError::NotADirectory(_)) => Ok(false),

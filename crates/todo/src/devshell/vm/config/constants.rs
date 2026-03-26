@@ -1,4 +1,5 @@
 //! `DEVSHELL_VM*` environment variable names (documented in module root).
+#![allow(clippy::too_long_first_doc_paragraph, clippy::doc_markdown)]
 
 /// `DEVSHELL_VM` — **Release / binary default:** unset means **on** (use VM backend per `ENV_DEVSHELL_VM_BACKEND`).
 /// Set to `off` / `0` / `false` / `no` (case-insensitive) to use **only** the host temp sandbox.
