@@ -82,6 +82,27 @@
 | `export` / `import` | JSON/CSV；`import` 可选 `--replace`。 |
 | `init-ai` | `--for-tool`、`--output`。 |
 
+**`--json` 成功载荷（`status: "success"`）**
+
+| 子命令 | `data` 关键字段 |
+|--------|------------------|
+| `add` | `id`, `title` |
+| `list` | `items`（数组）, `empty`（布尔）；空列表时额外含 `message: "No tasks."` |
+| `show` | 单个 todo 对象（`id/title/completed/description/due_date/priority/tags/repeat_*`） |
+| `update` | `id`, `title` |
+| `complete` | `id`, `completed: true` |
+| `delete` | `id`, `deleted: true` |
+| `search` | 与 `list` 同形（复用空列表语义） |
+| `stats` | `total`, `incomplete`, `complete` |
+| `export` | `exported`, `file` |
+| `import` | 合并：`merged`, `count`, `file`；替换：`replaced`, `count`, `file` |
+| `init-ai` | `generated: true` |
+
+**`--json` 失败载荷（`status: "error"`）**
+
+- 统一结构：`{"status":"error","error":{"code":<i32>,"message":"..."}}`
+- `error.code` 与退出码一致：`1` 一般错误，`2` 参数错误，`3` 数据错误。
+
 **数据约定**
 
 - 数据文件默认 **`.todo.json`**（与 devshell 内 **`todo`** 子集共用）。

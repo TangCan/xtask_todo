@@ -88,6 +88,7 @@ env:
 /// `cargo metadata`), i.e. the workspace `target/`, not `cwd/target/` when the crate root is `xtask/`.
 #[test]
 fn cmd_lima_todo_print_only_no_build_smoke() {
+    let _cwd_lock = crate::tests::cwd_test_lock();
     let workspace = std::env::current_dir().expect("cwd");
     let (_root, target_dir) = cargo_metadata_target(&workspace).expect("cargo metadata");
     let release = target_dir.join("release");

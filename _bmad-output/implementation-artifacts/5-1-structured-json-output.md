@@ -1,6 +1,6 @@
 # Story 5.1：结构化 JSON 输出
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -35,11 +35,11 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **清单**：从 **`TodoSub`**（**`args.rs`**）列出所有子命令，标注哪些 **已实现** **`--json`** 成功/失败路径（对照 **`dispatch.rs`**）。
-- [ ] **载荷表**：为每个子命令写 **`data` 字段**（或指向 **`serde_json::json!`** / **`todo_to_json`** 的单一事实来源）；**`list`/`search`** 与 **`todo_list_json_payload`** 对齐。
-- [ ] **缺口**：若某子命令 **`--json`** 仅部分路径有 JSON 或与人机模式不一致，补测试或实现（**最小化**变更）。
-- [ ] **文档**：在 **`docs/requirements.md` §3.2** 或 **`crates/todo/README.md`** 增加**简短** JSON 示例（成功/失败各一条）或链接到 **`xtask/tests`** 中的 fixture 行为。
-- [ ] **验证**：**`cargo test -p xtask`**、**`cargo clippy -p xtask --all-targets -- -D warnings`**。
+- [x] **清单**：从 **`TodoSub`**（**`args.rs`**）列出所有子命令，标注哪些 **已实现** **`--json`** 成功/失败路径（对照 **`dispatch.rs`**）。
+- [x] **载荷表**：为每个子命令写 **`data` 字段**（或指向 **`serde_json::json!`** / **`todo_to_json`** 的单一事实来源）；**`list`/`search`** 与 **`todo_list_json_payload`** 对齐。
+- [x] **缺口**：若某子命令 **`--json`** 仅部分路径有 JSON 或与人机模式不一致，补测试或实现（**最小化**变更）。
+- [x] **文档**：在 **`docs/requirements.md` §3.2** 或 **`crates/todo/README.md`** 增加**简短** JSON 示例（成功/失败各一条）或链接到 **`xtask/tests`** 中的 fixture 行为。
+- [x] **验证**：**`cargo test -p xtask`**、**`cargo clippy -p xtask --all-targets -- -D warnings`**。
 
 ## Dev Notes
 
@@ -71,15 +71,30 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask xtask_todo_init_ai_json_success_has_generated_true`
+- `cargo test -p xtask todo_bin_json_list_empty_matches_contract`
+- `cargo test -p xtask todo_bin_json_show_invalid_id_outputs_error_contract`
+- `cargo test -p xtask && cargo clippy -p xtask --all-targets -- -D warnings`
+
 ### Completion Notes List
+
+- 已核对 `TodoSub` 全量子命令（`add/list/show/update/complete/delete/search/stats/export/import/init-ai`）在 `dispatch.rs` 均有 `--json` 成功路径；失败路径统一由 `xtask/src/lib.rs` 与 `xtask/src/bin/todo.rs` 在 `json=true` 时通过 `print_json_error` 输出 `status:error`。
+- 补齐合同测试缺口：新增 `xtask todo --json init-ai` 成功载荷断言（`data.generated=true`），并新增独立 `todo` 二进制的 `--json list` 成功与 `--json show 0` 失败合同断言，覆盖 AC1/AC2 对两条入口（`cargo xtask todo` + `todo`）的一致性要求。
+- 为避免并行测试下全局 `current_dir` 竞争导致 `cargo metadata` 偶发失败，在 `xtask/src/lima_todo/tests.rs` 的 smoke 测试接入 `cwd_test_lock()`；随后全量 `cargo test -p xtask` 稳定通过。
+- 在 `docs/requirements.md` §3.2 增加 `--json` 成功载荷字段表（逐子命令）与统一失败载荷格式说明（`status:error + error.code/message`），将数据形状文档化为单一对外约定。
 
 ### File List
 
+- `xtask/tests/todo_list/basic.rs`
+- `xtask/src/lima_todo/tests.rs`
+- `docs/requirements.md`
+- `_bmad-output/implementation-artifacts/5-1-structured-json-output.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录
