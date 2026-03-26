@@ -1,6 +1,6 @@
 # Story 4.4：关闭 VM 与宿主降级
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -96,9 +96,24 @@ gpt-5.3-codex
 
 - `crates/todo/src/lib.rs`
 - `crates/todo/src/devshell/vm/mod.rs`
+- `crates/todo/src/devshell/vm/tests.rs`
 - `crates/todo/src/devshell/vm/session_gamma/tests.rs`
 - `_bmad-output/implementation-artifacts/4-4-vm-off-host-degradation.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings（BMad 分层审查 · 2026-03-26）
+
+| 层 | 结论 |
+|----|------|
+| **Blind Hunter** | **`vm/mod.rs` 内联 tests** 抽出为 **`vm/tests.rs`**，并新增 **`try_from_config_*`** 直接覆盖 **`SessionHolder::try_from_config`**（**`enabled=false` → Host**；**`host`/`auto`/空 backend → Host**），与 **`VmConfig::use_host_sandbox`** 语义一致，贴合 **AC1/AC2**。 |
+| **Edge Case Hunter** | **`test_support::vm_env_mutex()`** 统一串行化 **VM 相关 env** 修改；**`session_gamma/tests.rs`** 改用同一互斥，降低与 **`try_session_rc_*`** 并行时的非确定性。**`try_from_config_*`** 不测 env，无锁需求。 |
+| **Acceptance Auditor** | **AC3**：既有 **`try_session_rc` / `try_session_rc_or_host`** 测保留并改用共享锁。**AC4**：完成记录明确 Unix **`try_session_rc_or_host`** vs 非 Unix **`try_session_rc`** 差异，未擅自改产品行为。**AC6**：**`cargo test -p xtask-todo-lib`**（275 passed，1 ignored）、**`--features beta-vm`** 同口径通过；**`clippy`（默认 + `beta-vm`）** **`-D warnings`** 通过。 |
+
+**待办项**：无。若本地再次出现 **`crates/todo/.dev_shell.bin`** 二进制漂移，按仓库惯例 **`git restore`**，勿混入功能提交。
+
+## Change Log
+
+- **2026-03-26**：BMad 代码审查通过 — 故事与 sprint **4-4-vm-off-host-degradation** 标为 **done**；sprint **`last_updated`** 与 **`# last_updated`** 已一致（**`2026-03-26T03:50:00Z`**，以当前仓库为准）；复验 **`cargo test -p xtask-todo-lib`**（275 passed）、**`--features beta-vm`** 与 **clippy**。
 
 ## 完成状态
 

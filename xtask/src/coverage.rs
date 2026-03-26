@@ -83,7 +83,7 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
                 "--exclude-files",
                 "crates/todo/src/devshell/mod.rs",
                 "--exclude-files",
-                "crates/todo/src/devshell/repl.rs",
+                "crates/todo/src/devshell/repl/*",
                 "--exclude-files",
                 "crates/todo/src/devshell/script/exec.rs",
                 "--exclude-files",
