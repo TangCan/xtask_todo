@@ -53,11 +53,148 @@ pub fn run_main() -> Result<(), Box<dyn std::error::Error>> {
     run_main_from_args(&args, is_tty, &mut stdin, &mut stdout, &mut stderr)
 }
 
+fn vm_session_for_entry<W: std::io::Write>(
+    stderr: &mut W,
+) -> Result<Rc<RefCell<vm::SessionHolder>>, Box<dyn std::error::Error>> {
+    if cfg!(unix) {
+        Ok(vm::try_session_rc_or_host(stderr))
+    } else {
+        vm::try_session_rc(stderr).map_err(|_| {
+            Box::new(std::io::Error::other("vm session")) as Box<dyn std::error::Error>
+        })
+    }
+}
+
+fn run_script_mode<R, W1, W2>(
+    positionals: &[&str],
+    set_e: bool,
+    stdin: &mut R,
+    stdout: &mut W1,
+    stderr: &mut W2,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    R: std::io::BufRead + std::io::Read,
+    W1: std::io::Write,
+    W2: std::io::Write,
+{
+    if positionals.len() != 1 {
+        writeln!(stderr, "usage: dev_shell [-e] -f script.dsh")?;
+        return Err(Box::new(std::io::Error::other("usage")));
+    }
+    let script_path = positionals[0];
+    let script_src = match host_text::read_host_text(Path::new(script_path)) {
+        Ok(s) => s,
+        Err(e) => {
+            writeln!(stderr, "dev_shell: {script_path}: {e}")?;
+            return Err(e.into());
+        }
+    };
+    let bin_path = Path::new(".dev_shell.bin");
+    #[cfg(unix)]
+    vm::export_devshell_workspace_root_env();
+    let vm_session = vm_session_for_entry(stderr)?;
+    let vfs: Rc<RefCell<Vfs>> = if cfg!(unix) && vm_session.borrow().is_host_only() && !cfg!(test) {
+        let root = vm::vm_workspace_host_root();
+        std::fs::create_dir_all(&root)?;
+        Rc::new(RefCell::new(Vfs::new_host_root(root)?))
+    } else {
+        let v = match serialization::load_from_file(bin_path) {
+            Ok(v) => v,
+            Err(e) => {
+                if e.kind() != io::ErrorKind::NotFound {
+                    let _ = writeln!(stderr, "Failed to load {}: {}", bin_path.display(), e);
+                }
+                Vfs::new()
+            }
+        };
+        Rc::new(RefCell::new(v))
+    };
+    if vm_session.borrow().is_guest_primary() {
+        if let Err(e) = session_store::apply_guest_primary_startup(&mut vfs.borrow_mut(), bin_path)
+        {
+            let _ = writeln!(stderr, "dev_shell: guest-primary session: {e}");
+        }
+    }
+    script::run_script(&vfs, &vm_session, &script_src, set_e, stdin, stdout, stderr)
+        .map_err(|e| Box::new(std::io::Error::other(e.to_string())) as Box<dyn std::error::Error>)
+}
+
+fn run_repl_mode<R, W1, W2>(
+    positionals: &[&str],
+    is_tty: bool,
+    run_script: bool,
+    stdin: &mut R,
+    stdout: &mut W1,
+    stderr: &mut W2,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    R: std::io::BufRead + std::io::Read,
+    W1: std::io::Write,
+    W2: std::io::Write,
+{
+    #[cfg(any(test, not(unix)))]
+    let _ = run_script;
+
+    let path = match positionals {
+        [] => Path::new(".dev_shell.bin"),
+        [p] => Path::new(p),
+        _ => {
+            writeln!(stderr, "usage: dev_shell [options] [path]")?;
+            return Err(Box::new(std::io::Error::other("usage")));
+        }
+    };
+    #[cfg(unix)]
+    vm::export_devshell_workspace_root_env();
+    let vm_session = vm_session_for_entry(stderr)?;
+
+    #[cfg(all(unix, not(test)))]
+    if vm::should_delegate_lima_shell(&vm_session, is_tty, run_script) {
+        let vfs = Rc::new(RefCell::new(Vfs::new()));
+        vm_session
+            .borrow_mut()
+            .ensure_ready(&vfs.borrow(), vfs.borrow().cwd())
+            .map_err(|e| {
+                Box::new(std::io::Error::other(e.to_string())) as Box<dyn std::error::Error>
+            })?;
+        let err = vm_session.borrow().exec_lima_interactive_shell();
+        return Err(Box::new(err));
+    }
+
+    let vfs: Rc<RefCell<Vfs>> = if cfg!(unix) && vm_session.borrow().is_host_only() && !cfg!(test) {
+        let root = vm::vm_workspace_host_root();
+        std::fs::create_dir_all(&root)?;
+        Rc::new(RefCell::new(Vfs::new_host_root(root)?))
+    } else {
+        let v = match serialization::load_from_file(path) {
+            Ok(v) => v,
+            Err(e) => {
+                if e.kind() == io::ErrorKind::NotFound {
+                    if positionals.len() > 1 {
+                        let _ = writeln!(stderr, "File not found, starting with empty VFS");
+                    }
+                } else {
+                    let _ = writeln!(stderr, "Failed to load {}: {}", path.display(), e);
+                }
+                Vfs::new()
+            }
+        };
+        Rc::new(RefCell::new(v))
+    };
+    if vm_session.borrow().is_guest_primary() {
+        if let Err(e) = session_store::apply_guest_primary_startup(&mut vfs.borrow_mut(), path) {
+            let _ = writeln!(stderr, "dev_shell: guest-primary session: {e}");
+        }
+    }
+    repl::run(&vfs, &vm_session, is_tty, path, stdin, stdout, stderr).map_err(|()| {
+        Box::new(std::io::Error::other("repl error")) as Box<dyn std::error::Error>
+    })?;
+    Ok(())
+}
+
 /// Same as `run_main` but takes args, `is_tty`, and streams (for tests and callers that supply I/O).
 ///
 /// # Errors
 /// Returns an error if usage is wrong or I/O fails critically.
-#[allow(clippy::too_many_lines)] // script vs REPL branches; split would scatter entry-point logic
 pub fn run_main_from_args<R, W1, W2>(
     args: &[String],
     is_tty: bool,
@@ -80,131 +217,9 @@ where
     let run_script = args.iter().skip(1).any(|a| a == "-f");
 
     if run_script {
-        if positionals.len() != 1 {
-            writeln!(stderr, "usage: dev_shell [-e] -f script.dsh")?;
-            return Err(Box::new(std::io::Error::other("usage")));
-        }
-        let script_path = positionals[0];
-        let script_src = match host_text::read_host_text(Path::new(script_path)) {
-            Ok(s) => s,
-            Err(e) => {
-                writeln!(stderr, "dev_shell: {script_path}: {e}")?;
-                return Err(e.into());
-            }
-        };
-        let bin_path = Path::new(".dev_shell.bin");
-        #[cfg(unix)]
-        vm::export_devshell_workspace_root_env();
-        let vm_session = if cfg!(unix) {
-            vm::try_session_rc_or_host(stderr)
-        } else {
-            match vm::try_session_rc(stderr) {
-                Ok(s) => s,
-                Err(_) => return Err(Box::new(std::io::Error::other("vm session"))),
-            }
-        };
-        let vfs: Rc<RefCell<Vfs>> =
-            if cfg!(unix) && vm_session.borrow().is_host_only() && !cfg!(test) {
-                let root = vm::vm_workspace_host_root();
-                std::fs::create_dir_all(&root)?;
-                Rc::new(RefCell::new(Vfs::new_host_root(root)?))
-            } else {
-                let v = match serialization::load_from_file(bin_path) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        if e.kind() != io::ErrorKind::NotFound {
-                            let _ =
-                                writeln!(stderr, "Failed to load {}: {}", bin_path.display(), e);
-                        }
-                        Vfs::new()
-                    }
-                };
-                Rc::new(RefCell::new(v))
-            };
-        if vm_session.borrow().is_guest_primary() {
-            if let Err(e) =
-                session_store::apply_guest_primary_startup(&mut vfs.borrow_mut(), bin_path)
-            {
-                let _ = writeln!(stderr, "dev_shell: guest-primary session: {e}");
-            }
-        }
-        script::run_script(
-            &vfs,
-            &vm_session,
-            &script_src,
-            bin_path,
-            set_e,
-            stdin,
-            stdout,
-            stderr,
-        )
-        .map_err(|e| Box::new(std::io::Error::other(e.to_string())) as Box<dyn std::error::Error>)
+        run_script_mode(&positionals, set_e, stdin, stdout, stderr)
     } else {
-        let path = match positionals.as_slice() {
-            [] => Path::new(".dev_shell.bin"),
-            [p] => Path::new(p),
-            _ => {
-                writeln!(stderr, "usage: dev_shell [options] [path]")?;
-                return Err(Box::new(std::io::Error::other("usage")));
-            }
-        };
-
-        #[cfg(unix)]
-        vm::export_devshell_workspace_root_env();
-
-        let vm_session = if cfg!(unix) {
-            vm::try_session_rc_or_host(stderr)
-        } else {
-            match vm::try_session_rc(stderr) {
-                Ok(s) => s,
-                Err(_) => return Err(Box::new(std::io::Error::other("vm session"))),
-            }
-        };
-
-        #[cfg(all(unix, not(test)))]
-        if vm::should_delegate_lima_shell(&vm_session, is_tty, run_script) {
-            let vfs = Rc::new(RefCell::new(Vfs::new()));
-            vm_session
-                .borrow_mut()
-                .ensure_ready(&vfs.borrow(), vfs.borrow().cwd())
-                .map_err(|e| {
-                    Box::new(std::io::Error::other(e.to_string())) as Box<dyn std::error::Error>
-                })?;
-            let err = vm_session.borrow().exec_lima_interactive_shell();
-            return Err(Box::new(err));
-        }
-
-        let vfs: Rc<RefCell<Vfs>> =
-            if cfg!(unix) && vm_session.borrow().is_host_only() && !cfg!(test) {
-                let root = vm::vm_workspace_host_root();
-                std::fs::create_dir_all(&root)?;
-                Rc::new(RefCell::new(Vfs::new_host_root(root)?))
-            } else {
-                let v = match serialization::load_from_file(path) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        if e.kind() == io::ErrorKind::NotFound {
-                            if positionals.len() > 1 {
-                                let _ = writeln!(stderr, "File not found, starting with empty VFS");
-                            }
-                        } else {
-                            let _ = writeln!(stderr, "Failed to load {}: {}", path.display(), e);
-                        }
-                        Vfs::new()
-                    }
-                };
-                Rc::new(RefCell::new(v))
-            };
-        if vm_session.borrow().is_guest_primary() {
-            if let Err(e) = session_store::apply_guest_primary_startup(&mut vfs.borrow_mut(), path)
-            {
-                let _ = writeln!(stderr, "dev_shell: guest-primary session: {e}");
-            }
-        }
-        repl::run(&vfs, &vm_session, is_tty, path, stdin, stdout, stderr).map_err(|()| {
-            Box::new(std::io::Error::other("repl error")) as Box<dyn std::error::Error>
-        })?;
-        Ok(())
+        run_repl_mode(&positionals, is_tty, run_script, stdin, stdout, stderr)
     }
 }
 

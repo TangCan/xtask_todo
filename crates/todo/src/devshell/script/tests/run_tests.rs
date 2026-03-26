@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::io::Cursor;
-use std::path::Path;
 use std::rc::Rc;
 
 use crate::devshell::vfs::Vfs;
@@ -20,7 +19,6 @@ fn run_script_assign_and_echo() {
         &vfs,
         &vm,
         script,
-        Path::new(""),
         false,
         &mut stdin,
         &mut stdout,
@@ -46,7 +44,6 @@ fn run_script_for_loop() {
         &vfs,
         &vm,
         script,
-        Path::new(""),
         false,
         &mut stdin,
         &mut stdout,
@@ -73,7 +70,6 @@ fn run_script_if_then_else() {
         &vfs,
         &vm,
         script,
-        Path::new(""),
         false,
         &mut stdin,
         &mut stdout,
@@ -100,7 +96,6 @@ fn run_script_if_else_branch_runs_when_cond_fails() {
         &vfs,
         &vm,
         script,
-        Path::new(""),
         false,
         &mut stdin,
         &mut stdout,
@@ -128,7 +123,6 @@ fn run_script_set_e_fail_exits() {
         &vfs,
         &vm,
         script,
-        Path::new(""),
         true,
         &mut stdin,
         &mut stdout,
@@ -162,7 +156,6 @@ fn run_script_set_e_script_inner() {
         &vfs,
         &vm,
         script,
-        Path::new(""),
         false,
         &mut stdin,
         &mut stdout,
@@ -186,7 +179,6 @@ fn run_script_command_parse_error_returns_failed() {
         &vfs,
         &vm,
         script,
-        Path::new(""),
         false,
         &mut stdin,
         &mut stdout,
@@ -209,7 +201,6 @@ fn run_script_parse_error_returns_err() {
         &vfs,
         &vm,
         script,
-        Path::new(""),
         false,
         &mut stdin,
         &mut stdout,
@@ -232,7 +223,6 @@ fn run_script_source_nonexistent_returns_err() {
         &vfs,
         &vm,
         script,
-        Path::new(""),
         false,
         &mut stdin,
         &mut stdout,
@@ -259,7 +249,6 @@ fn run_script_source_host_file() {
         &vfs,
         &vm,
         &script,
-        Path::new(""),
         false,
         &mut stdin,
         &mut stdout,

@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::Cursor;
-use std::path::Path;
 use std::rc::Rc;
 
 use crate::devshell::vfs::Vfs;
@@ -86,7 +85,6 @@ fn run_script_empty_command_line_succeeds() {
         &vfs,
         &vm,
         script,
-        Path::new(""),
         false,
         &mut stdin,
         &mut stdout,

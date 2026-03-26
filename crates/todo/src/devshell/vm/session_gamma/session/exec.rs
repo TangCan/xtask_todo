@@ -28,18 +28,18 @@ sudo apt-get install -y -qq build-essential
 
     /// If guest has no `gcc`, try Debian/Ubuntu `apt-get install -y build-essential` (non-interactive sudo).
     fn maybe_ensure_guest_build_essential(&mut self) -> Result<(), VmError> {
-        if self.guest_build_essential_done {
+        if self.flag_is_set(Self::FLAG_GUEST_BUILD_ESSENTIAL_DONE) {
             return Ok(());
         }
 
         if !auto_build_essential_enabled() {
-            self.guest_build_essential_done = true;
+            self.set_flag(Self::FLAG_GUEST_BUILD_ESSENTIAL_DONE);
             return Ok(());
         }
 
         let probe = self.limactl_shell_script_sh("/", "command -v gcc >/dev/null 2>&1")?;
         if probe.status.success() {
-            self.guest_build_essential_done = true;
+            self.set_flag(Self::FLAG_GUEST_BUILD_ESSENTIAL_DONE);
             return Ok(());
         }
 
@@ -51,7 +51,7 @@ sudo apt-get install -y -qq build-essential
             eprintln!(
                 "dev_shell: guest: no apt-get/dpkg; install gcc + binutils manually (see docs/devshell-vm-gamma.md)."
             );
-            self.guest_build_essential_done = true;
+            self.set_flag(Self::FLAG_GUEST_BUILD_ESSENTIAL_DONE);
             return Ok(());
         }
 
@@ -77,17 +77,17 @@ sudo apt-get install -y -qq build-essential
                 "dev_shell: hint: in the guest shell: sudo apt update && sudo apt install -y build-essential"
             );
         }
-        self.guest_build_essential_done = true;
+        self.set_flag(Self::FLAG_GUEST_BUILD_ESSENTIAL_DONE);
         Ok(())
     }
 
     /// If guest has no `todo` in PATH (and no executable under expected `target/release` when mapped), print install hints; optionally run `cargo build` in guest.
     fn maybe_guest_todo_probe_hint_and_install(&mut self) -> Result<(), VmError> {
-        if self.guest_todo_hint_done {
+        if self.flag_is_set(Self::FLAG_GUEST_TODO_HINT_DONE) {
             return Ok(());
         }
         if !guest_todo_hint_enabled() {
-            self.guest_todo_hint_done = true;
+            self.set_flag(Self::FLAG_GUEST_TODO_HINT_DONE);
             return Ok(());
         }
 
@@ -107,7 +107,7 @@ sudo apt-get install -y -qq build-essential
 
         let probe = self.limactl_shell_script_sh("/", &script)?;
         if probe.status.success() {
-            self.guest_todo_hint_done = true;
+            self.set_flag(Self::FLAG_GUEST_TODO_HINT_DONE);
             return Ok(());
         }
 
@@ -175,7 +175,7 @@ cargo build -p xtask --release --bin todo
             }
         }
 
-        self.guest_todo_hint_done = true;
+        self.set_flag(Self::FLAG_GUEST_TODO_HINT_DONE);
         Ok(())
     }
 }
@@ -201,8 +201,8 @@ impl VmExecutionSession for GammaSession {
         }
 
         let guest_dir = guest_dir_for_cwd_inner(&self.guest_mount, vfs_cwd);
-        if !self.lima_hints_checked {
-            self.lima_hints_checked = true;
+        if !self.flag_is_set(Self::FLAG_LIMA_HINTS_CHECKED) {
+            self.set_flag(Self::FLAG_LIMA_HINTS_CHECKED);
             lima_diagnostics::warn_if_guest_misconfigured(
                 &self.limactl,
                 &self.lima_instance,
@@ -238,7 +238,7 @@ impl VmExecutionSession for GammaSession {
     }
 
     fn shutdown(&mut self, vfs: &mut Vfs, vfs_cwd: &str) -> Result<(), VmError> {
-        if self.vm_started && self.sync_vfs_with_workspace {
+        if self.flag_is_set(Self::FLAG_VM_STARTED) && self.sync_vfs_with_workspace {
             if let Err(e) = pull_workspace_to_vfs(&self.workspace_parent, vfs_cwd, vfs) {
                 return Err(VmError::Sandbox(e));
             }

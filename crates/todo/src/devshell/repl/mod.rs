@@ -61,16 +61,7 @@ where
         let content = script::read_script_source_text(vfs, vm_session, path);
         match content {
             Some(c) => {
-                let _ = script::run_script(
-                    vfs,
-                    vm_session,
-                    &c,
-                    Path::new(""),
-                    false,
-                    stdin,
-                    stdout,
-                    stderr,
-                );
+                let _ = script::run_script(vfs, vm_session, &c, false, stdin, stdout, stderr);
             }
             None => {
                 let _ = writeln!(stderr, "source: cannot read {path}");
@@ -87,16 +78,7 @@ where
         let content = script::read_script_source_text(vfs, vm_session, path);
         match content {
             Some(c) => {
-                let _ = script::run_script(
-                    vfs,
-                    vm_session,
-                    &c,
-                    Path::new(""),
-                    false,
-                    stdin,
-                    stdout,
-                    stderr,
-                );
+                let _ = script::run_script(vfs, vm_session, &c, false, stdin, stdout, stderr);
             }
             None => {
                 let _ = writeln!(stderr, ".: cannot read {path}");

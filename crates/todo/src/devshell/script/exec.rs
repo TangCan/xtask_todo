@@ -308,12 +308,10 @@ pub fn logical_lines(source: &str) -> Vec<String> {
 ///
 /// # Errors
 /// Returns `Err(RunScriptError)` on parse error (message to stderr), when `set_e` is true and a command fails, or on source failure.
-#[allow(clippy::too_many_arguments)] // vfs + vm session + script I/O surface
 pub fn run_script<R, W1, W2>(
     vfs: &Rc<RefCell<Vfs>>,
     vm_session: &Rc<RefCell<SessionHolder>>,
     script_src: &str,
-    _bin_path: &Path,
     set_e: bool,
     stdin: &mut R,
     stdout: &mut W1,

@@ -18,7 +18,6 @@ use super::helpers::{
 
 /// Lima-backed session: sync VFS ↔ host workspace, run tools inside the VM.
 #[derive(Debug)]
-#[allow(clippy::struct_excessive_bools)]
 pub struct GammaSession {
     lima_instance: String,
     /// Same layout as temp export: subtree leaves under this dir (see `sandbox::host_export_root`).
@@ -26,18 +25,26 @@ pub struct GammaSession {
     /// Guest path where `workspace_parent` is mounted.
     guest_mount: String,
     limactl: PathBuf,
-    vm_started: bool,
-    /// After first successful `limactl start`, run one guest/yaml diagnostic pass.
-    lima_hints_checked: bool,
-    /// After first `ensure_ready`, skip repeating guest C toolchain probe/install.
-    guest_build_essential_done: bool,
-    /// After first `ensure_ready`, skip repeating guest `todo` probe / install hints.
-    guest_todo_hint_done: bool,
+    /// Bitset for one-time lifecycle/probe gates.
+    state_flags: u8,
     /// When `true` (Mode S), push/pull VFS around each `cargo`/`rustup`. When `false` ([`WorkspaceMode::Guest`]), guest tree is authoritative — no sync (see guest-primary design §1c).
     sync_vfs_with_workspace: bool,
 }
 
 impl GammaSession {
+    const FLAG_VM_STARTED: u8 = 1 << 0;
+    const FLAG_LIMA_HINTS_CHECKED: u8 = 1 << 1;
+    const FLAG_GUEST_BUILD_ESSENTIAL_DONE: u8 = 1 << 2;
+    const FLAG_GUEST_TODO_HINT_DONE: u8 = 1 << 3;
+
+    const fn flag_is_set(&self, mask: u8) -> bool {
+        (self.state_flags & mask) != 0
+    }
+
+    const fn set_flag(&mut self, mask: u8) {
+        self.state_flags |= mask;
+    }
+
     /// Build a γ session from VM config (does not start the VM yet).
     ///
     /// # Errors
@@ -59,10 +66,7 @@ impl GammaSession {
             workspace_parent,
             guest_mount,
             limactl,
-            vm_started: false,
-            lima_hints_checked: false,
-            guest_build_essential_done: false,
-            guest_todo_hint_done: false,
+            state_flags: 0,
             sync_vfs_with_workspace,
         })
     }
@@ -74,7 +78,7 @@ impl GammaSession {
     }
 
     fn limactl_ensure_running(&mut self) -> Result<(), VmError> {
-        if self.vm_started {
+        if self.flag_is_set(Self::FLAG_VM_STARTED) {
             return Ok(());
         }
         std::fs::create_dir_all(&self.workspace_parent).map_err(|e| {
@@ -102,7 +106,7 @@ impl GammaSession {
                 st.code()
             )));
         }
-        self.vm_started = true;
+        self.set_flag(Self::FLAG_VM_STARTED);
         Ok(())
     }
 
