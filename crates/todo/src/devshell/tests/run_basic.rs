@@ -1,12 +1,20 @@
 //! Basic `run_with` tests: pwd, mkdir, ls, echo, help, save, cd, todo list/stats/add.
 
 use std::io::Cursor;
+use std::sync::{Mutex, OnceLock, PoisonError};
 
 use super::super::command::{execute_pipeline, run_builtin, ExecContext, RunResult};
 use super::super::parser::{Pipeline, SimpleCommand};
 use super::super::run_with;
 use super::super::vfs::Vfs;
 use super::super::vm::SessionHolder;
+
+fn path_env_lock() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+}
 
 #[test]
 fn run_with_pwd_mkdir_ls_exit() {
@@ -253,4 +261,35 @@ fn run_with_cd_and_pwd() {
     .unwrap();
     let out = String::from_utf8(stdout).unwrap();
     assert!(out.contains("/a"));
+}
+
+#[test]
+fn run_with_rust_tools_missing_in_path_are_diagnostic() {
+    let _g = path_env_lock();
+    let old_path = std::env::var_os("PATH");
+    std::env::set_var("PATH", "/nonexistent_devshell_path_404");
+    let input = "cargo --version\nrustup --version\nexit\n";
+    let mut stdin = Cursor::new(input);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    run_with(
+        &["dev_shell".to_string()],
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+    match old_path {
+        Some(v) => std::env::set_var("PATH", v),
+        None => std::env::remove_var("PATH"),
+    }
+    let err = String::from_utf8(stderr).unwrap();
+    assert!(
+        err.contains("cargo not found in PATH"),
+        "stderr should contain CargoNotFound diagnostic: {err}"
+    );
+    assert!(
+        err.contains("rustup not found in PATH"),
+        "stderr should contain RustupNotFound diagnostic: {err}"
+    );
 }

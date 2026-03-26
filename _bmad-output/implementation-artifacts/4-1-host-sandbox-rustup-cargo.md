@@ -1,6 +1,6 @@
 # Story 4.1：宿主沙箱执行 rustup/cargo
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -39,10 +39,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **棕地核对**：阅读 **`sandbox::run_rust_tool`** 全路径；对照 **`docs/requirements.md` §5.4** 表中 **`rustup`/`cargo`** 行（Mode S）。
-- [ ] **环境矩阵**：在 **`DEVSHELL_VM=off`**（或文档等价）下手工或集成测试 **`cargo build`** 类命令；记录 **`target/`** 可执行位与 **`restore_execute_bits_for_build_artifacts`** 行为。
-- [ ] **文档**：若行为与 **`docs/devshell-vm-gamma.md`** / **`sandbox` 模块头** 有出入，同步一处真源。
-- [ ] **验证**：`cargo test -p xtask-todo-lib sandbox`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
+- [x] **棕地核对**：阅读 **`sandbox::run_rust_tool`** 全路径；对照 **`docs/requirements.md` §5.4** 表中 **`rustup`/`cargo`** 行（Mode S）。
+- [x] **环境矩阵**：在 **`DEVSHELL_VM=off`**（或文档等价）下手工或集成测试 **`cargo build`** 类命令；记录 **`target/`** 可执行位与 **`restore_execute_bits_for_build_artifacts`** 行为。
+- [x] **文档**：若行为与 **`docs/devshell-vm-gamma.md`** / **`sandbox` 模块头** 有出入，同步一处真源。
+- [x] **验证**：`cargo test -p xtask-todo-lib sandbox`、`cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`。
 
 ## Dev Notes
 
@@ -75,15 +75,30 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask-todo-lib run_with_rust_tools_missing_in_path_are_diagnostic`
+- `cargo test -p xtask-todo-lib sandbox`
+- `cargo test -p xtask-todo-lib`
+- `cargo clippy -p xtask-todo-lib --all-targets -- -D warnings`
+
 ### Completion Notes List
+
+- 已核对宿主沙箱主路径：`run_rust_tool_builtin -> SessionHolder::run_rust_tool(Self::Host) -> sandbox::run_rust_tool`，流程为导出、在导出目录执行、回写、清理，与 FR20 一致。
+- 补充集成测试 `run_with_rust_tools_missing_in_path_are_diagnostic`，在空 PATH 下验证 `cargo`/`rustup` 诊断输出分别包含 `cargo not found in PATH` 与 `rustup not found in PATH`，对应 `BuiltinError::CargoNotFound/RustupNotFound` 映射。
+- 既有 `sandbox` 测试已覆盖关键行为：导出/回写、`find_in_path` 失败、`restore_execute_bits_for_build_artifacts` 修复 `target` 下 ELF 可执行位、Linux `DEVSHELL_RUST_MOUNT_NAMESPACE`（`#[ignore]` 专用环境）。
+- `DEVSHELL_VM=off` / `DEVSHELL_VM_BACKEND=host` 路径经 `VmConfig` 与 `SessionHolder::Host` 逻辑保持一致；未引入 γ/β 相关改动（符合故事边界）。
+- 文档核对结果：`requirements` §5.4 与 `docs/devshell-vm-gamma.md` 当前描述与实现一致，无需更新文档真源。
 
 ### File List
 
+- `crates/todo/src/devshell/tests/run_basic.rs`
+- `_bmad-output/implementation-artifacts/4-1-host-sandbox-rustup-cargo.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录
