@@ -1,6 +1,6 @@
 # Story 5.3：退出码约定
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -42,10 +42,10 @@ Status: ready-for-dev
 
 ## Tasks / Subtasks
 
-- [ ] **矩阵**：**子命令** × **失败原因** → **期望码**（对照 **`error.rs`** + **`dispatch.rs`**）；记录与 **`requirements §3.1`** 的差异。
-- [ ] **json 一致性**：抽查 **`--json`** 失败路径，**`error.code`** == **`status.code()`**（已有测试可复用模式）。
-- [ ] **文档**：若 **`requirements §6`** 表过简，可在 **`§3.2`** 脚注或 **`docs/design.md`** 增加「**`TodoCliError` 映射**」**一句**引用 **`error.rs`**。
-- [ ] **验证**：**`cargo test -p xtask`**、**`cargo clippy -p xtask --all-targets -- -D warnings`**。
+- [x] **矩阵**：**子命令** × **失败原因** → **期望码**（对照 **`error.rs`** + **`dispatch.rs`**）；记录与 **`requirements §3.1`** 的差异。
+- [x] **json 一致性**：抽查 **`--json`** 失败路径，**`error.code`** == **`status.code()`**（已有测试可复用模式）。
+- [x] **文档**：若 **`requirements §6`** 表过简，可在 **`§3.2`** 脚注或 **`docs/design.md`** 增加「**`TodoCliError` 映射**」**一句**引用 **`error.rs`**。
+- [x] **验证**：**`cargo test -p xtask`**、**`cargo clippy -p xtask --all-targets -- -D warnings`**。
 
 ## Dev Notes
 
@@ -78,15 +78,27 @@ Status: ready-for-dev
 
 ### Agent Model Used
 
-（实现时填写）
+gpt-5.3-codex
 
 ### Debug Log References
 
+- `cargo test -p xtask todo_bin_exit_code_mapping_uses_general_parameter_data_contract`
+- `cargo test -p xtask && cargo clippy -p xtask --all-targets -- -D warnings`
+
 ### Completion Notes List
+
+- 已核对退出码主链路：`TodoCliError::exit_code()`（`error.rs`）→ `xtask/src/lib.rs` 中 `RunFailure.code` → `xtask/src/bin/todo.rs` 中 `std::process::exit(e.exit_code())`，两入口共用同一 1/2/3 映射（FR28）。
+- 已核对失败分类：`Parameter` 用于可预期输入问题（空标题、`id=0`、非法参数）；`Data` 用于领域数据不存在（如不存在 id）；`General` 保留 I/O/导入解析等一般错误，符合 AC3 与 `requirements §3.1`。
+- 新增集成测试 `todo_bin_exit_code_mapping_uses_general_parameter_data_contract`，在独立 `todo` 二进制下验证 `--json` 失败载荷 `error.code` 与进程退出码一致：参数错误=2、数据错误=3、一般错误=1。
+- 在 `docs/requirements.md` §3.2 补充一句 `TodoCliError` 与 `EXIT_*` 的映射来源，明确文档锚点并避免与实现漂移。
 
 ### File List
 
+- `xtask/tests/todo_list/basic.rs`
+- `docs/requirements.md`
+- `_bmad-output/implementation-artifacts/5-3-exit-code-conventions.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 ## 完成状态
 
-- [ ] 所有 AC 已验证（自动化或记录手工步骤）
-- [ ] 文档与实现一致或可解释差异已记录
+- [x] 所有 AC 已验证（自动化或记录手工步骤）
+- [x] 文档与实现一致或可解释差异已记录

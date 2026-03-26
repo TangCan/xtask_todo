@@ -1,6 +1,6 @@
 # Story 5.2：Dry-run 无写盘
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created -->
 
@@ -94,6 +94,21 @@ gpt-5.3-codex
 - `docs/requirements.md`
 - `_bmad-output/implementation-artifacts/5-2-dry-run-no-write.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings（BMad 分层审查 · 2026-03-26）
+
+| 层 | 结论 |
+|----|------|
+| **Blind Hunter** | **`handle_import`** 在 **replace / merge** 两路径均为 **`if !dry_run { save_todos(...) }`**（**`dispatch.rs:387-408`**），与 **FR27** 一致；新测 **`xtask_todo_import_dry_run_replace_preserves_store`** 用 **`.todo.json` 字节级前后相等** + **JSON list** 校验 **replace 预览未落盘**，补强 **AC2** 缺口。 |
+| **Edge Case Hunter** | **`requirements.md`** 一句点明 **`export` 仍写目标文件、不受 `--dry-run`**，消解 **AC4**「全局不写盘」误解；与 **`handle_export`** 无 **`dry_run`** 分支的现状一致。 |
+| **Acceptance Auditor** | **AC1/3** 由既有 **`json_dry_init` / `list_options`** 等棕地测 + **`import` merge dry-run** 覆盖；**AC6**：**`cargo test -p xtask`**、**`clippy -p xtask -D warnings`** 已通过。 |
+
+**待办项**：无。勿提交 **`crates/todo/.dev_shell.bin`** 等非本故事产物。
+
+## Change Log
+
+- **2026-03-26**：BMad 代码审查通过 — **5-2-dry-run-no-write** 与 sprint 同步为 **done**；**`last_updated`** **`2026-03-26T05:26:00Z`**；复验 **`cargo test -p xtask`**、**clippy**。
+
 ## 完成状态
 
 - [x] 所有 AC 已验证（自动化或记录手工步骤）

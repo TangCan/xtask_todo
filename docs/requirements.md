@@ -104,6 +104,7 @@
 
 - 统一结构：`{"status":"error","error":{"code":<i32>,"message":"..."}}`
 - `error.code` 与退出码一致：`1` 一般错误，`2` 参数错误，`3` 数据错误。
+- 该映射以实现中的 `TodoCliError::{General,Parameter,Data}` 与 `EXIT_*` 常量为准（`xtask/src/todo/error.rs`）。
 
 **数据约定**
 

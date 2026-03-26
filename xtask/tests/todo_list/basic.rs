@@ -170,3 +170,59 @@ fn todo_bin_json_show_invalid_id_outputs_error_contract() {
         .unwrap()
         .contains("invalid id 0"));
 }
+
+#[test]
+fn todo_bin_exit_code_mapping_uses_general_parameter_data_contract() {
+    let dir = std::env::temp_dir().join(format!("todo_bin_integ_exit_map_{}", std::process::id()));
+    let _ = fs::create_dir_all(&dir);
+    let _ = fs::remove_file(dir.join(".todo.json"));
+
+    // parameter error: empty title -> exit 2
+    let parameter = todo_bin()
+        .arg("--json")
+        .arg("add")
+        .arg("")
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(parameter.status.code(), Some(2), "{:?}", parameter.stderr);
+    let pv: serde_json::Value =
+        serde_json::from_str(String::from_utf8_lossy(&parameter.stdout).trim()).expect("json");
+    assert_eq!(pv["status"], "error");
+    assert_eq!(pv["error"]["code"], 2);
+
+    // data error: id not found -> exit 3
+    assert!(todo_bin()
+        .arg("add")
+        .arg("seed")
+        .current_dir(&dir)
+        .status()
+        .unwrap()
+        .success());
+    let data = todo_bin()
+        .arg("--json")
+        .arg("delete")
+        .arg("999")
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(data.status.code(), Some(3), "{:?}", data.stderr);
+    let dv: serde_json::Value =
+        serde_json::from_str(String::from_utf8_lossy(&data.stdout).trim()).expect("json");
+    assert_eq!(dv["status"], "error");
+    assert_eq!(dv["error"]["code"], 3);
+
+    // general error: import missing file -> exit 1
+    let general = todo_bin()
+        .arg("--json")
+        .arg("import")
+        .arg("missing-file-404.json")
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(general.status.code(), Some(1), "{:?}", general.stderr);
+    let gv: serde_json::Value =
+        serde_json::from_str(String::from_utf8_lossy(&general.stdout).trim()).expect("json");
+    assert_eq!(gv["status"], "error");
+    assert_eq!(gv["error"]["code"], 1);
+}
