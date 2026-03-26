@@ -18,11 +18,6 @@ impl HostSandboxSession {
 }
 
 impl VmExecutionSession for HostSandboxSession {
-    #[allow(clippy::unnecessary_wraps)]
-    fn ensure_ready(&mut self, _vfs: &Vfs, _vfs_cwd: &str) -> Result<(), VmError> {
-        Ok(())
-    }
-
     fn run_rust_tool(
         &mut self,
         vfs: &mut Vfs,
@@ -31,10 +26,5 @@ impl VmExecutionSession for HostSandboxSession {
         args: &[String],
     ) -> Result<ExitStatus, VmError> {
         sandbox::run_rust_tool(vfs, vfs_cwd, program, args).map_err(VmError::Sandbox)
-    }
-
-    #[allow(clippy::unnecessary_wraps)]
-    fn shutdown(&mut self, _vfs: &mut Vfs, _vfs_cwd: &str) -> Result<(), VmError> {
-        Ok(())
     }
 }

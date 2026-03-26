@@ -289,8 +289,7 @@ impl GuestFsOps for MockGuestFsOps {
 // --- Lima (Unix): γ [`GammaSession`] + `limactl shell` -----------------------
 
 /// Validate `guest_path` is absolute and under `mount` (γ/β shared).
-#[allow(clippy::redundant_pub_crate)]
-pub(crate) fn validate_guest_path_under_mount(
+pub fn validate_guest_path_under_mount(
     mount: &str,
     guest_path: &str,
 ) -> Result<String, GuestFsError> {

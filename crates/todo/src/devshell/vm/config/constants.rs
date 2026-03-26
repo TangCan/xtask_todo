@@ -1,7 +1,7 @@
 //! `DEVSHELL_VM*` environment variable names (documented in module root).
-#![allow(clippy::too_long_first_doc_paragraph, clippy::doc_markdown)]
 
 /// `DEVSHELL_VM` — **Release / binary default:** unset means **on** (use VM backend per `ENV_DEVSHELL_VM_BACKEND`).
+///
 /// Set to `off` / `0` / `false` / `no` (case-insensitive) to use **only** the host temp sandbox.
 /// `on` / `1` / `true` / `yes` also enable VM mode.
 ///
@@ -26,6 +26,7 @@ pub const ENV_DEVSHELL_VM_LIMA_INSTANCE: &str = "DEVSHELL_VM_LIMA_INSTANCE";
 pub const ENV_DEVSHELL_VM_SOCKET: &str = "DEVSHELL_VM_SOCKET";
 
 /// When set (non-empty), β **`session_start`** sends this string as **`staging_dir`** to the sidecar instead of
+///
 /// `canonicalize(DEVSHELL_VM_WORKSPACE_PARENT / …)`. Use a **POSIX path** visible to the sidecar process
 /// (e.g. **`/workspace`** inside a Podman/WSL Linux container) while **`DEVSHELL_VM_WORKSPACE_PARENT`** on the
 /// host remains the real Windows path for push/pull. See **`docs/devshell-vm-windows.md`** (Podman).
@@ -47,20 +48,22 @@ pub const ENV_DEVSHELL_VM_SKIP_PODMAN_BOOTSTRAP: &str = "DEVSHELL_VM_SKIP_PODMAN
 /// uses [`ENV_DEVSHELL_VM_CONTAINER_IMAGE`] with `podman run -i`** (see `podman_machine.rs`).
 pub const ENV_DEVSHELL_VM_LINUX_BINARY: &str = "DEVSHELL_VM_LINUX_BINARY";
 
-/// **Windows β:** optional **Windows** path to an **xtask_todo** repository root (directory containing
+/// **Windows β:** optional **Windows** path to an **`xtask_todo`** repository root (directory containing
+///
 /// **`containers/devshell-vm/Containerfile`**). Locates **`target/x86_64-unknown-linux-gnu/release/devshell-vm`**
 /// when [`ENV_DEVSHELL_VM_LINUX_BINARY`] is unset. Useful if you keep a checkout for building the sidecar but run
 /// **`cargo devshell`** from other directories; **not** applicable when you only have a crates.io install and no clone.
 pub const ENV_DEVSHELL_VM_REPO_ROOT: &str = "DEVSHELL_VM_REPO_ROOT";
 
 /// **Windows β:** OCI image used when **no** host Linux `devshell-vm` ELF is found: `podman run -i` with
+///
 /// **`--serve-stdio`** and the workspace mounted at **`/workspace`** (no host TCP).
 /// Default: **`ghcr.io/tangcan/xtask_todo/devshell-vm:v{CARGO_PKG_VERSION}`** (published by CI on release).
 pub const ENV_DEVSHELL_VM_CONTAINER_IMAGE: &str = "DEVSHELL_VM_CONTAINER_IMAGE";
 
 /// **Windows β:** timeout (seconds) for each `podman pull` attempt in OCI fallback mode.
 /// When unset/invalid/0, default timeout is applied by implementation.
-#[allow(dead_code)] // Used by Windows-only podman_machine implementation.
+#[cfg(windows)]
 pub const ENV_DEVSHELL_VM_PULL_TIMEOUT_SECS: &str = "DEVSHELL_VM_PULL_TIMEOUT_SECS";
 
 /// **Windows β:** stdio transport for `DEVSHELL_VM_SOCKET=stdio`: **`auto`** (default), **`machine-ssh`**
@@ -68,6 +71,7 @@ pub const ENV_DEVSHELL_VM_PULL_TIMEOUT_SECS: &str = "DEVSHELL_VM_PULL_TIMEOUT_SE
 pub const ENV_DEVSHELL_VM_STDIO_TRANSPORT: &str = "DEVSHELL_VM_STDIO_TRANSPORT";
 
 /// When set (any value), do **not** isolate **`USERPROFILE` / `HOME`** for `podman` subprocesses (Windows).
+///
 /// By default we point **`USERPROFILE`** (Go’s `UserHomeDir()` on Windows — not only `HOME`) at a writable
 /// temp “profile” with an **empty default** `.ssh/known_hosts`, so a **locked, protected, or invalid**
 /// **`%USERPROFILE%\.ssh\known_hosts`** is not read. An existing Podman Machine dir is **symlinked** in when

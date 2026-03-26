@@ -100,7 +100,7 @@ where
         } else {
             match vm::try_session_rc(stderr) {
                 Ok(s) => s,
-                Err(()) => return Err(Box::new(std::io::Error::other("vm session"))),
+                Err(_) => return Err(Box::new(std::io::Error::other("vm session"))),
             }
         };
         let vfs: Rc<RefCell<Vfs>> =
@@ -157,7 +157,7 @@ where
         } else {
             match vm::try_session_rc(stderr) {
                 Ok(s) => s,
-                Err(()) => return Err(Box::new(std::io::Error::other("vm session"))),
+                Err(_) => return Err(Box::new(std::io::Error::other("vm session"))),
             }
         };
 
@@ -236,7 +236,7 @@ where
     let vm_session = if cfg!(unix) {
         vm::try_session_rc_or_host(stderr)
     } else {
-        vm::try_session_rc(stderr).map_err(|()| RunWithError::ReplFailed)?
+        vm::try_session_rc(stderr).map_err(|_| RunWithError::ReplFailed)?
     };
     let vfs: Rc<RefCell<Vfs>> = if cfg!(unix) && vm_session.borrow().is_host_only() && !cfg!(test) {
         let root = vm::vm_workspace_host_root();

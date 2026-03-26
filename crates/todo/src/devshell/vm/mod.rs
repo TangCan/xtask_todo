@@ -85,13 +85,27 @@ impl std::error::Error for VmError {
     }
 }
 
+/// Session-construction error already reported to stderr by [`try_session_rc`].
+#[derive(Debug, Clone, Copy)]
+pub struct VmSessionInitError;
+
+impl std::fmt::Display for VmSessionInitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("vm session init failed")
+    }
+}
+
+impl std::error::Error for VmSessionInitError {}
+
 /// Abstraction for a devshell execution session (host temp dir, γ VM, or β sidecar).
 pub trait VmExecutionSession {
     /// Prepare the session (e.g. start VM, initial push). No-op for host temp export.
     ///
     /// # Errors
     /// Returns backend-specific failures while preparing VM/sandbox state.
-    fn ensure_ready(&mut self, vfs: &Vfs, vfs_cwd: &str) -> Result<(), VmError>;
+    fn ensure_ready(&mut self, _vfs: &Vfs, _vfs_cwd: &str) -> Result<(), VmError> {
+        Ok(())
+    }
 
     /// Run `rustup` or `cargo` with cwd matching `vfs_cwd`; update `vfs` as defined by the backend.
     ///
@@ -109,7 +123,9 @@ pub trait VmExecutionSession {
     ///
     /// # Errors
     /// Returns backend-specific failures during shutdown/sync.
-    fn shutdown(&mut self, vfs: &mut Vfs, vfs_cwd: &str) -> Result<(), VmError>;
+    fn shutdown(&mut self, _vfs: &mut Vfs, _vfs_cwd: &str) -> Result<(), VmError> {
+        Ok(())
+    }
 }
 
 /// Active VM / sandbox backend for one REPL or script run.
@@ -335,18 +351,19 @@ impl SessionHolder {
 
 /// Build [`SessionHolder`] from the environment.
 ///
-/// On failure (e.g. default γ Lima but `limactl` missing), writes to `stderr` and returns `Err(())`.
+/// On failure (e.g. default γ Lima but `limactl` missing), writes to `stderr` and returns an error.
 /// Use **`DEVSHELL_VM=off`** or **`DEVSHELL_VM_BACKEND=host`** to force the host temp sandbox.
-#[allow(clippy::result_unit_err)] // binary entry uses `()`; message already on stderr
 /// # Errors
-/// Returns `Err(())` when backend session construction fails.
-pub fn try_session_rc(stderr: &mut dyn Write) -> Result<Rc<RefCell<SessionHolder>>, ()> {
+/// Returns [`VmSessionInitError`] when backend session construction fails.
+pub fn try_session_rc(
+    stderr: &mut dyn Write,
+) -> Result<Rc<RefCell<SessionHolder>>, VmSessionInitError> {
     let config = VmConfig::from_env();
     match SessionHolder::try_from_config(&config) {
         Ok(s) => Ok(Rc::new(RefCell::new(s))),
         Err(e) => {
             let _ = writeln!(stderr, "dev_shell: {e}");
-            Err(())
+            Err(VmSessionInitError)
         }
     }
 }
@@ -354,7 +371,7 @@ pub fn try_session_rc(stderr: &mut dyn Write) -> Result<Rc<RefCell<SessionHolder
 /// Like [`try_session_rc`], but on failure uses [`SessionHolder::Host`] so the REPL can run against
 /// [`workspace_parent_for_instance`] (same tree as the Lima mount).
 pub fn try_session_rc_or_host(stderr: &mut dyn Write) -> Rc<RefCell<SessionHolder>> {
-    try_session_rc(stderr).unwrap_or_else(|()| {
+    try_session_rc(stderr).unwrap_or_else(|_| {
             let _ = writeln!(
                 stderr,
                 "dev_shell: VM unavailable — in-process REPL uses the same host directory as the Lima workspace (DEVSHELL_WORKSPACE_ROOT)."

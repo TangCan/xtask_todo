@@ -1,5 +1,4 @@
 //! Discover `xtask_todo` repo root via `containers/devshell-vm/Containerfile` (Windows β).
-#![allow(clippy::redundant_pub_crate)]
 
 #[cfg(feature = "beta-vm")]
 fn devshell_repo_root_walk(mut dir: std::path::PathBuf) -> Option<std::path::PathBuf> {
@@ -18,7 +17,7 @@ fn devshell_repo_root_walk(mut dir: std::path::PathBuf) -> Option<std::path::Pat
 /// Walk parents from [`std::env::current_dir`] looking for `containers/devshell-vm/Containerfile` (`xtask_todo` repo).
 #[cfg_attr(not(windows), allow(dead_code))]
 #[cfg(feature = "beta-vm")]
-pub(crate) fn devshell_repo_root_with_containerfile() -> Option<std::path::PathBuf> {
+pub fn devshell_repo_root_with_containerfile() -> Option<std::path::PathBuf> {
     let dir = std::env::current_dir().ok()?;
     devshell_repo_root_walk(dir)
 }
@@ -26,6 +25,6 @@ pub(crate) fn devshell_repo_root_with_containerfile() -> Option<std::path::PathB
 /// Same as [`devshell_repo_root_with_containerfile`] but starting from `start` (e.g. workspace parent).
 #[cfg_attr(not(windows), allow(dead_code))]
 #[cfg(feature = "beta-vm")]
-pub(crate) fn devshell_repo_root_from_path(start: &std::path::Path) -> Option<std::path::PathBuf> {
+pub fn devshell_repo_root_from_path(start: &std::path::Path) -> Option<std::path::PathBuf> {
     devshell_repo_root_walk(start.to_path_buf())
 }

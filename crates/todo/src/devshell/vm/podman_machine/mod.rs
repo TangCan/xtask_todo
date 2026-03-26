@@ -3,8 +3,7 @@
 //! - **Automatic fallback** (e.g. `cargo install` with no checkout): **`podman run -i`** with a published OCI image
 //!   and the workspace mounted at **`/workspace`** (see `docs/devshell-vm-windows.md`).
 
-use std::path::Path;
-
+#[cfg(windows)]
 use super::VmError;
 
 #[cfg(windows)]
@@ -29,54 +28,19 @@ pub enum WindowsStdioTransport {
     },
 }
 
-#[cfg(not(windows))]
-#[must_use]
-#[allow(dead_code)]
-pub const fn windows_host_path_to_vm_mnt(_host: &Path) -> Option<String> {
-    None
-}
-
-#[cfg(not(windows))]
-#[allow(dead_code)]
-#[allow(clippy::unnecessary_wraps)]
-pub const fn ensure(_workspace_parent: &Path) -> Result<(), VmError> {
-    Ok(())
-}
-
-#[cfg(not(windows))]
-#[allow(dead_code)]
-pub fn spawn_devshell_vm_stdio(_workspace_root: &Path) -> Result<std::process::Child, VmError> {
-    Err(VmError::Ipc(
-        "DEVSHELL_VM_SOCKET=stdio is only supported on Windows".into(),
-    ))
-}
-
-/// Maps a Windows path to the Podman Machine **`/mnt/<drive>/…`** form (for diagnostics or custom tooling).
 #[cfg(windows)]
-#[must_use]
-#[allow(dead_code)] // Public API; not referenced from every workspace crate.
-pub fn windows_host_path_to_vm_mnt(host: &Path) -> Option<String> {
-    win::windows_host_path_to_vm_mnt(host)
-}
-
-#[cfg(windows)]
-pub fn ensure(workspace_parent: &Path) -> Result<(), VmError> {
+pub fn ensure(workspace_parent: &std::path::Path) -> Result<(), VmError> {
     win::ensure(workspace_parent)
 }
 
 #[cfg(windows)]
-pub fn spawn_devshell_vm_stdio(workspace_root: &Path) -> Result<std::process::Child, VmError> {
+pub fn spawn_devshell_vm_stdio(
+    workspace_root: &std::path::Path,
+) -> Result<std::process::Child, VmError> {
     win::spawn_devshell_vm_stdio(workspace_root)
 }
 
-/// Resolves **machine-ssh** vs **podman-run** (OCI) stdio transport for the given workspace parent.
 #[cfg(windows)]
-#[allow(dead_code)] // Public API for embedders.
-pub fn resolve_stdio_transport(workspace_parent: &Path) -> Result<WindowsStdioTransport, VmError> {
-    win::resolve_stdio_transport(workspace_parent)
-}
-
-#[cfg(windows)]
-pub fn stdio_guest_mount(workspace_parent: &Path) -> String {
+pub fn stdio_guest_mount(workspace_parent: &std::path::Path) -> String {
     win::stdio_guest_mount(workspace_parent)
 }
