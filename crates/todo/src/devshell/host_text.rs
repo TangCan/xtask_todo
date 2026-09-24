@@ -35,7 +35,9 @@ pub fn decode_host_text_bytes(bytes: &[u8]) -> Result<String, io::Error> {
             ));
         }
         let u16s: Vec<u16> = rest
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|c| u16::from_le_bytes([c[0], c[1]]))
             .collect();
         return String::from_utf16(&u16s).map_err(|e| io::Error::new(InvalidData, e));
@@ -50,7 +52,9 @@ pub fn decode_host_text_bytes(bytes: &[u8]) -> Result<String, io::Error> {
             ));
         }
         let u16s: Vec<u16> = rest
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|c| u16::from_be_bytes([c[0], c[1]]))
             .collect();
         return String::from_utf16(&u16s).map_err(|e| io::Error::new(InvalidData, e));
