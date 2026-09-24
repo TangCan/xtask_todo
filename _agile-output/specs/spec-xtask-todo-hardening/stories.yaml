@@ -1,0 +1,51 @@
+- id: "1"
+  title: 测试基础设施升级
+  description: >-
+    用 cargo-nextest 替换默认 cargo test，接入 cargo-llvm-cov 产出覆盖率，
+    并以 trycmd/assert_cmd+assert_fs/insta+proptest 补齐 CLI 快照与数据层测试；
+    关闭 deferred-work 中"list 过滤 E2E 覆盖不全"债务（对应 SPEC CAP-1）。
+
+- id: "2"
+  title: CI 质量门禁与供应链
+  description: >-
+    建立 clippy -D warnings + fmt --check + 覆盖率阈值 + cargo deny/audit 的硬门禁，
+    任何告警、格式漂移或漏洞均阻断合并（对应 SPEC CAP-2）。
+  done_checkpoint: true
+  invoke_dev_with: >-
+    覆盖率阈值尚未确定，先按 SPEC Open Questions 中该条目以占位值（如 80% 行覆盖）
+    起步，待确认后再收紧。
+
+- id: "3"
+  title: 错误处理与数据容错收口
+  description: >-
+    库层用 thiserror 强类型错误、CLI 层按 anyhow 传播并区分参数/业务退出码，
+    数据文件版本化容错迁移；关闭"损坏 JSON 静默当空"与"dry-run 校验不一致"债务
+    （对应 SPEC CAP-4）。
+  spec_checkpoint: true
+  done_checkpoint: true
+  invoke_dev_with: >-
+    迁移须向后兼容，勿丢既有 .todo.json 数据。
+
+- id: "4"
+  title: release 配置与体积优化
+  description: >-
+    优化 release 构建配置（strip/lto/codegen-units/opt-level），减小二进制体积与
+    启动开销；先用 cargo-bloat 定位热点再调整（对应 SPEC CAP-3）。
+  invoke_dev_with: >-
+    数字先实测，勿照抄报告。
+
+- id: "5"
+  title: 开发者体验点缀
+  description: >-
+    新增 completions <shell> 补全子命令，为导入/导出等长操作加进度反馈，日志结构化；
+    不破坏既有 --json 输出（对应 SPEC CAP-5）。
+  invoke_dev_with: >-
+    动态补全暂不做（clap_complete 该 feature 尚未转正）。
+
+- id: "6"
+  title: 面向 agent 的可机读导出
+  description: >-
+    在现有结构化 JSON 输出之上，提供稳定、可机读（趋向 agent 友好）、有文档的导出接口，
+    作为差异化能力（对应 SPEC CAP-6）。
+  invoke_dev_with: >-
+    MCP 留作后续（研究报告标记为 lead 需再深研），本次仅稳定 JSON schema。
