@@ -3,9 +3,11 @@
 use std::path::PathBuf;
 
 use argh::FromArgs;
+#[cfg(unix)]
 use xtask_todo_lib::devshell::vm::ENV_DEVSHELL_VM_LIMA_INSTANCE;
 
 /// Default Lima instance name (same as γ / `VmConfig`).
+#[cfg(unix)]
 pub(super) const DEFAULT_LIMA_INSTANCE: &str = "devshell-rust";
 
 #[derive(FromArgs, Clone)]
@@ -39,6 +41,7 @@ pub(super) fn default_guest_mount() -> String {
     "/host-todo-bin".to_string()
 }
 
+#[cfg(unix)]
 pub(super) fn lima_instance_name(args: &LimaTodoArgs) -> String {
     args.instance
         .clone()
@@ -51,19 +54,12 @@ pub(super) fn lima_instance_name(args: &LimaTodoArgs) -> String {
         .unwrap_or_else(|| DEFAULT_LIMA_INSTANCE.to_string())
 }
 
+#[cfg(unix)]
 pub(super) fn default_lima_yaml_path(instance: &str) -> Option<PathBuf> {
-    #[cfg(unix)]
-    {
-        std::env::var_os("HOME").map(|h| {
-            PathBuf::from(h)
-                .join(".lima")
-                .join(instance)
-                .join("lima.yaml")
-        })
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = instance;
-        None
-    }
+    std::env::var_os("HOME").map(|h| {
+        PathBuf::from(h)
+            .join(".lima")
+            .join(instance)
+            .join("lima.yaml")
+    })
 }

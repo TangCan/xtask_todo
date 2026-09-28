@@ -32,6 +32,7 @@ pub(super) fn cargo_metadata_target(workspace: &Path) -> Result<(PathBuf, PathBu
 }
 
 /// Absolute `target/release` path string (matches Lima `mounts[].location` after merge).
+#[cfg(unix)]
 pub(super) fn host_release_str_for_target_dir(target_dir: &Path) -> Result<String, String> {
     let release_dir = target_dir.join("release");
     if let Ok(p) = release_dir.canonicalize() {
@@ -56,12 +57,14 @@ pub(super) fn build_todo_release(workspace: &Path) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(unix)]
 pub(super) fn backup_path(path: &Path) -> PathBuf {
     let mut s = path.as_os_str().to_os_string();
     s.push(".bak");
     PathBuf::from(s)
 }
 
+#[cfg(unix)]
 pub(super) fn backup_and_write(path: &Path, content: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
@@ -75,6 +78,7 @@ pub(super) fn backup_and_write(path: &Path, content: &[u8]) -> Result<(), String
     std::fs::write(path, content).map_err(|e| format!("write {}: {e}", path.display()))
 }
 
+#[cfg(unix)]
 pub(super) fn limactl_restart(instance: &str) -> Result<(), String> {
     let st_stop = Command::new("limactl")
         .args(["stop", instance])

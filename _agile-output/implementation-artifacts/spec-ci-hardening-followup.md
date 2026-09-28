@@ -58,6 +58,7 @@ context:
 - 将 `Cargo.lock` 纳入版本控制，避免 GitHub Actions 在无锁状态下重新解析依赖并触发 `syn` 重复版本门禁。
 - CI 的 workspace Cargo build/test/doc/clippy/coverage 命令统一使用 `--locked`，防止清单与提交锁文件漂移。
 - 将 Lima 命令的 Unix-only 导入及 `host_release_str` 计算收窄到 `cfg(unix)`；Windows MSVC 的本地库检查已通过，完整 `xtask` 交叉构建受本机缺少 `lib.exe` 阻断。
+- 远端 Windows amd64 复跑发现 Lima 的 Unix-only helper 声明本身仍触发 `dead_code`；已将相关常量、函数及仅 Unix 测试进一步标注 `cfg(unix)`。
 - macOS 临时目录测试改为比较 canonical path，并用 RAII guard 保证异常时恢复 cwd；环境变量测试使用互斥锁。覆盖率门禁新增 `lib.rs` 顶层分发器和 `release_baseline.rs` 宿主机测量代码排除项；阈值仍为 95%，本地结果为 95.36%。
 
 ## Verification

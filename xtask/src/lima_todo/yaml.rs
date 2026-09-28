@@ -13,6 +13,7 @@ fn default_guest_path_value(guest_mount: &str) -> String {
 
 /// Merge `todo` release mount + `env.PATH` into Lima `lima.yaml` text. `host_release_abs` must be absolute.
 /// Returns serialized YAML and whether anything was changed (skip write/restart when `false`).
+#[cfg(unix)]
 pub(super) fn merge_todo_into_lima_yaml(
     content: &str,
     host_release_abs: &str,

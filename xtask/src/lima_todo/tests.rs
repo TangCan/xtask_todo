@@ -1,6 +1,10 @@
 use super::cmd::cmd_lima_todo;
-use super::helpers::{cargo_metadata_target, host_release_str_for_target_dir};
-use super::yaml::{merge_todo_into_lima_yaml, render_fragment};
+use super::helpers::cargo_metadata_target;
+#[cfg(unix)]
+use super::helpers::host_release_str_for_target_dir;
+#[cfg(unix)]
+use super::yaml::merge_todo_into_lima_yaml;
+use super::yaml::render_fragment;
 use super::LimaTodoArgs;
 
 #[test]
@@ -25,6 +29,7 @@ fn render_fragment_contains_location_and_mount() {
 }
 
 #[test]
+#[cfg(unix)]
 fn merge_adds_mount_and_path() {
     let yaml = r#"mounts:
   - location: "~"
@@ -42,6 +47,7 @@ env:
 }
 
 #[test]
+#[cfg(unix)]
 fn host_release_str_when_release_dir_missing_uses_target_plus_release() {
     let tmp = std::env::temp_dir().join(format!(
         "lima_todo_hr_{}_{}",
@@ -62,6 +68,7 @@ fn host_release_str_when_release_dir_missing_uses_target_plus_release() {
 }
 
 #[test]
+#[cfg(unix)]
 fn merge_idempotent_mount() {
     let yaml = r#"mounts:
   - location: "/abs/release"
