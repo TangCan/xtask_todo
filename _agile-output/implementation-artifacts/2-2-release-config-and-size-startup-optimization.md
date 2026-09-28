@@ -3,7 +3,7 @@ title: 'Release 配置与体积/启动优化'
 story_key: '2-2-release-配置与体积-启动优化'
 epic: 2
 story: 2
-status: review
+status: done
 created: '2026-09-28'
 source: '../planning-artifacts/epics-hardening.md'
 context:
