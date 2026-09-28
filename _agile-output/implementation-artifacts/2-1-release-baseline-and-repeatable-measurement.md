@@ -3,7 +3,7 @@ title: 'Release 基准与可重复测量'
 story_key: '2-1-release-基准与可重复测量'
 epic: 2
 story: 1
-status: review
+status: done
 created: '2026-09-28'
 source: '../planning-artifacts/epics-hardening.md'
 context:

@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "measured_at_unix_seconds_utc": 1790580102,
+  "git_commit": "550027b6ce49a34a06d69091986f9d0f2af8717c",
+  "git_worktree_dirty": true,
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "host": "x86_64-linux",
+  "target": "x86_64-unknown-linux-gnu",
+  "profile": "release",
+  "build_arguments": [
+    "build",
+    "--workspace",
+    "--release"
+  ],
+  "runs": 1,
+  "targets": [
+    {
+      "name": "cargo-devshell",
+      "package": "xtask-todo-lib",
+      "path": "/nvme_data2/richard/xtask_todo/target/release/cargo-devshell",
+      "size_bytes": 1904976,
+      "cold_start_micros": {
+        "samples": [
+          47694
+        ],
+        "min": 47694,
+        "p50": 47694,
+        "p95": 47694
+      }
+    },
+    {
+      "name": "devshell-vm",
+      "package": "devshell-vm",
+      "path": "/nvme_data2/richard/xtask_todo/target/release/devshell-vm",
+      "size_bytes": 840472,
+      "cold_start_micros": {
+        "samples": [
+          1492
+        ],
+        "min": 1492,
+        "p50": 1492,
+        "p95": 1492
+      }
+    },
+    {
+      "name": "todo",
+      "package": "xtask",
+      "path": "/nvme_data2/richard/xtask_todo/target/release/todo",
+      "size_bytes": 1247336,
+      "cold_start_micros": {
+        "samples": [
+          1495
+        ],
+        "min": 1495,
+        "p50": 1495,
+        "p95": 1495
+      }
+    },
+    {
+      "name": "xtask",
+      "package": "xtask",
+      "path": "/nvme_data2/richard/xtask_todo/target/release/xtask",
+      "size_bytes": 4550680,
+      "cold_start_micros": {
+        "samples": [
+          1712
+        ],
+        "min": 1712,
+        "p50": 1712,
+        "p95": 1712
+      }
+    }
+  ]
+}

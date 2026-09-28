@@ -43,7 +43,7 @@ development_status:
   epic-1-retrospective: optional
 
   epic-2: backlog
-  2-1-release-基准与可重复测量: review
+  2-1-release-基准与可重复测量: done
   2-2-release-配置与体积-启动优化: backlog
   2-3-强类型错误与-cli-错误上下文: backlog
   2-4-数据容错-版本化迁移与-dry-run-一致性: backlog
