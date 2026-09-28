@@ -6,6 +6,7 @@ pub mod error;
 pub mod format;
 pub mod init_ai;
 pub mod io;
+pub(crate) mod observability;
 
 pub use args::TodoArgs;
 pub use args::TodoStandaloneArgs;

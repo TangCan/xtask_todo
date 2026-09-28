@@ -18,6 +18,7 @@ use super::super::init_ai::run_init_ai;
 use super::super::io::{
     load_todos, load_todos_for_import, save_todos, save_todos_to_path_with_format,
 };
+use super::super::observability::{log_event, progress};
 use super::parse::{list_options_from_args, patch_from_add_args};
 
 /// Handle todo subcommand.
@@ -349,6 +350,14 @@ fn handle_export(
     a: &TodoExportArgs,
     json: bool,
 ) -> Result<(), TodoCliError> {
+    let total = list.list().len();
+    log_event(
+        "info",
+        "export",
+        "started",
+        Some(&a.file.display().to_string()),
+    );
+    progress("export", 0, total);
     let format = a
         .format
         .as_deref()
@@ -362,7 +371,17 @@ fn handle_export(
             })
         })
         .unwrap_or("json");
-    save_todos_to_path_with_format(list, &a.file, format).map_err(TodoCliError::General)?;
+    save_todos_to_path_with_format(list, &a.file, format).map_err(|error| {
+        log_event("error", "export", "failed", Some(&error.to_string()));
+        TodoCliError::General(error)
+    })?;
+    progress("export", total, total);
+    log_event(
+        "info",
+        "export",
+        "completed",
+        Some(&a.file.display().to_string()),
+    );
     if json {
         print_json_success(&serde_json::json!({
             "exported": list.list().len(),
@@ -384,12 +403,25 @@ fn handle_import(
     json: bool,
     dry_run: bool,
 ) -> Result<(), TodoCliError> {
-    let imported = load_todos_for_import(&a.file).map_err(TodoCliError::General)?;
+    log_event(
+        "info",
+        "import",
+        "started",
+        Some(&a.file.display().to_string()),
+    );
+    let imported = load_todos_for_import(&a.file).map_err(|error| {
+        log_event("error", "import", "failed", Some(&error.to_string()));
+        TodoCliError::General(error)
+    })?;
+    progress("import", 0, imported.len());
     if a.replace {
         let store = InMemoryStore::from_todos(imported.clone());
         let new_list = TodoList::with_store(store);
         if !dry_run {
-            save_todos(&new_list).map_err(TodoCliError::General)?;
+            save_todos(&new_list).map_err(|error| {
+                log_event("error", "import", "failed", Some(&error.to_string()));
+                TodoCliError::General(error)
+            })?;
         }
         if json {
             print_json_success(&serde_json::json!({
@@ -405,11 +437,17 @@ fn handle_import(
             );
         }
     } else {
-        for t in &imported {
+        for (index, t) in imported.iter().enumerate() {
             list.add_todo(t);
+            if index + 1 == imported.len() || (index + 1) % 100 == 0 {
+                progress("import", index + 1, imported.len());
+            }
         }
         if !dry_run {
-            save_todos(list).map_err(TodoCliError::General)?;
+            save_todos(list).map_err(|error| {
+                log_event("error", "import", "failed", Some(&error.to_string()));
+                TodoCliError::General(error)
+            })?;
         }
         if json {
             print_json_success(&serde_json::json!({
@@ -421,5 +459,11 @@ fn handle_import(
             println!("Merged {} tasks from {}", imported.len(), a.file.display());
         }
     }
+    log_event(
+        "info",
+        "import",
+        "completed",
+        Some(&a.file.display().to_string()),
+    );
     Ok(())
 }
