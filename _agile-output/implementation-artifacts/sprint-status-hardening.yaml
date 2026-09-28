@@ -39,7 +39,7 @@ development_status:
   1-1-测试运行器与测试工具链升级: done
   1-2-跨平台覆盖率能力: done
   1-3-cli-快照与数据层属性测试: done
-  1-4-ci-硬质量门禁: in-progress
+  1-4-ci-硬质量门禁: done
   epic-1-retrospective: optional
 
   epic-2: backlog

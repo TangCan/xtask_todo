@@ -3,7 +3,7 @@ title: 'CI 硬质量门禁'
 story_key: '1-4-ci-硬质量门禁'
 epic: 1
 story: 4
-status: in-review
+status: done
 baseline_commit: '516ef7c'
 created: '2026-09-28'
 source: '../planning-artifacts/epics-hardening.md'
