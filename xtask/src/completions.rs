@@ -92,17 +92,10 @@ fn fish_script() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
-    use std::process::{Command, Output, Stdio};
+    use std::process::{Command, Output};
 
     fn parse_script(command: &mut Command, script: &str) -> std::io::Result<Output> {
-        let mut child = command.stdin(Stdio::piped()).spawn()?;
-        child
-            .stdin
-            .take()
-            .expect("parser stdin should be piped")
-            .write_all(script.as_bytes())?;
-        child.wait_with_output()
+        command.arg(script).output()
     }
 
     #[test]
@@ -136,9 +129,9 @@ mod tests {
         ];
         for (shell, script) in cases {
             let check = match shell {
-                "bash" => parse_script(Command::new("bash").arg("-n"), &script),
-                "zsh" => parse_script(Command::new("zsh").arg("-n"), &script),
-                _ => parse_script(Command::new("fish").arg("--no-execute"), &script),
+                "bash" => parse_script(Command::new("bash").args(["-n", "-c"]), &script),
+                "zsh" => parse_script(Command::new("zsh").args(["-n", "-c"]), &script),
+                _ => parse_script(Command::new("fish").args(["--no-execute", "-c"]), &script),
             };
             if let Ok(output) = check {
                 assert!(
