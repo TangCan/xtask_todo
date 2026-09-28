@@ -3,6 +3,7 @@
 use std::fmt::Write as _;
 use std::path::Path;
 
+#[cfg(unix)]
 use serde_yaml::{Mapping, Value as YamlValue};
 
 fn default_guest_path_value(guest_mount: &str) -> String {
