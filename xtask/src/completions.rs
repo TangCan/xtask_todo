@@ -92,6 +92,18 @@ fn fish_script() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
+    use std::process::{Command, Output, Stdio};
+
+    fn parse_script(command: &mut Command, script: &str) -> std::io::Result<Output> {
+        let mut child = command.stdin(Stdio::piped()).spawn()?;
+        child
+            .stdin
+            .take()
+            .expect("parser stdin should be piped")
+            .write_all(script.as_bytes())?;
+        child.wait_with_output()
+    }
 
     #[test]
     fn scripts_are_shell_specific_and_stdout_safe() {
@@ -122,29 +134,20 @@ mod tests {
             ("zsh", zsh_script()),
             ("fish", fish_script()),
         ];
-        let path =
-            std::env::temp_dir().join(format!("xtask-completions-{}.txt", std::process::id()));
         for (shell, script) in cases {
-            std::fs::write(&path, script).expect("write completion script");
             let check = match shell {
-                "bash" => std::process::Command::new("bash")
-                    .args(["-n", path.to_str().unwrap()])
-                    .output(),
-                "zsh" => std::process::Command::new("zsh")
-                    .args(["-n", path.to_str().unwrap()])
-                    .output(),
-                _ => std::process::Command::new("fish")
-                    .args(["--no-execute", path.to_str().unwrap()])
-                    .output(),
+                "bash" => parse_script(Command::new("bash").arg("-n"), &script),
+                "zsh" => parse_script(Command::new("zsh").arg("-n"), &script),
+                _ => parse_script(Command::new("fish").arg("--no-execute"), &script),
             };
             if let Ok(output) = check {
                 assert!(
                     output.status.success(),
-                    "{shell} parser rejected generated script"
+                    "{shell} parser rejected generated script: {}",
+                    String::from_utf8_lossy(&output.stderr)
                 );
             }
         }
-        let _ = std::fs::remove_file(path);
     }
 
     #[test]
