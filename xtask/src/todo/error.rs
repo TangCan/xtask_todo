@@ -205,4 +205,53 @@ mod tests {
         assert!(v.get("message").is_none());
         assert_eq!(v["items"].as_array().unwrap().len(), 1);
     }
+
+    #[test]
+    fn contextual_data_error_covers_path_and_no_path() {
+        let source = std::io::Error::other("broken");
+        let with_path = data_contextual("read", Some(Path::new("tasks.json")), &source);
+        assert_eq!(with_path.exit_code(), EXIT_DATA);
+        assert_eq!(with_path.to_string(), "read 'tasks.json': broken");
+        let without_path = data_contextual("read", None, &source);
+        assert_eq!(without_path.exit_code(), EXIT_DATA);
+        assert_eq!(without_path.to_string(), "read: broken");
+    }
+
+    #[test]
+    fn parameter_and_data_errors_display_and_exit_codes() {
+        let parameter = TodoCliError::Parameter("bad argument".into());
+        let data = TodoCliError::Data("missing task".into());
+        assert_eq!(parameter.exit_code(), EXIT_PARAMETER);
+        assert_eq!(parameter.to_string(), "bad argument");
+        assert_eq!(data.exit_code(), EXIT_DATA);
+        assert_eq!(data.to_string(), "missing task");
+    }
+
+    #[test]
+    fn todo_to_json_preserves_optional_fields() {
+        let id = xtask_todo_lib::TodoId::from_raw(2).unwrap();
+        let todo = Todo {
+            id,
+            title: "full".into(),
+            completed: true,
+            created_at: std::time::SystemTime::UNIX_EPOCH,
+            completed_at: Some(std::time::SystemTime::UNIX_EPOCH),
+            description: Some("details".into()),
+            due_date: Some("2026-09-28".into()),
+            priority: Some(xtask_todo_lib::Priority::High),
+            tags: vec!["ci".into()],
+            repeat_rule: Some(xtask_todo_lib::RepeatRule::Daily),
+            repeat_until: Some("2026-10-01".into()),
+            repeat_count: Some(2),
+        };
+        let value = todo_to_json(&todo);
+        assert_eq!(value["title"], "full");
+        assert_eq!(value["priority"], "high");
+        assert_eq!(value["tags"], serde_json::json!(["ci"]));
+        assert_eq!(value["description"], "details");
+        assert_eq!(value["due_date"], "2026-09-28");
+        assert_eq!(value["repeat_rule"], "daily");
+        assert_eq!(value["repeat_until"], "2026-10-01");
+        assert_eq!(value["repeat_count"], 2);
+    }
 }

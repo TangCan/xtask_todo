@@ -17,6 +17,9 @@ pub static CWD_TEST_MUTEX: Mutex<()> = Mutex::new(());
 /// Serialize tests that mutate `PATH` (parallel `cargo test` races otherwise).
 static PATH_TEST_MUTEX: Mutex<()> = Mutex::new(());
 
+/// Serializes tests that mutate process-wide environment variables.
+pub static ENV_TEST_MUTEX: Mutex<()> = Mutex::new(());
+
 /// Acquires the CWD mutex; if poisoned (a prior test panicked while holding it), continues with the inner lock.
 pub fn cwd_test_lock() -> std::sync::MutexGuard<'static, ()> {
     CWD_TEST_MUTEX
@@ -27,6 +30,13 @@ pub fn cwd_test_lock() -> std::sync::MutexGuard<'static, ()> {
 /// Lock with [`PATH_TEST_MUTEX`] for tests that set or clear `PATH`.
 pub fn path_test_lock() -> std::sync::MutexGuard<'static, ()> {
     PATH_TEST_MUTEX
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// Lock for tests that set or clear environment variables.
+pub fn env_test_lock() -> std::sync::MutexGuard<'static, ()> {
+    ENV_TEST_MUTEX
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
@@ -81,4 +91,12 @@ pub fn dir_outside_cwd(prefix: &str) -> PathBuf {
         .unwrap()
         .as_nanos();
     parent.join(format!("{}_{}_{}", prefix, std::process::id(), nanos))
+}
+
+#[test]
+fn to_run_failure_maps_error_to_general_exit() {
+    let error = std::io::Error::other("failure");
+    let result = crate::to_run_failure(&error);
+    assert_eq!(result.code, 1);
+    assert_eq!(result.message, "failure");
 }

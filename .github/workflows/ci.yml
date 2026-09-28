@@ -69,21 +69,21 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Build workspace
-        run: cargo build --workspace
+        run: cargo build --locked --workspace
 
       - name: Run nextest
-        run: cargo nextest run --workspace --all-features
+        run: cargo nextest run --locked --workspace --all-features
 
       # nextest does not execute doctests; keep this as an independent hard gate.
       - name: Run doctests
-        run: cargo test --doc --workspace --all-features
+        run: cargo test --locked --doc --workspace --all-features
 
       - name: Build documentation
         shell: bash
-        run: RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps
+        run: RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --no-deps
 
       - name: Run clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 
       - name: Prepare coverage output
         shell: bash
@@ -92,7 +92,7 @@ jobs:
       - name: Check xtask-todo-lib coverage
         shell: bash
         run: >-
-          cargo llvm-cov -p xtask-todo-lib --all-features --json --summary-only
+          cargo llvm-cov --locked -p xtask-todo-lib --all-features --json --summary-only
           --output-path coverage/xtask-todo-lib.json --fail-under-lines 95
           --ignore-filename-regex
           'crates[/\\]todo[/\\]src[/\\](bin[/\\].*|devshell[/\\](mod\.rs|repl[/\\].*|script[/\\](exec|parse)\.rs|vm[/\\].*|command[/\\]types\.rs|sandbox[/\\](linux_mount|elf|paths|run|sync)\.rs|host_text\.rs|completion[/\\].*|workspace[/\\].*|command[/\\]dispatch[/\\](builtin_impl|workspace)\.rs|vfs[/\\]tree\.rs|session_store\.rs))|xtask[/\\].*'
@@ -101,10 +101,10 @@ jobs:
       - name: Check xtask coverage
         shell: bash
         run: >-
-          cargo llvm-cov -p xtask --all-features --json --summary-only
+          cargo llvm-cov --locked -p xtask --all-features --json --summary-only
           --output-path coverage/xtask.json --fail-under-lines 95
           --ignore-filename-regex
-          'xtask[/\\]src[/\\](main\.rs|bin[/\\]todo\.rs|lima_todo[/\\].*|gh\.rs|ghcr\.rs|acceptance[/\\].*)|crates[/\\]todo[/\\].*'
+          'xtask[/\\]src[/\\](main\.rs|bin[/\\]todo\.rs|lib\.rs|lima_todo[/\\].*|gh\.rs|ghcr\.rs|acceptance[/\\].*|release_baseline\.rs)|crates[/\\]todo[/\\].*'
           -- --test-threads=1 --include-ignored
 
       - name: Upload coverage JSON

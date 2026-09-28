@@ -31,10 +31,23 @@ pub fn progress(operation: &str, processed: usize, total: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tests::env_test_lock;
 
     #[test]
     fn progress_is_safe_without_terminal() {
         progress("import", 1, 2);
         log_event("info", "import", "started", Some("file.json"));
+    }
+
+    #[test]
+    fn log_event_emits_when_logging_is_enabled() {
+        let _env_lock = env_test_lock();
+        let previous = std::env::var_os("XTASK_LOG");
+        std::env::set_var("XTASK_LOG", "debug");
+        log_event("info", "import", "started", None);
+        match previous {
+            Some(value) => std::env::set_var("XTASK_LOG", value),
+            None => std::env::remove_var("XTASK_LOG"),
+        }
     }
 }

@@ -172,6 +172,9 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
                 // Thin wrapper; logic covered via `todo::run_standalone` in unit tests.
                 "--exclude-files",
                 "xtask/src/bin/todo.rs",
+                // Top-level subcommand dispatcher; individual command modules are covered below.
+                "--exclude-files",
+                "xtask/src/lib.rs",
                 // Lima merge / limactl — integration-style; `lima_todo::tests` still validates YAML/helpers.
                 "--exclude-files",
                 "xtask/src/lima_todo/*",
@@ -184,6 +187,10 @@ pub fn cmd_coverage(_args: CoverageArgs) -> Result<(), Box<dyn std::error::Error
                 // Runs nested `cargo test` / file checks; `acceptance::tests` cover report builders.
                 "--exclude-files",
                 "xtask/src/acceptance/*",
+                // Release baseline launches built binaries and samples host-specific timings; it is
+                // an external measurement command rather than stable unit-test coverage.
+                "--exclude-files",
+                "xtask/src/release_baseline.rs",
             ],
             &["--test-threads=1", "--include-ignored"],
         );

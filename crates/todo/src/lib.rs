@@ -28,6 +28,21 @@ mod tests;
 pub(crate) mod test_support {
     use std::sync::{Mutex, OnceLock, PoisonError};
 
+    pub struct CwdGuard(std::path::PathBuf);
+
+    impl CwdGuard {
+        pub fn new(dir: &std::path::Path, restore_to: &std::path::Path) -> Self {
+            std::env::set_current_dir(dir).expect("set cwd");
+            Self(restore_to.to_path_buf())
+        }
+    }
+
+    impl Drop for CwdGuard {
+        fn drop(&mut self) {
+            let _ = std::env::set_current_dir(&self.0);
+        }
+    }
+
     pub fn cwd_mutex() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
         LOCK.get_or_init(|| Mutex::new(()))

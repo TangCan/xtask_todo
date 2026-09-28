@@ -8,12 +8,17 @@
 
 use crate::RunFailure;
 
-use super::args::{default_lima_yaml_path, lima_instance_name, LimaTodoArgs};
+use super::args::LimaTodoArgs;
+#[cfg(unix)]
+use super::args::{default_lima_yaml_path, lima_instance_name};
+#[cfg(unix)]
 use super::helpers::{
-    backup_and_write, backup_path, build_todo_release, cargo_metadata_target,
-    host_release_str_for_target_dir, limactl_restart,
+    backup_and_write, backup_path, host_release_str_for_target_dir, limactl_restart,
 };
-use super::yaml::{merge_todo_into_lima_yaml, render_fragment};
+use super::helpers::{build_todo_release, cargo_metadata_target};
+#[cfg(unix)]
+use super::yaml::merge_todo_into_lima_yaml;
+use super::yaml::render_fragment;
 
 #[cfg(unix)]
 /// Before build/write: if `lima.yaml` already has this mount + PATH, print and skip.
@@ -76,6 +81,7 @@ pub fn cmd_lima_todo(args: LimaTodoArgs) -> Result<(), RunFailure> {
         message: m,
     })?;
 
+    #[cfg(unix)]
     let host_release_str =
         host_release_str_for_target_dir(&target_dir).map_err(|m| RunFailure {
             code: 1,

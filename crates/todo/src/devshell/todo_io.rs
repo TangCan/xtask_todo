@@ -146,11 +146,17 @@ mod tests {
         ));
         std::fs::create_dir_all(&dir).expect("create dir");
         let cwd = std::env::current_dir().expect("cwd");
-        std::env::set_current_dir(&dir).expect("set cwd");
-        let file = todo_file().expect("todo_file");
-        std::env::set_current_dir(&cwd).expect("restore cwd");
+        let (file, expected) = {
+            let _restore = crate::test_support::CwdGuard::new(&dir, &cwd);
+            let file = todo_file().expect("todo_file");
+            let expected = dir
+                .canonicalize()
+                .expect("canonicalize dir")
+                .join(".todo.json");
+            (file, expected)
+        };
         let _ = std::fs::remove_dir_all(&dir);
-        assert_eq!(file, dir.join(".todo.json"));
+        assert_eq!(file, expected);
     }
 
     #[test]
