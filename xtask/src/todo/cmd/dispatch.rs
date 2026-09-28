@@ -10,7 +10,9 @@ use super::super::args::{
     TodoAddArgs, TodoArgs, TodoCompleteArgs, TodoDeleteArgs, TodoExportArgs, TodoImportArgs,
     TodoListArgs, TodoSearchArgs, TodoShowArgs, TodoSub, TodoUpdateArgs,
 };
-use super::super::error::{print_json_success, todo_list_json_payload, todo_to_json, TodoCliError};
+use super::super::error::{
+    contextual, print_json_success, todo_list_json_payload, todo_to_json, TodoCliError,
+};
 use super::super::format::{format_duration, format_time_ago, print_todo_list_items};
 use super::super::init_ai::run_init_ai;
 use super::super::io::{
@@ -33,7 +35,8 @@ pub fn cmd_todo(args: TodoArgs) -> Result<(), TodoCliError> {
         return Ok(());
     }
 
-    let todos = load_todos().map_err(TodoCliError::General)?;
+    let todo_path = super::super::io::todo_file().ok();
+    let todos = load_todos().map_err(|e| contextual("load todo data", todo_path.as_deref(), e))?;
     let store = InMemoryStore::from_todos(todos);
     let mut list = TodoList::with_store(store);
     let json = args.json;

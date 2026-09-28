@@ -1,5 +1,6 @@
 //! CLI error types and JSON output helpers for the todo subcommand.
 
+use std::path::Path;
 use xtask_todo_lib::Todo;
 
 /// Exit codes: 0 success, 1 general, 2 parameter, 3 data (e.g. not found).
@@ -13,6 +14,41 @@ pub enum TodoCliError {
     General(Box<dyn std::error::Error>),
     Parameter(String),
     Data(String),
+}
+
+/// Add operation/path context while retaining the original error as `source`.
+#[derive(Debug)]
+pub struct ContextError {
+    operation: String,
+    path: Option<String>,
+    source: Box<dyn std::error::Error>,
+}
+
+impl std::fmt::Display for ContextError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.path {
+            Some(path) => write!(f, "{} '{}': {}", self.operation, path, self.source),
+            None => write!(f, "{}: {}", self.operation, self.source),
+        }
+    }
+}
+
+impl std::error::Error for ContextError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&*self.source)
+    }
+}
+
+pub(super) fn contextual(
+    operation: impl Into<String>,
+    path: Option<&Path>,
+    source: Box<dyn std::error::Error>,
+) -> TodoCliError {
+    TodoCliError::General(Box::new(ContextError {
+        operation: operation.into(),
+        path: path.map(|p| p.display().to_string()),
+        source,
+    }))
 }
 
 impl TodoCliError {
@@ -118,6 +154,24 @@ mod tests {
     #[test]
     fn print_json_error_prints_valid_json() {
         print_json_error(2, "title must be non-empty");
+    }
+
+    #[test]
+    fn contextual_error_preserves_operation_path_and_source() {
+        let source = std::io::Error::new(std::io::ErrorKind::NotFound, "missing");
+        let error = contextual(
+            "load todo data",
+            Some(std::path::Path::new(".todo.json")),
+            Box::new(source),
+        );
+        assert_eq!(error.exit_code(), EXIT_GENERAL);
+        assert_eq!(error.to_string(), "load todo data '.todo.json': missing");
+        assert!(std::error::Error::source(&error).is_none());
+        if let TodoCliError::General(source) = error {
+            assert!(source.source().is_some());
+        } else {
+            panic!("expected general error");
+        }
     }
 
     #[test]

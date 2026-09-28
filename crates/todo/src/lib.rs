@@ -12,7 +12,7 @@ mod priority;
 mod repeat;
 mod store;
 
-pub use error::TodoError;
+pub use error::{TodoError, TodoErrorKind};
 pub use id::TodoId;
 pub use list::TodoList;
 pub use model::{ListFilter, ListOptions, ListSort, Todo, TodoPatch};
