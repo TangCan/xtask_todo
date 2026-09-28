@@ -114,6 +114,14 @@ pub fn cmd_release_baseline(args: ReleaseBaselineArgs) -> Result<(), String> {
 
     let build_arguments = build_release(&root, &args.profile)?;
     let release_dir = PathBuf::from(&metadata.target_directory).join(&args.profile);
+    let measurement_dir =
+        std::env::temp_dir().join(format!("xtask-release-baseline-{}", std::process::id()));
+    fs::create_dir_all(&measurement_dir).map_err(|e| {
+        format!(
+            "create measurement directory {}: {e}",
+            measurement_dir.display()
+        )
+    })?;
     let mut measurements = Vec::with_capacity(targets.len());
     for target in targets {
         let path = binary_path(&release_dir, &target.name);
@@ -126,7 +134,8 @@ pub fn cmd_release_baseline(args: ReleaseBaselineArgs) -> Result<(), String> {
                 )
             })?
             .len();
-        let cold_start_micros = measure_cold_start(&path, args.runs, &target.name)?;
+        let cold_start_micros =
+            measure_cold_start(&path, args.runs, &target.name, &measurement_dir)?;
         measurements.push(BinaryMeasurement {
             name: target.name,
             package: target.package,
@@ -154,6 +163,7 @@ pub fn cmd_release_baseline(args: ReleaseBaselineArgs) -> Result<(), String> {
         runs: args.runs,
         targets: measurements,
     };
+    let _ = fs::remove_dir_all(&measurement_dir);
     write_json_atomically(&output, &baseline)?;
     println!("wrote release baseline to {}", output.display());
     Ok(())
@@ -219,12 +229,19 @@ fn binary_path(release_dir: &Path, name: &str) -> PathBuf {
     }
 }
 
-fn measure_cold_start(path: &Path, runs: u32, name: &str) -> Result<ColdStart, String> {
+fn measure_cold_start(
+    path: &Path,
+    runs: u32,
+    name: &str,
+    measurement_dir: &Path,
+) -> Result<ColdStart, String> {
     let mut samples = Vec::with_capacity(runs as usize);
     for _ in 0..runs {
         let start = Instant::now();
         let output = Command::new(path)
             .arg("--help")
+            .current_dir(measurement_dir)
+            .env_remove("DEVSHELL_WORKSPACE_ROOT")
             .output()
             .map_err(|e| format!("target '{name}' failed to start: {e}"))?;
         if !output.status.success() {
