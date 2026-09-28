@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-28-2026 00:00
-last_updated: 09-28-2026 00:00
+last_updated: 09-28-2026 16:14
 project: xtask_todo
 project_key: NOKEY
 tracking_system: file-system
@@ -59,24 +59,24 @@ action_items:
     epic: 1
     action: "为 Epic 1 保存一次跨平台质量门禁的 CI run 摘要或 artifact 索引"
     owner: "维护者"
-    status: open
+    status: done
     ref: "_agile-output/implementation-artifacts/epic-1-retro-2026-09-28.md"
   - id: "epic-2-retro-item-2-从-release-optimized-json-自动生成或校正-release"
     epic: 2
     action: "从 release-optimized.json 自动生成或校正 release-optimization.md 的 p50 表格，并在
       CI/发布检查中防止报告与 JSON 漂移"
     owner: "发布工具维护者"
-    status: open
+    status: done
     ref: "_agile-output/implementation-artifacts/epic-2-retro-2026-09-28.md"
   - id: "epic-3-retro-item-3-为-bash-zsh-fish-补全增加-shell-parser-source"
     epic: 3
     action: "为 bash/zsh/fish 补全增加 shell parser/source smoke test，并从命令定义生成或校验候选项"
     owner: "CLI 维护者"
-    status: open
+    status: done
     ref: "_agile-output/implementation-artifacts/epic-3-retro-2026-09-28.md"
   - id: "epic-3-retro-item-4-统一-agent-schema-的扩展策略-要么允许并文档化未知字段-要么移除增"
     epic: 3
     action: "统一 Agent schema 的扩展策略：要么允许并文档化未知字段，要么移除增量字段兼容的表述并增加明确的 schema 迁移规则"
     owner: "Agent 接口维护者"
-    status: open
+    status: done
     ref: "_agile-output/implementation-artifacts/epic-3-retro-2026-09-28.md"

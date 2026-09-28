@@ -24,9 +24,9 @@
           "repeat_until": { "type": ["string", "null"] },
           "repeat_count": { "type": ["integer", "null"], "minimum": 0 }
         },
-        "additionalProperties": false
+        "additionalProperties": true
       }
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

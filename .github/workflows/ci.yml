@@ -122,3 +122,16 @@ jobs:
       - name: Check RustSec advisories
         if: always()
         run: cargo audit
+
+      - name: Write quality summary
+        if: always()
+        shell: bash
+        run: .github/scripts/write-quality-summary.sh
+
+      - name: Upload quality summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-summary-${{ matrix.os }}-${{ matrix.arch }}
+          path: quality/quality-summary.md
+          if-no-files-found: error

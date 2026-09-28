@@ -380,4 +380,33 @@ mod tests {
         assert_eq!(value["schema_version"], 1);
         assert!(json.find("schema_version").unwrap() < json.find("targets").unwrap());
     }
+
+    #[test]
+    fn release_optimization_report_matches_machine_measurements() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("workspace root");
+        let report = std::fs::read_to_string(root.join("docs/benchmarks/release-optimization.md"))
+            .expect("release optimization report");
+        let json: Value = serde_json::from_str(
+            &std::fs::read_to_string(root.join("docs/benchmarks/release-optimized.json"))
+                .expect("release optimization measurements"),
+        )
+        .expect("valid release optimization JSON");
+        for target in json["targets"].as_array().expect("targets array") {
+            let name = target["name"].as_str().expect("target name");
+            let line = report
+                .lines()
+                .find(|line| line.starts_with(&format!("| {name} |")))
+                .expect("report row");
+            let fields: Vec<_> = line.split('|').map(str::trim).collect();
+            let report_size: u64 = fields[3].replace(',', "").parse().expect("report size");
+            let report_p50: u128 = fields[6].replace(',', "").parse().expect("report p50");
+            assert_eq!(report_size, target["size_bytes"].as_u64().expect("size"));
+            assert_eq!(
+                report_p50,
+                u128::from(target["cold_start_micros"]["p50"].as_u64().expect("p50"))
+            );
+        }
+    }
 }

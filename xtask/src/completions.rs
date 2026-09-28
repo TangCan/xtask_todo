@@ -114,4 +114,68 @@ mod tests {
         .expect_err("unsupported shell");
         assert!(error.contains("bash, zsh, fish"));
     }
+
+    #[test]
+    fn generated_scripts_pass_available_shell_parsers() {
+        let cases = [
+            ("bash", bash_script()),
+            ("zsh", zsh_script()),
+            ("fish", fish_script()),
+        ];
+        let path =
+            std::env::temp_dir().join(format!("xtask-completions-{}.txt", std::process::id()));
+        for (shell, script) in cases {
+            std::fs::write(&path, script).expect("write completion script");
+            let check = match shell {
+                "bash" => std::process::Command::new("bash")
+                    .args(["-n", path.to_str().unwrap()])
+                    .output(),
+                "zsh" => std::process::Command::new("zsh")
+                    .args(["-n", path.to_str().unwrap()])
+                    .output(),
+                _ => std::process::Command::new("fish")
+                    .args(["--no-execute", path.to_str().unwrap()])
+                    .output(),
+            };
+            if let Ok(output) = check {
+                assert!(
+                    output.status.success(),
+                    "{shell} parser rejected generated script"
+                );
+            }
+        }
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn completion_catalog_covers_declared_cli_commands() {
+        for command in [
+            "acceptance",
+            "clean",
+            "clippy",
+            "completions",
+            "coverage",
+            "fmt",
+            "gh",
+            "ghcr",
+            "git",
+            "lima-todo",
+            "publish",
+            "release-baseline",
+            "run",
+            "todo",
+        ] {
+            assert!(COMMANDS
+                .split_whitespace()
+                .any(|candidate| candidate == command));
+        }
+        for command in [
+            "add", "complete", "delete", "export", "import", "init-ai", "list", "search", "show",
+            "stats", "update",
+        ] {
+            assert!(TODO_COMMANDS
+                .split_whitespace()
+                .any(|candidate| candidate == command));
+        }
+    }
 }

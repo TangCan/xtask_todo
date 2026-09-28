@@ -22,8 +22,8 @@ being described as a cross-platform performance improvement.
 
 | Target | Before bytes | After bytes | Size change | Before p50 (µs) | After p50 (µs) |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| cargo-devshell | 1,904,976 | 1,199,800 | -37.0% | 47,694 | 69,067 |
-| devshell-vm | 840,472 | 574,400 | -31.7% | 1,492 | 2,160 |
+| cargo-devshell | 1,904,976 | 1,199,800 | -37.0% | 47,694 | 70,957 |
+| devshell-vm | 840,472 | 574,400 | -31.7% | 1,492 | 2,321 |
 | todo | 1,247,336 | 725,744 | -41.8% | 1,495 | 2,951 |
 | xtask | 4,550,680 | 2,879,440 | -36.7% | 1,712 | 1,827 |
 
