@@ -35,21 +35,21 @@ project_key: NOKEY
 tracking_system: file-system
 story_location: _agile-output/specs/spec-xtask-todo-hardening/stories
 development_status:
-  epic-1: in-progress
+  epic-1: done
   1-1-测试运行器与测试工具链升级: done
   1-2-跨平台覆盖率能力: done
   1-3-cli-快照与数据层属性测试: done
   1-4-ci-硬质量门禁: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
+  epic-2: done
   2-1-release-基准与可重复测量: done
   2-2-release-配置与体积-启动优化: done
   2-3-强类型错误与-cli-错误上下文: done
   2-4-数据容错-版本化迁移与-dry-run-一致性: done
   epic-2-retrospective: optional
 
-  epic-3: in-progress
+  epic-3: done
   3-1-跨平台-shell-补全: done
   3-2-长操作反馈与结构化日志: done
   3-3-稳定的-agent-外部工具导出接口: done
