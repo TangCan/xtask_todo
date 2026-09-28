@@ -10,6 +10,7 @@ mod ghcr;
 mod git;
 mod lima_todo;
 mod publish;
+mod release_baseline;
 mod run;
 pub mod todo;
 
@@ -29,6 +30,7 @@ use ghcr::GhcrArgs;
 use git::GitArgs;
 use lima_todo::LimaTodoArgs;
 use publish::PublishArgs;
+use release_baseline::ReleaseBaselineArgs;
 use run::RunArgs;
 
 /// Run failure with exit code (0 = success; 1 general, 2 parameter, 3 data for todo).
@@ -65,6 +67,12 @@ pub fn run_with(cmd: XtaskCmd) -> Result<(), RunFailure> {
         XtaskSub::Ghcr(args) => ghcr::cmd_ghcr(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Git(args) => git::cmd_git(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Publish(args) => publish::cmd_publish(&args).map_err(|e| to_run_failure(&*e)),
+        XtaskSub::ReleaseBaseline(args) => {
+            release_baseline::cmd_release_baseline(args).map_err(|e| RunFailure {
+                code: 1,
+                message: e,
+            })
+        }
         XtaskSub::LimaTodo(args) => lima_todo::cmd_lima_todo(args),
         XtaskSub::Acceptance(args) => acceptance::cmd_acceptance(args).map_err(|e| RunFailure {
             code: 1,
@@ -115,6 +123,7 @@ pub enum XtaskSub {
     Ghcr(GhcrArgs),
     Git(GitArgs),
     Publish(PublishArgs),
+    ReleaseBaseline(ReleaseBaselineArgs),
     LimaTodo(LimaTodoArgs),
     Todo(TodoArgs),
 }
