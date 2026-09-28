@@ -7,10 +7,35 @@ on:
     branches: [main, master]
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
+  quality:
+    name: Quality (${{ matrix.os }} / ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+          - os: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+          - os: macos
+            arch: amd64
+            runner: macos-13
+          - os: macos
+            arch: arm64
+            runner: macos-14
+          - os: windows
+            arch: amd64
+            runner: windows-latest
+          - os: windows
+            arch: arm64
+            runner: windows-11-arm
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      RUSTFLAGS: -D warnings
+
     steps:
       - uses: actions/checkout@v4
 
@@ -18,21 +43,82 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
+          components: rustfmt, clippy, llvm-tools-preview
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest@0.9.146
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov@0.9.0
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny@0.20.2
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit@0.22.2
 
       - name: Check formatting
-        run: cargo fmt -- --check
+        run: cargo fmt --all -- --check
 
-      - name: Build
-        run: cargo build
+      - name: Build workspace
+        run: cargo build --workspace
 
-      # Workspace members: xtask-todo-lib (default `beta-vm`), devshell-vm, xtask — 全覆盖侧车与 β 客户端。
-      # NOTE: Windows MSVC cross-check runs in local pre-commit/acceptance flows (requirements §7.2), not in this CI job.
-      - name: Test (workspace, includes devshell-vm and beta-vm default features)
-        run: cargo test -- --test-threads=1
+      - name: Run nextest
+        run: cargo nextest run --workspace --all-features
 
-      - name: Clippy
-        run: cargo clippy --all-targets -- -W clippy::pedantic -W clippy::nursery -D warnings
+      # nextest does not execute doctests; keep this as an independent hard gate.
+      - name: Run doctests
+        run: cargo test --doc --workspace --all-features
 
-      - name: Doc (no-deps)
-        run: RUSTDOCFLAGS='-D warnings' cargo doc --no-deps
+      - name: Build documentation
+        shell: bash
+        run: RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps
+
+      - name: Run clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Prepare coverage output
+        shell: bash
+        run: mkdir -p coverage
+
+      - name: Check xtask-todo-lib coverage
+        shell: bash
+        run: >-
+          cargo llvm-cov -p xtask-todo-lib --all-features --json --summary-only
+          --output-path coverage/xtask-todo-lib.json --fail-under-lines 95
+          --ignore-filename-regex
+          'crates[/\\]todo[/\\]src[/\\](bin[/\\].*|devshell[/\\](mod\.rs|repl[/\\].*|script[/\\](exec|parse)\.rs|vm[/\\].*|command[/\\]types\.rs|sandbox[/\\](linux_mount|elf|paths|run|sync)\.rs|host_text\.rs|completion[/\\].*|workspace[/\\].*|command[/\\]dispatch[/\\](builtin_impl|workspace)\.rs|vfs[/\\]tree\.rs|session_store\.rs))|xtask[/\\].*'
+          -- --test-threads=1
+
+      - name: Check xtask coverage
+        shell: bash
+        run: >-
+          cargo llvm-cov -p xtask --all-features --json --summary-only
+          --output-path coverage/xtask.json --fail-under-lines 95
+          --ignore-filename-regex
+          'xtask[/\\]src[/\\](main\.rs|bin[/\\]todo\.rs|lima_todo[/\\].*|gh\.rs|ghcr\.rs|acceptance[/\\].*)|crates[/\\]todo[/\\].*'
+          -- --test-threads=1 --include-ignored
+
+      - name: Upload coverage JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}
+          path: coverage/*.json
+          if-no-files-found: ignore
+
+      - name: Check dependency policy
+        if: always()
+        run: cargo deny check
+
+      - name: Check RustSec advisories
+        if: always()
+        run: cargo audit

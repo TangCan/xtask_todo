@@ -29,7 +29,9 @@ cargo xtask acceptance
 
 ## CI（`.github/workflows/ci.yml`）
 
-典型步骤：`cargo fmt --check` → `cargo build` → `cargo test` → `cargo clippy` → `cargo doc`（含 `RUSTDOCFLAGS=-D warnings` 等，以仓库内 workflow 为准）。**MSVC 交叉检查**主要出现在本地 pre-commit/acceptance，而非所有 CI job 重复。
+CI 在 Linux/macOS/Windows 的 amd64 与 arm64 runner 上执行同一组硬门禁：`cargo fmt --all -- --check`、workspace build、`cargo nextest run --workspace --all-features`、独立的 `cargo test --doc --workspace --all-features`、`RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps`、`cargo clippy --workspace --all-targets --all-features -- -D warnings`、两个核心 crate 的 llvm-cov 95% 行覆盖率阈值、`cargo deny check` 与 `cargo audit`。工具版本固定在 workflow 的 install-action 步骤；Rust stable 按官方 runner 工具链维护。nextest 不包含 doctest，因此 doctest 步骤不可删除或合并。
+
+覆盖率 JSON 工件按 runner 上传，便于机器消费和比较。覆盖率阈值、排除意图与调整流程见 [test-coverage.md](test-coverage.md)；供应链策略见仓库根目录的 [`deny.toml`](../deny.toml)。本地 pre-commit/acceptance 仍负责 MSVC 目标交叉检查，CI 不依赖本地 hook。
 
 ## 发布
 

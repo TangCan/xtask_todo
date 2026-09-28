@@ -2,14 +2,18 @@
 
 覆盖率工具为 [cargo-llvm-cov](https://github.com/taiki-e/cargo-llvm-cov)，使用 Rust 的 source-based instrumentation。目标与 **[requirements.md](./requirements.md)**、**[design.md](./design.md)** 一致：可测代码尽量覆盖；与需求追溯见 **[test-cases.md](./test-cases.md)**。
 
-## 目标：各 crate ≥95%
+## CI 门禁：各核心 crate ≥95%
 
 | Crate | 目标 | 常用命令 |
 |--------|------|----------|
-| **xtask-todo-lib** | **≥95%** | `cargo xtask coverage`（与 `xtask/src/coverage.rs` 中 `--ignore-filename-regex` 一致） |
-| **xtask** | **≥95%** | `cargo xtask coverage`（与 `xtask/src/coverage.rs` 中的 `--ignore-filename-regex` 一致） |
+| **xtask-todo-lib** | **≥95%** | CI 使用 `cargo llvm-cov --fail-under-lines 95`，排除意图与 `xtask/src/coverage.rs` 一致 |
+| **xtask** | **≥95%** | CI 使用 `cargo llvm-cov --fail-under-lines 95`，排除意图与 `xtask/src/coverage.rs` 一致 |
 
-> 当前 `cargo xtask coverage` 会打印各 crate 覆盖率摘要，但不会在代码中硬性卡住 `95%` 并返回失败；`95%` 作为团队目标，由评审/CI 策略决定是否强制。
+`cargo xtask coverage` 仍用于本地生成两个 crate 的摘要；CI 工作流中的 `cargo llvm-cov` 是硬门禁，任一核心 crate 低于 95% 或命令失败都会阻断对应平台 job。CI 同时将每个平台的 `coverage/*.json` 作为机器可读工件上传。
+
+### 阈值调整流程
+
+95% 是当前团队基线。提高阈值或修改排除项时，必须同步更新 `.github/workflows/ci.yml`、本页说明以及 `xtask/src/coverage.rs` 的排除意图，并记录覆盖率变化原因。降低阈值需要维护者明确批准，并记录临时期限和恢复计划；不能只修改 CI 中的数字。
 
 **说明**
 
@@ -29,6 +33,8 @@ cargo llvm-cov -p xtask-todo-lib --text
 cargo llvm-cov -p xtask --text   # 若需与 CI 摘要一致，请使用 `cargo xtask coverage` 中的排除项
 cargo llvm-cov --text --ignore-filename-regex 'xtask/src/main\.rs' -- --test-threads=1
 ```
+
+CI 在 Linux、macOS 和 Windows 上运行 source-based llvm-cov，分别生成并上传 `coverage/xtask-todo-lib.json` 与 `coverage/xtask.json`；不使用 cargo-tarpaulin 或 Linux-only ptrace 方案。
 
 ## 注意
 

@@ -1,0 +1,51 @@
+# cargo-deny policy for the workspace. CI treats deny-level results as hard failures.
+
+[graph]
+all-features = true
+
+[advisories]
+unmaintained = "workspace"
+ignore = []
+
+[licenses]
+allow = [
+  "Apache-2.0",
+  "BSD-3-Clause",
+  "BSL-1.0",
+  "CDLA-Permissive-2.0",
+  "ISC",
+  "MIT",
+  "Unicode-3.0",
+  "Zlib",
+]
+confidence-threshold = 0.93
+
+[bans]
+multiple-versions = "deny"
+# The workspace path dependency has no registry version; registry wildcard
+# dependencies remain visible in the cargo-deny report for review.
+wildcards = "allow"
+highlight = "all"
+deny = []
+skip = [
+  { crate = "windows-sys@0.52.0", reason = "required by ring's rustls target support" },
+  { crate = "windows-sys@0.59.0", reason = "required by fd-lock" },
+  { crate = "windows-sys@0.60.2", reason = "required by rustyline" },
+  { crate = "windows-sys@0.61.2", reason = "required by current platform support dependencies" },
+  { crate = "windows-targets@0.52.6", reason = "platform support version" },
+  { crate = "windows-targets@0.53.5", reason = "platform support version" },
+  { crate = "windows_aarch64_gnullvm", reason = "platform support version" },
+  { crate = "windows_aarch64_msvc", reason = "platform support version" },
+  { crate = "windows_i686_gnu", reason = "platform support version" },
+  { crate = "windows_i686_gnullvm", reason = "platform support version" },
+  { crate = "windows_i686_msvc", reason = "platform support version" },
+  { crate = "windows_x86_64_gnu", reason = "platform support version" },
+  { crate = "windows_x86_64_gnullvm", reason = "platform support version" },
+  { crate = "windows_x86_64_msvc", reason = "platform support version" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
