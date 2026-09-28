@@ -7,6 +7,7 @@
 - **Rust** toolchain（`rustup`）；仓库使用 **edition 2021**（见各 `Cargo.toml`）。  
 - 可选：Windows 交叉检查需安装 **`x86_64-pc-windows-msvc`** target（pre-commit / acceptance 中可能 SKIP）。  
 - **GitHub CLI `gh`**：仅在使用 `cargo xtask gh log` / GHCR 相关命令时需要。
+- **cargo-nextest**：运行非 doctest workspace 测试时需要；安装命令为 `cargo install cargo-nextest --locked`。doctest 仍使用 `cargo test --doc`。
 
 ## 常用命令
 
@@ -14,7 +15,8 @@
 # 格式化 / 静态检查 / 测试（与 CI 精神一致，细节以 xtask 与 CI 为准）
 cargo xtask fmt
 cargo xtask clippy
-cargo test --workspace
+cargo nextest run
+cargo test --doc
 # 或按仓库 README 使用 cargo xtask test 等封装
 
 # 本地提交前钩子（与 CI 对齐说明见 requirements §7.2）

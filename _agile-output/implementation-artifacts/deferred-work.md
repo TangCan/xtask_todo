@@ -9,3 +9,7 @@
 ## Deferred from: code review of 1-3-filter-sort-list-browse.md (2026-03-25)
 
 - AC1 所列多类 `list` 过滤/排序维度在本 diff 中仅部分以集成测试覆盖；`--priority`、`--due-before`/`--due-after` 等已有 `xtask-todo-lib` / `todo_cmd` 单测支撑，完整 E2E 矩阵可作为后续 story 或硬化任务再扩展。
+
+## Deferred from: code review of spec-1-1-test-runner-and-testing-toolchain-upgrade (2026-09-28)
+
+- CI 当前仍使用 `cargo test -- --test-threads=1`；切换到 cargo-nextest、独立 doctest、覆盖率和供应链门禁属于 Epic 1 Story 1.4，不在 Story 1.1 内提前实现。

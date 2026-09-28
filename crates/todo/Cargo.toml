@@ -23,6 +23,10 @@ rustyline = "17"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+[dev-dependencies]
+insta = "1.48"
+proptest = "1.11"
+
 [features]
 # β IPC client (Windows 默认 Podman 侧车；Unix 可选 TCP/UDS)。不需要时可 `default-features = false`。
 default = ["beta-vm"]
