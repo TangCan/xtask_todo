@@ -1,9 +1,10 @@
 use std::sync::{Mutex, OnceLock, PoisonError};
 
 use super::super::vfs::Vfs;
+#[cfg(unix)]
+use super::run_in_export_dir;
 use super::{
-    export_vfs_to_temp_dir, find_in_path, run_in_export_dir, run_rust_tool, sync_host_dir_to_vfs,
-    SandboxError,
+    export_vfs_to_temp_dir, find_in_path, run_rust_tool, sync_host_dir_to_vfs, SandboxError,
 };
 use crate::test_support::cwd_mutex;
 
