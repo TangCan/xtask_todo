@@ -385,6 +385,7 @@ fn handle_export(
     if json {
         print_json_success(&serde_json::json!({
             "exported": list.list().len(),
+            "schema_version": 1,
             "file": a.file.display().to_string()
         }));
     } else {

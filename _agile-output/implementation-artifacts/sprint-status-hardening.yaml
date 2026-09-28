@@ -52,5 +52,5 @@ development_status:
   epic-3: in-progress
   3-1-跨平台-shell-补全: done
   3-2-长操作反馈与结构化日志: done
-  3-3-稳定的-agent-外部工具导出接口: backlog
+  3-3-稳定的-agent-外部工具导出接口: done
   epic-3-retrospective: optional

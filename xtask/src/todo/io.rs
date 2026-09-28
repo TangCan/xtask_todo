@@ -30,7 +30,7 @@ pub struct TodoDto {
     pub repeat_count: Option<u32>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct VersionedTodos {
     version: u32,
     todos: Vec<TodoDto>,
@@ -151,8 +151,7 @@ pub fn load_todos_for_import(path: &Path) -> Result<Vec<Todo>, Box<dyn std::erro
     if is_csv {
         Ok(load_todos_from_csv(&s))
     } else {
-        let dtos: Vec<TodoDto> = serde_json::from_str(&s)?;
-        Ok(dtos.into_iter().filter_map(dto_to_todo).collect())
+        deserialize_todos(&s)
     }
 }
 
@@ -354,7 +353,10 @@ pub fn save_todos_to_path(
             repeat_count: t.repeat_count,
         })
         .collect();
-    let s = serde_json::to_string_pretty(&dtos)?;
+    let s = serde_json::to_string_pretty(&VersionedTodos {
+        version: CURRENT_DATA_VERSION,
+        todos: dtos,
+    })?;
     std::fs::write(path, s)?;
     Ok(())
 }
