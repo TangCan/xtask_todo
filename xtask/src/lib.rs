@@ -3,6 +3,7 @@
 mod acceptance;
 mod clean;
 mod clippy;
+mod completions;
 mod coverage;
 mod fmt;
 mod gh;
@@ -23,6 +24,7 @@ use crate::acceptance::AcceptanceArgs;
 use crate::todo::TodoArgs;
 use clean::CleanArgs;
 use clippy::ClippyArgs;
+use completions::CompletionsArgs;
 use coverage::CoverageArgs;
 use fmt::FmtArgs;
 use gh::GhArgs;
@@ -62,6 +64,9 @@ pub fn run_with(cmd: XtaskCmd) -> Result<(), RunFailure> {
         XtaskSub::Clean(args) => clean::cmd_clean(args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Clippy(args) => clippy::cmd_clippy(args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Coverage(args) => coverage::cmd_coverage(args).map_err(|e| to_run_failure(&*e)),
+        XtaskSub::Completions(args) => {
+            completions::cmd_completions(&args).map_err(|message| RunFailure { code: 2, message })
+        }
         XtaskSub::Fmt(args) => fmt::cmd_fmt(args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Gh(args) => gh::cmd_gh(&args).map_err(|e| to_run_failure(&*e)),
         XtaskSub::Ghcr(args) => ghcr::cmd_ghcr(&args).map_err(|e| to_run_failure(&*e)),
@@ -118,6 +123,7 @@ pub enum XtaskSub {
     Clean(CleanArgs),
     Clippy(ClippyArgs),
     Coverage(CoverageArgs),
+    Completions(CompletionsArgs),
     Fmt(FmtArgs),
     Gh(GhArgs),
     Ghcr(GhcrArgs),

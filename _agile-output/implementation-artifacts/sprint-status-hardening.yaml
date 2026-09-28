@@ -49,8 +49,8 @@ development_status:
   2-4-数据容错-版本化迁移与-dry-run-一致性: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-跨平台-shell-补全: backlog
+  epic-3: in-progress
+  3-1-跨平台-shell-补全: done
   3-2-长操作反馈与结构化日志: backlog
   3-3-稳定的-agent-外部工具导出接口: backlog
   epic-3-retrospective: optional
