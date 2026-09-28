@@ -11,7 +11,7 @@ use super::super::args::{
     TodoListArgs, TodoSearchArgs, TodoShowArgs, TodoSub, TodoUpdateArgs,
 };
 use super::super::error::{
-    contextual, print_json_success, todo_list_json_payload, todo_to_json, TodoCliError,
+    data_contextual, print_json_success, todo_list_json_payload, todo_to_json, TodoCliError,
 };
 use super::super::format::{format_duration, format_time_ago, print_todo_list_items};
 use super::super::init_ai::run_init_ai;
@@ -36,7 +36,8 @@ pub fn cmd_todo(args: TodoArgs) -> Result<(), TodoCliError> {
     }
 
     let todo_path = super::super::io::todo_file().ok();
-    let todos = load_todos().map_err(|e| contextual("load todo data", todo_path.as_deref(), e))?;
+    let todos =
+        load_todos().map_err(|e| data_contextual("load todo data", todo_path.as_deref(), &*e))?;
     let store = InMemoryStore::from_todos(todos);
     let mut list = TodoList::with_store(store);
     let json = args.json;
@@ -76,6 +77,19 @@ fn handle_add(
         || a.repeat_rule.is_some()
         || a.repeat_until.is_some()
         || a.repeat_count.is_some();
+    let patch_opt = if has_opts {
+        Some(patch_from_add_args(
+            a.description.as_deref(),
+            a.due_date.as_deref(),
+            a.priority.as_deref(),
+            a.tags.as_deref(),
+            a.repeat_rule.as_deref(),
+            a.repeat_until.as_deref(),
+            a.repeat_count.as_deref(),
+        )?)
+    } else {
+        None
+    };
     if dry_run {
         if json {
             print_json_success(&serde_json::json!({
@@ -93,19 +107,6 @@ fn handle_add(
         return Ok(());
     }
     // Validate optional fields before `create` so invalid flags never allocate a new id (TC-T1-3 / FR1).
-    let patch_opt = if has_opts {
-        Some(patch_from_add_args(
-            a.description.as_deref(),
-            a.due_date.as_deref(),
-            a.priority.as_deref(),
-            a.tags.as_deref(),
-            a.repeat_rule.as_deref(),
-            a.repeat_until.as_deref(),
-            a.repeat_count.as_deref(),
-        )?)
-    } else {
-        None
-    };
     let id = list.create(&a.title).map_err(|e| match e {
         TodoError::InvalidInput => {
             TodoCliError::Parameter("invalid input: title must be non-empty".into())

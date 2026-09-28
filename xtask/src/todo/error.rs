@@ -39,16 +39,17 @@ impl std::error::Error for ContextError {
     }
 }
 
-pub(super) fn contextual(
+pub(super) fn data_contextual(
     operation: impl Into<String>,
     path: Option<&Path>,
-    source: Box<dyn std::error::Error>,
+    source: &dyn std::error::Error,
 ) -> TodoCliError {
-    TodoCliError::General(Box::new(ContextError {
+    let error = ContextError {
         operation: operation.into(),
         path: path.map(|p| p.display().to_string()),
-        source,
-    }))
+        source: Box::new(std::io::Error::other(source.to_string())),
+    };
+    TodoCliError::Data(error.to_string())
 }
 
 impl TodoCliError {
@@ -159,11 +160,11 @@ mod tests {
     #[test]
     fn contextual_error_preserves_operation_path_and_source() {
         let source = std::io::Error::new(std::io::ErrorKind::NotFound, "missing");
-        let error = contextual(
-            "load todo data",
-            Some(std::path::Path::new(".todo.json")),
-            Box::new(source),
-        );
+        let error = TodoCliError::General(Box::new(ContextError {
+            operation: "load todo data".to_string(),
+            path: Some(".todo.json".to_string()),
+            source: Box::new(source),
+        }));
         assert_eq!(error.exit_code(), EXIT_GENERAL);
         assert_eq!(error.to_string(), "load todo data '.todo.json': missing");
         assert!(std::error::Error::source(&error).is_none());

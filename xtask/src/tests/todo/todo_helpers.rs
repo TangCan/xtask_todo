@@ -137,7 +137,7 @@ fn is_old_open_old_true() {
 }
 
 #[test]
-fn load_todos_from_invalid_json_defaults_empty() {
+fn load_todos_from_invalid_json_returns_error() {
     let _cwd_lock = crate::tests::cwd_test_lock();
     let dir = std::env::temp_dir().join("xtask_todo_test_invalid");
     let _ = std::fs::create_dir_all(&dir);
@@ -146,8 +146,10 @@ fn load_todos_from_invalid_json_defaults_empty() {
     let path = dir.join(".todo.json");
     std::fs::write(&path, "not json").unwrap();
 
-    let todos = load_todos().unwrap();
-    assert!(todos.is_empty());
+    let Err(error) = load_todos() else {
+        panic!("invalid JSON must not become an empty list")
+    };
+    assert!(error.to_string().contains("expected ident"));
 
     let _ = std::fs::remove_file(&path);
 }

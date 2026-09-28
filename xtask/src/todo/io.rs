@@ -30,6 +30,32 @@ pub struct TodoDto {
     pub repeat_count: Option<u32>,
 }
 
+#[derive(serde::Deserialize)]
+struct VersionedTodos {
+    version: u32,
+    todos: Vec<TodoDto>,
+}
+
+const CURRENT_DATA_VERSION: u32 = 1;
+
+fn deserialize_todos(s: &str) -> Result<Vec<Todo>, Box<dyn std::error::Error>> {
+    let value: serde_json::Value = serde_json::from_str(s)?;
+    let dtos = if value.is_array() {
+        serde_json::from_value(value)?
+    } else {
+        let envelope: VersionedTodos = serde_json::from_value(value)?;
+        if envelope.version > CURRENT_DATA_VERSION {
+            return Err(format!(
+                "unsupported todo data version {} (current version {})",
+                envelope.version, CURRENT_DATA_VERSION
+            )
+            .into());
+        }
+        envelope.todos
+    };
+    Ok(dtos.into_iter().filter_map(dto_to_todo).collect())
+}
+
 /// Path to the todo JSON file in the current directory.
 ///
 /// # Errors
@@ -80,9 +106,7 @@ pub fn load_todos() -> Result<Vec<Todo>, Box<dyn std::error::Error>> {
         return Ok(Vec::new());
     }
     let s = std::fs::read_to_string(&path)?;
-    let dtos: Vec<TodoDto> = serde_json::from_str(&s).unwrap_or_default();
-    let todos = dtos.into_iter().filter_map(dto_to_todo).collect();
-    Ok(todos)
+    deserialize_todos(&s)
 }
 
 /// Load todos from a file at the given path (format inferred from extension: .csv → CSV, else JSON).
@@ -101,8 +125,7 @@ pub fn load_todos_from_path(path: &Path) -> Result<Vec<Todo>, Box<dyn std::error
     if is_csv {
         Ok(load_todos_from_csv(&s))
     } else {
-        let dtos: Vec<TodoDto> = serde_json::from_str(&s).unwrap_or_default();
-        Ok(dtos.into_iter().filter_map(dto_to_todo).collect())
+        deserialize_todos(&s)
     }
 }
 
@@ -374,6 +397,29 @@ pub fn save_todos(list: &TodoList<InMemoryStore>) -> Result<(), Box<dyn std::err
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn json_loader_rejects_malformed_and_future_versioned_data() {
+        assert!(deserialize_todos("{").is_err());
+        let Err(error) = deserialize_todos(r#"{"version":99,"todos":[]}"#) else {
+            panic!("future versions must fail")
+        };
+        assert!(error
+            .to_string()
+            .contains("unsupported todo data version 99"));
+    }
+
+    #[test]
+    fn json_loader_accepts_legacy_array_and_versioned_envelope() {
+        let legacy = deserialize_todos(
+            r#"[{"id":1,"title":"legacy","completed":false,"created_at_secs":0,"tags":[]}]"#,
+        )
+        .unwrap();
+        assert_eq!(legacy[0].title, "legacy");
+        let current = deserialize_todos(r#"{"version":1,"todos":[{"id":1,"title":"current","completed":false,"created_at_secs":0,"tags":[]}]}"#)
+            .unwrap();
+        assert_eq!(current[0].title, "current");
+    }
 
     /// Covers id 0 skip and valid id 1 row in `load_todos_from_csv` (12 columns: ... `repeat_rule`, `repeat_until`, `repeat_count`).
     #[test]
