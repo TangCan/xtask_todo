@@ -3,7 +3,7 @@ title: '数据容错、版本化迁移与 dry-run 一致性'
 story_key: '2-4-数据容错-版本化迁移与-dry-run-一致性'
 epic: 2
 story: 4
-status: review
+status: done
 created: '2026-09-28'
 source: '../planning-artifacts/epics-hardening.md'
 context:
