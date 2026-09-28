@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1,
+    "title": "alpha",
+    "completed": false,
+    "created_at_secs": 100,
+    "completed_at_secs": null,
+    "description": null,
+    "due_date": "2026-01-10",
+    "priority": "high",
+    "tags": ["work", "urgent"],
+    "repeat_rule": null,
+    "repeat_until": null,
+    "repeat_count": null
+  },
+  {
+    "id": 2,
+    "title": "bravo",
+    "completed": true,
+    "created_at_secs": 200,
+    "completed_at_secs": 200,
+    "description": null,
+    "due_date": "2026-02-20",
+    "priority": "low",
+    "tags": ["home"],
+    "repeat_rule": null,
+    "repeat_until": null,
+    "repeat_count": null
+  },
+  {
+    "id": 3,
+    "title": "charlie",
+    "completed": false,
+    "created_at_secs": 300,
+    "completed_at_secs": null,
+    "description": null,
+    "due_date": "2026-03-15",
+    "priority": "high",
+    "tags": ["work"],
+    "repeat_rule": null,
+    "repeat_until": null,
+    "repeat_count": null
+  },
+  {
+    "id": 4,
+    "title": "delta",
+    "completed": false,
+    "created_at_secs": 400,
+    "completed_at_secs": null,
+    "description": null,
+    "due_date": null,
+    "priority": "high",
+    "tags": ["hobby"],
+    "repeat_rule": null,
+    "repeat_until": null,
+    "repeat_count": null
+  }
+]

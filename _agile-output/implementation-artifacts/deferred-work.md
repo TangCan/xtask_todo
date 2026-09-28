@@ -10,6 +10,11 @@
 
 - AC1 所列多类 `list` 过滤/排序维度在本 diff 中仅部分以集成测试覆盖；`--priority`、`--due-before`/`--due-after` 等已有 `xtask-todo-lib` / `todo_cmd` 单测支撑，完整 E2E 矩阵可作为后续 story 或硬化任务再扩展。
 
+## Story 1.3 closure evidence (2026-09-28)
+
+- `xtask/tests/trycmd/list_filters.trycmd` now exercises the real `todo` binary across status, priority, tags, due-before, due-after, and sort, including empty-result and invalid-parameter cases.
+- `cargo test -p xtask --test trycmd_list_snapshots` and the workspace test suite provide executable evidence for the deferred list E2E coverage.
+
 ## Deferred from: code review of spec-1-1-test-runner-and-testing-toolchain-upgrade (2026-09-28)
 
 - CI 当前仍使用 `cargo test -- --test-threads=1`；切换到 cargo-nextest、独立 doctest、覆盖率和供应链门禁属于 Epic 1 Story 1.4，不在 Story 1.1 内提前实现。

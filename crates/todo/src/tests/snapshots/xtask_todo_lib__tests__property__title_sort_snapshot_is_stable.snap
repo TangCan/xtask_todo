@@ -1,0 +1,9 @@
+---
+source: crates/todo/src/tests/property.rs
+expression: titles
+---
+[
+    "alpha",
+    "middle",
+    "zulu",
+]

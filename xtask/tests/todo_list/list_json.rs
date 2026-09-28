@@ -228,3 +228,44 @@ fn xtask_todo_list_invalid_status_preserves_existing_store() {
 
     let _ = fs::remove_file(&path);
 }
+
+/// Story 1.3: invalid date filters preserve an existing `.todo.json` byte-for-byte.
+#[test]
+fn xtask_todo_list_invalid_dates_preserve_existing_store() {
+    let dir = std::env::temp_dir().join(format!(
+        "xtask_integ_todo_bad_date_preserve_{}",
+        std::process::id()
+    ));
+    let _ = fs::create_dir_all(&dir);
+    let _ = fs::remove_file(dir.join(".todo.json"));
+
+    assert!(xtask_bin()
+        .arg("todo")
+        .arg("add")
+        .arg("keep me")
+        .current_dir(&dir)
+        .status()
+        .unwrap()
+        .success());
+
+    let path = dir.join(".todo.json");
+    let before = fs::read_to_string(&path).expect("store after add");
+    for (flag, value) in [("--due-before", "invalid"), ("--due-after", "invalid")] {
+        let out = xtask_bin()
+            .arg("todo")
+            .arg("--json")
+            .arg("list")
+            .arg(flag)
+            .arg(value)
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(2), "{flag}: {:?}", out.stderr);
+        assert_eq!(
+            before,
+            fs::read_to_string(&path).expect("store after failed list")
+        );
+    }
+
+    let _ = fs::remove_file(path);
+}
