@@ -21,3 +21,18 @@ Values are measurements of the current machine and checkout, not external
 benchmarks. Compare measurements only when the platform, target, toolchain,
 build profile, and command arguments are comparable; cross-platform numbers are
 not directly interchangeable.
+
+## Release profile optimization
+
+Story 2.2 evaluated `opt-level=z`, `lto=thin`, `codegen-units=1`, and
+`strip="symbols"` together against the Story 2.1 baseline. On the Linux host
+used for this measurement, the combination reduced all four binary sizes by
+roughly 36%–37%. Cold-start p50 increased in this run, so this is a size-first
+trade-off rather than a claim of universal startup improvement. The checked-in
+before/after JSON files and the report record the exact commits and dirty-state
+metadata.
+
+The release profile intentionally strips symbols from distributable binaries.
+Use debug builds and the unstripped build artifacts available during local
+development for diagnosis; the profile change does not alter debug or test
+profiles.

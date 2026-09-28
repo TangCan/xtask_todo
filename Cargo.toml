@@ -4,3 +4,12 @@
 [workspace]
 resolver = "2"
 members = ["crates/todo", "crates/devshell-vm", "xtask"]
+
+[profile.release]
+# Optimize distributable binaries for size. `strip = "symbols"` keeps source
+# and line information out of the shipped binary; use a debug build for local
+# diagnosis and preserve the measured commit/configuration in the baseline.
+opt-level = "z"
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
