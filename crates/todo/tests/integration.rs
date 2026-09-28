@@ -70,7 +70,7 @@ fn cargo_devshell_usage_error_exits_nonzero() {
     let bin = std::env::var_os("CARGO_BIN_EXE_cargo-devshell")
         .or_else(|| std::env::var_os("CARGO_BIN_EXE_cargo_devshell"));
     let Some(bin) = bin else {
-        return; // skip when not set (e.g. under tarpaulin)
+        return; // skip when not set (e.g. under a coverage run)
     };
     let out = Command::new(bin).args(["a", "b", "c"]).output().unwrap();
     assert!(!out.status.success());

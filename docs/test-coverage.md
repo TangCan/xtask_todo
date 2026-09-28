@@ -1,36 +1,37 @@
 # 测试覆盖率（Test Coverage）
 
-覆盖率工具为 [cargo-tarpaulin](https://github.com/xd009642/tarpaulin)。目标与 **[requirements.md](./requirements.md)**、**[design.md](./design.md)** 一致：可测代码尽量覆盖；与需求追溯见 **[test-cases.md](./test-cases.md)**。
+覆盖率工具为 [cargo-llvm-cov](https://github.com/taiki-e/cargo-llvm-cov)，使用 Rust 的 source-based instrumentation。目标与 **[requirements.md](./requirements.md)**、**[design.md](./design.md)** 一致：可测代码尽量覆盖；与需求追溯见 **[test-cases.md](./test-cases.md)**。
 
 ## 目标：各 crate ≥95%
 
 | Crate | 目标 | 常用命令 |
 |--------|------|----------|
-| **xtask-todo-lib** | **≥95%** | `cargo xtask coverage`（与 `xtask/src/coverage.rs` 中 `--exclude-files` 一致） |
-| **xtask** | **≥95%** | `cargo xtask coverage`（与 `xtask/src/coverage.rs` 中 xtask 的 `--exclude-files` 一致） |
+| **xtask-todo-lib** | **≥95%** | `cargo xtask coverage`（与 `xtask/src/coverage.rs` 中 `--ignore-filename-regex` 一致） |
+| **xtask** | **≥95%** | `cargo xtask coverage`（与 `xtask/src/coverage.rs` 中的 `--ignore-filename-regex` 一致） |
 
 > 当前 `cargo xtask coverage` 会打印各 crate 覆盖率摘要，但不会在代码中硬性卡住 `95%` 并返回失败；`95%` 作为团队目标，由评审/CI 策略决定是否强制。
 
 **说明**
 
 - **xtask-todo-lib**：排除项用于聚焦可稳定测的库代码（`cargo-devshell` 入口、REPL、脚本、VM/Lima、宿主 sandbox、`host_text`、**`completion/*`**、**`workspace/*`**、**`command/dispatch/{builtin_impl,workspace}.rs`**、**`vfs/tree.rs`**、**`session_store.rs`** 等）；核心 todo/VFS/parser/sandbox 与 devshell 集成测试覆盖其余部分；精确列表见 **`xtask/src/coverage.rs`**。
-- **β / `guest_fs`**：`cargo test -p xtask-todo-lib --features beta-vm`；**`crates/devshell-vm`**：`cargo test -p devshell-vm`（覆盖 **`exec`**、**`exec_timeout`**（**TC-D-VM-7**）、**`guest_fs`**、**`--devshell-vm-test-fail`**、TCP 子进程集成等；**Windows + Podman** 全链路不在 tarpaulin 内，见 **[test-cases.md](./test-cases.md) TC-D-VM-4**）。
-- **xtask**：**`main.rs`**、**`bin/todo.rs`** 为薄入口（`todo` 逻辑在 **`todo::run_standalone`** 中有单测）；**`lima_todo/*`**、**`gh.rs`**、**`ghcr.rs`**（HTTP 层）、**`acceptance/*`**（嵌套 `cargo test`）在 tarpaulin 分母中排除，但仓库内仍有对应 **`#[cfg(test)]`**（如 **`ghcr::tests`** 解析 JSON、**`acceptance::tests`** 生成报告、**`lima_todo::tests`** 含 `cmd_lima_todo` smoke）。与 **`crates/todo/*`** 一并排除后，摘要 ≥95%；精确列表见 **`xtask/src/coverage.rs`**。
+- **β / `guest_fs`**：`cargo test -p xtask-todo-lib --features beta-vm`；**`crates/devshell-vm`**：`cargo test -p devshell-vm`（覆盖 **`exec`**、**`exec_timeout`**（**TC-D-VM-7**）、**`guest_fs`**、**`--devshell-vm-test-fail`**、TCP 子进程集成等；**Windows + Podman** 全链路不在 llvm-cov 摘要内，见 **[test-cases.md](./test-cases.md) TC-D-VM-4**）。
+- **xtask**：**`main.rs`**、**`bin/todo.rs`** 为薄入口（`todo` 逻辑在 **`todo::run_standalone`** 中有单测）；**`lima_todo/*`**、**`gh.rs`**、**`ghcr.rs`**（HTTP 层）、**`acceptance/*`**（嵌套 `cargo test`）在 llvm-cov 分母中排除，但仓库内仍有对应 **`#[cfg(test)]`**（如 **`ghcr::tests`** 解析 JSON、**`acceptance::tests`** 生成报告、**`lima_todo::tests`** 含 `cmd_lima_todo` smoke）。与 **`crates/todo/*`** 一并排除后，摘要 ≥95%；精确列表见 **`xtask/src/coverage.rs`**。
 
 ## 运行
 
 ```bash
-cargo install cargo-tarpaulin   # 一次性
+rustup component add llvm-tools-preview
+cargo install cargo-llvm-cov --locked
 
 cargo xtask coverage            # 推荐：工作区摘要
 
-cargo tarpaulin -p xtask-todo-lib
-cargo tarpaulin -p xtask   # 若需与 CI 摘要一致，请使用 `cargo xtask coverage` 中的排除项
-cargo tarpaulin --exclude-files "xtask/src/main.rs" -- --test-threads=1
+cargo llvm-cov -p xtask-todo-lib --text
+cargo llvm-cov -p xtask --text   # 若需与 CI 摘要一致，请使用 `cargo xtask coverage` 中的排除项
+cargo llvm-cov --text --ignore-filename-regex 'xtask/src/main\.rs' -- --test-threads=1
 ```
 
 ## 注意
 
 - 会改 **cwd** 的 xtask 测试请 **`--test-threads=1`**，避免竞态。
 - **`xtask::run()`** 经 **`argh::from_env()`**，主要由集成测试覆盖。
-- **Pre-commit / Windows 交叉编译**：**`cargo xtask coverage`** 与 **tarpaulin** **不**替代 **`.githooks/pre-commit`** 中的 **`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`**；后者用于保证 **MSVC** 目标可编译，见 **[requirements.md](./requirements.md) §7.2**、**[test-cases.md](./test-cases.md) TC-X-GIT-2 / TC-NF-5**。
+- **Pre-commit / Windows 交叉编译**：**`cargo xtask coverage`** 与 llvm-cov **不**替代 **`.githooks/pre-commit`** 中的 **`cargo check -p xtask-todo-lib --target x86_64-pc-windows-msvc`**；后者用于保证 **MSVC** 目标可编译，见 **[requirements.md](./requirements.md) §7.2**、**[test-cases.md](./test-cases.md) TC-X-GIT-2 / TC-NF-5**。

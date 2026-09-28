@@ -18,7 +18,7 @@ pub fn print_json_error(code: i32, message: &str) {
 
 /// Same logic as the standalone `todo` binary (`src/bin/todo.rs`): dispatch to [`cmd_todo`].
 ///
-/// Used by unit tests so `cargo tarpaulin` counts this path without spawning a subprocess.
+/// Used by unit tests so source-based coverage counts this path without spawning a subprocess.
 ///
 /// # Errors
 /// Same as [`cmd_todo`] (I/O, validation, todo store).

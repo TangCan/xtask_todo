@@ -27,7 +27,7 @@ cargo xtask todo delete <id>
 |---------|-------------|
 | `cargo xtask fmt` | Format code (same as `cargo fmt`) |
 | `cargo xtask clippy` | Lint with Clippy (pedantic + nursery, warnings as errors) |
-| `cargo xtask coverage` | Run coverage per crate (cargo-tarpaulin) |
+| `cargo xtask coverage` | Run source-based coverage per crate (cargo-llvm-cov) |
 | `cargo xtask gh log` | Show log of the most recent GitHub Actions run (requires [GitHub CLI](https://cli.github.com/) in PATH; equiv. `gh run view $(gh run list --limit 1 --json databaseId -q '.[0].databaseId') --log`) |
 | `cargo xtask gh log --job devshell-vm-oci` | Show log of the **`devshell-vm-oci`** job only (latest run of workflow `release.yml`; optional `--workflow <file>` to override) |
 | `cargo xtask ghcr` | Print latest **devshell-vm** GHCR image tag (from GitHub Releases / crates.io) and `podman pull …` — see [docs/devshell-vm-oci-release.md](docs/devshell-vm-oci-release.md) §7 |
@@ -113,7 +113,7 @@ git config core.hooksPath .githooks
 | [docs/design.md](docs/design.md) | Architecture, data flow, module map |
 | [docs/acceptance.md](docs/acceptance.md) | Checklist vs requirements |
 | [docs/test-cases.md](docs/test-cases.md) | Requirement → test mapping |
-| [docs/test-coverage.md](docs/test-coverage.md) | Tarpaulin targets |
+| [docs/test-coverage.md](docs/test-coverage.md) | llvm-cov targets and exclusions |
 
 More under [docs/](docs/) (e.g. `devshell-vm-gamma.md`, `publishing.md`).
 
