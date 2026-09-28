@@ -2,7 +2,7 @@
 title: 'CLI 快照与数据层属性测试'
 type: 'feature'
 created: '2026-09-28'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 baseline_commit: 'a040c79'
 context:

@@ -3,7 +3,7 @@ title: 'CLI 快照与数据层属性测试'
 story_key: '1-3-cli-快照与数据层属性测试'
 epic: 1
 story: 3
-status: in-review
+status: done
 created: '2026-09-28'
 source: '../planning-artifacts/epics-hardening.md'
 context:
