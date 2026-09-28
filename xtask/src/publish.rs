@@ -172,7 +172,9 @@ pub fn cmd_publish(args: &PublishArgs) -> Result<(), Box<dyn std::error::Error>>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::{cwd_test_lock, path_test_lock};
+    use crate::tests::cwd_test_lock;
+    #[cfg(unix)]
+    use crate::tests::path_test_lock;
     use std::process::Command;
 
     #[test]
