@@ -1,5 +1,6 @@
 use super::*;
 
+#[cfg(unix)]
 fn restore_var(key: &str, val: Option<std::ffi::OsString>) {
     match val {
         Some(v) => std::env::set_var(key, v),
