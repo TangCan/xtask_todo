@@ -3,7 +3,7 @@ title: '强类型错误与 CLI 错误上下文'
 story_key: '2-3-强类型错误与-cli-错误上下文'
 epic: 2
 story: 3
-status: review
+status: done
 created: '2026-09-28'
 source: '../planning-artifacts/epics-hardening.md'
 context:
