@@ -155,8 +155,19 @@ mod tests {
                 .join(".todo.json");
             (file, expected)
         };
+        assert_eq!(file.file_name(), expected.file_name());
+        assert_eq!(
+            file.parent()
+                .expect("todo file parent")
+                .canonicalize()
+                .unwrap(),
+            expected
+                .parent()
+                .expect("expected todo file parent")
+                .canonicalize()
+                .unwrap()
+        );
         let _ = std::fs::remove_dir_all(&dir);
-        assert_eq!(file, expected);
     }
 
     #[test]
