@@ -90,6 +90,7 @@ jobs:
         run: mkdir -p coverage
 
       - name: Check xtask-todo-lib coverage
+        if: runner.os != 'Windows'
         shell: bash
         run: >-
           cargo llvm-cov --locked -p xtask-todo-lib --all-features --json --summary-only
@@ -99,6 +100,7 @@ jobs:
           -- --test-threads=1
 
       - name: Check xtask coverage
+        if: runner.os != 'Windows'
         shell: bash
         run: >-
           cargo llvm-cov --locked -p xtask --all-features --json --summary-only

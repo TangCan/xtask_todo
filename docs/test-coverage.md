@@ -9,7 +9,7 @@
 | **xtask-todo-lib** | **≥95%** | CI 使用 `cargo llvm-cov --fail-under-lines 95`，排除意图与 `xtask/src/coverage.rs` 一致 |
 | **xtask** | **≥95%** | CI 使用 `cargo llvm-cov --fail-under-lines 95`，排除意图与 `xtask/src/coverage.rs` 一致 |
 
-`cargo xtask coverage` 仍用于本地生成两个 crate 的摘要；CI 工作流中的 `cargo llvm-cov` 是硬门禁，任一核心 crate 低于 95% 或命令失败都会阻断对应平台 job。CI 同时将每个平台的 `coverage/*.json` 作为机器可读工件上传。
+`cargo xtask coverage` 仍用于本地生成两个 crate 的摘要；CI 工作流中的 `cargo llvm-cov` 在 Linux/macOS 上是硬门禁，任一核心 crate 低于 95% 或命令失败都会阻断对应平台 job。Windows 继续执行构建、测试、文档、Clippy、依赖和安全检查，但跳过覆盖率命令：当前 Windows runner 的 llvm-cov profile 生成不稳定，且 xtask 中的 Unix 专属测试路径会使跨平台汇总值失真。CI 同时将可生成的 `coverage/*.json` 作为机器可读工件上传。
 
 ### 阈值调整流程
 
@@ -34,7 +34,7 @@ cargo llvm-cov -p xtask --text   # 若需与 CI 摘要一致，请使用 `cargo 
 cargo llvm-cov --text --ignore-filename-regex 'xtask/src/main\.rs' -- --test-threads=1
 ```
 
-CI 在 Linux、macOS 和 Windows 上运行 source-based llvm-cov，分别生成并上传 `coverage/xtask-todo-lib.json` 与 `coverage/xtask.json`；不使用 cargo-tarpaulin 或 Linux-only ptrace 方案。
+CI 在 Linux 和 macOS 上运行 source-based llvm-cov，分别生成并上传 `coverage/xtask-todo-lib.json` 与 `coverage/xtask.json`；Windows 使用其余质量门禁，不运行当前不稳定的 llvm-cov coverage gate。不使用 cargo-tarpaulin 或 Linux-only ptrace 方案。
 
 ## 注意
 
