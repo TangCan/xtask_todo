@@ -142,7 +142,7 @@ pub fn cmd_lima_todo(args: LimaTodoArgs) -> Result<(), RunFailure> {
 
     #[cfg(not(unix))]
     {
-        return Err(RunFailure {
+        Err(RunFailure {
             code: 1,
             message:
                 "lima.yaml merge is only supported on Unix; use --print-only and merge manually"
