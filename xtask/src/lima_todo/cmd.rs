@@ -147,7 +147,7 @@ pub fn cmd_lima_todo(args: LimaTodoArgs) -> Result<(), RunFailure> {
             message:
                 "lima.yaml merge is only supported on Unix; use --print-only and merge manually"
                     .to_string(),
-        });
+        })
     }
 
     #[cfg(unix)]
