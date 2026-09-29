@@ -172,7 +172,7 @@ impl SessionHolder {
     /// Build session from config.
     ///
     /// # Errors
-    /// On Unix, `DEVSHELL_VM_BACKEND=lima` uses [`GammaSession`]; fails with [`VmError::Lima`] if `limactl` is missing.
+    /// On Unix, `DEVSHELL_VM_BACKEND=lima` uses `GammaSession`; fails with [`VmError::Lima`] if `limactl` is missing.
     /// On non-Unix, `lima` returns [`VmError::BackendNotImplemented`].
     pub fn try_from_config(config: &VmConfig) -> Result<Self, VmError> {
         if !config.enabled {
