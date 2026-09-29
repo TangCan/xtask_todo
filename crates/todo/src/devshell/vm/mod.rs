@@ -1,4 +1,4 @@
-//! Optional session-scoped VM execution (γ CLI / β sidecar): host [`SessionHolder::Host`], Unix γ [`SessionHolder::Gamma`].
+//! Optional session-scoped VM execution (γ CLI / β sidecar): host `SessionHolder::Host`, Unix γ `SessionHolder::Gamma`.
 
 use std::cell::RefCell;
 use std::io::Write;
