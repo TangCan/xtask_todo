@@ -145,10 +145,22 @@ fn should_add_history_entry_skips_empty_and_duplicate() {
 }
 
 fn tmp_dir(name: &str) -> PathBuf {
+    let thread = std::thread::current();
+    let thread_name = thread.name().unwrap_or("test");
+    let safe_thread_name: String = thread_name
+        .chars()
+        .map(|c| {
+            if c.is_control() || matches!(c, '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*') {
+                '_'
+            } else {
+                c
+            }
+        })
+        .collect();
     std::env::temp_dir().join(format!(
         "xtask_devshell_repl_{name}_{}_{}",
         std::process::id(),
-        std::thread::current().name().unwrap_or("test")
+        safe_thread_name
     ))
 }
 
