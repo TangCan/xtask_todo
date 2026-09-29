@@ -9,8 +9,36 @@ mod guest_fs_ops;
 #[cfg(unix)]
 mod lima_diagnostics;
 #[cfg(feature = "beta-vm")]
+#[cfg_attr(
+    windows,
+    allow(
+        clippy::cast_sign_loss,
+        clippy::equatable_if_let,
+        clippy::map_unwrap_or,
+        clippy::match_same_arms,
+        clippy::missing_const_for_fn,
+        clippy::option_if_let_else,
+        clippy::redundant_pub_crate,
+        clippy::uninlined_format_args,
+        clippy::unnecessary_wraps
+    )
+)]
 mod podman_machine;
 #[cfg(feature = "beta-vm")]
+#[cfg_attr(
+    windows,
+    allow(
+        clippy::cast_sign_loss,
+        clippy::equatable_if_let,
+        clippy::map_unwrap_or,
+        clippy::match_same_arms,
+        clippy::missing_const_for_fn,
+        clippy::option_if_let_else,
+        clippy::redundant_pub_crate,
+        clippy::uninlined_format_args,
+        clippy::unnecessary_wraps
+    )
+)]
 mod session_beta;
 #[cfg(unix)]
 mod session_gamma;
