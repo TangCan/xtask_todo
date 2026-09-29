@@ -69,7 +69,7 @@ fn falsy(s: &str) -> bool {
 fn default_backend_for_release() -> String {
     #[cfg(all(windows, feature = "beta-vm"))]
     {
-        return "beta".to_string();
+        "beta".to_string()
     }
     #[cfg(unix)]
     {
